@@ -30,7 +30,9 @@ function fakeInternet() {
       const prompt = JSON.parse(opts.body).messages[1].content;
       const title = prompt.match(/Title: (.*)/)[1];
       scoredTitles.push({ title, hasText: !/Description:\n\s*$/.test(prompt.split("Return JSON")[0]) });
-      return ok({ choices: [{ message: { content: "{\"fit\": 60, \"why\": \"x\"}" }, finish_reason: "stop" }], usage: { prompt_tokens: 1000, completion_tokens: 80, cost: 0.0002 } });
+      // The fake model flags one role as a new-grad program that the title alone would not reveal.
+      const newGrad = title.startsWith("Real Estate Analyst");
+      return ok({ choices: [{ message: { content: JSON.stringify({ fit: 60, why: "x", new_grad: newGrad }) }, finish_reason: "stop" }], usage: { prompt_tokens: 1000, completion_tokens: 80, cost: 0.0002 } });
     }
     const detail = Object.keys(details).find((k) => url.endsWith(k));
     if (detail) return ok({ content: details[detail] });
@@ -60,9 +62,9 @@ test("each check scores only postings it has not seen, until the backlog is done
 
   scoredTitles = [];
   const r1 = await runPipeline({ fetchImpl: net, now: NOW });
-  assert.equal(r1.summary.passedFilter, 12);
+  assert.equal(r1.summary.passedFilter, 8, "internships, fellowships and pre-docs are filtered out");
   assert.equal(r1.summary.scoredThisRun, 5);
-  assert.equal(r1.summary.waiting, 7);
+  assert.equal(r1.summary.waiting, 3);
   assert.equal(r1.summary.fromCache, 0);
   assert.ok(Math.abs(r1.summary.costUsd - 0.001) < 1e-9);
   const firstBatch = scoredTitles.map((t) => t.title);
@@ -71,20 +73,25 @@ test("each check scores only postings it has not seen, until the backlog is done
   scoredTitles = [];
   const r2 = await runPipeline({ fetchImpl: net, now: NOW + 3600000 });
   assert.equal(r2.summary.fromCache, 5);
-  assert.equal(r2.summary.scoredThisRun, 5);
-  assert.equal(r2.summary.waiting, 2);
+  assert.equal(r2.summary.scoredThisRun, 3);
+  assert.equal(r2.summary.waiting, 0);
   assert.ok(scoredTitles.every((t) => !firstBatch.includes(t.title)), "nothing was paid for twice");
+
+  assert.equal(r2.results.length, 8, "all 8 matches now show with scores");
 
   scoredTitles = [];
   const r3 = await runPipeline({ fetchImpl: net, now: NOW + 7200000 });
-  assert.equal(r3.summary.scoredThisRun, 2);
-  assert.equal(r3.summary.waiting, 0);
-  assert.equal(r3.results.length, 12, "all 12 matches now show with scores");
+  assert.equal(r3.summary.scoredThisRun, 0);
+  assert.equal(r3.summary.costUsd, 0, "a check with nothing new costs nothing");
 
-  scoredTitles = [];
-  const r4 = await runPipeline({ fetchImpl: net, now: NOW + 10800000 });
-  assert.equal(r4.summary.scoredThisRun, 0);
-  assert.equal(r4.summary.costUsd, 0, "a check with nothing new costs nothing");
+  // Columns: titles and descriptions sort most roles; the model's new_grad flag catches the rest,
+  // and the column survives being read back from saved scores.
+  const col = Object.fromEntries(r3.results.map((x) => [x.title, x.cohort]));
+  assert.equal(col["MBA Associate, Supply Chain Strategy (Class of 2027)"], "2027 grad");
+  assert.equal(col["Rotational Leadership Program, MBA 2027"], "2027 grad");
+  assert.equal(col["Real Estate Analyst, Distribution Network"], "2027 grad", "moved by the model's new_grad flag");
+  assert.equal(col["Associate, Data Center Development"], "Open now");
+  assert.ok(r3.results.every((x) => ["Full-time", "Program"].includes(x.track)), "only full-time roles and programs reach the results");
 });
 
 test("changing the profile clears saved scores so roles are judged against the new resume", async () => {
@@ -97,9 +104,13 @@ test("changing the profile clears saved scores so roles are judged against the n
 
 test("the filtered-out list is summarized by reason", async () => {
   const r = JSON.parse(fs.readFileSync(path.join(dir, "latest.json"), "utf8"));
-  assert.equal(r.droppedCount, 7);
+  assert.equal(r.droppedCount, 11);
+  const byReason = Object.fromEntries(r.droppedByReason.map((x) => [x.reason, x.count]));
+  assert.equal(byReason["Track is Internship"], 3, "the track rule runs before the location rule, so the Torrance internship counts here");
+  assert.equal(byReason["Track is Fellowship"], 1);
+  assert.equal(byReason["Track is Pre-doc"], 2);
   const reasons = Object.fromEntries(r.droppedByReason.map((x) => [x.reason, x.count]));
   assert.equal(reasons["Excluded word in title"], 3);
-  assert.equal(reasons["Location not on your list"], 3);
+  assert.equal(reasons["Location not on your list"], 1);
   assert.equal(reasons["Older than your max age"], 1);
 });
