@@ -28,3 +28,5 @@ build/
 out/
 .DS_Store
 *.log
+ # Shortlist personal data: resume, watchlist, preferences, run history (NEVER COMMIT)
+   data/
