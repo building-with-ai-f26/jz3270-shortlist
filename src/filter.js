@@ -21,9 +21,23 @@ export function classifyTrack(title, text = "") {
   return "Full-time";
 }
 
-function matchesAny(value, words) {
-  const lower = (value || "").toLowerCase();
-  return words.find((w) => lower.includes(w.toLowerCase())) || null;
+// I match whole words, not pieces of words. A plain "contains" check let "Intern" match
+// "International" and "NY" match "Germany". Plurals and "-ship" still count, so "Intern"
+// matches "Internship" and "Fellow" matches "Fellowship".
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const patternCache = new Map();
+
+function wordPattern(word) {
+  if (!patternCache.has(word)) {
+    const core = word.trim().replace(/[\s,.;:]+$/, "");
+    patternCache.set(word, core ? new RegExp(`(^|[^a-z0-9])${escapeRegex(core)}(s|es|ship|ships)?(?![a-z0-9])`, "i") : null);
+  }
+  return patternCache.get(word);
+}
+
+export function matchesAny(value, words) {
+  const text = value || "";
+  return words.find((w) => wordPattern(w)?.test(text)) || null;
 }
 
 function daysSince(iso, now) {
@@ -39,7 +53,7 @@ export function prefilter(posting, prefs, now = Date.now()) {
   const base = { ...posting, track, ageDays };
 
   const excluded = matchesAny(posting.title, prefs.titleExclude || []);
-  if (excluded) return { keep: false, posting: base, reason: `Title has "${excluded}"` };
+  if (excluded) return { keep: false, posting: base, reason: `Title has "${excluded.trim().replace(/[,.;:]+$/, "")}"` };
 
   if ((prefs.tracks || []).length && !prefs.tracks.includes(track)) {
     return { keep: false, posting: base, reason: `Track is ${track}` };

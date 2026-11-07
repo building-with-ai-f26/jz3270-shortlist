@@ -54,7 +54,15 @@ export function parseScore(content) {
   };
 }
 
-export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, apiKey } = {}) {
+// OpenRouter usually returns content as a string, but some providers send a list of parts.
+function extractContent(message) {
+  const c = message?.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) return c.map((part) => (typeof part === "string" ? part : part?.text || "")).join("");
+  return "";
+}
+
+async function callOpenRouter(messages, maxTokens, { fetchImpl, model, apiKey }) {
   const res = await fetchImpl(OPENROUTER_URL, {
     method: "POST",
     headers: {
@@ -62,15 +70,7 @@ export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, 
       "Content-Type": "application/json",
       "X-Title": "Shortlist (NYU Stern Building with AI)"
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      max_tokens: 600,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildPrompt(profile, posting) }
-      ]
-    })
+    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages })
   });
 
   const json = await res.json().catch(() => ({}));
@@ -78,11 +78,11 @@ export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, 
     const msg = json?.error?.message || `HTTP ${res.status}`;
     throw new Error(`OpenRouter: ${msg}`);
   }
-
+  const choice = json.choices?.[0] || {};
   const usage = json.usage || {};
-  const score = parseScore(json.choices?.[0]?.message?.content);
   return {
-    ...score,
+    content: extractContent(choice.message),
+    finishReason: choice.finish_reason || choice.native_finish_reason || null,
     usage: {
       tokensIn: usage.prompt_tokens || 0,
       tokensOut: usage.completion_tokens || 0,
@@ -90,6 +90,37 @@ export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, 
       costUsd: typeof usage.cost === "number" ? usage.cost : 0
     }
   };
+}
+
+// Newer models can "think" before answering, and that thinking counts against max_tokens.
+// If the first reply comes back empty or cut off, I retry once with a bigger budget.
+// Output tokens cost very little, so the larger budget only matters on the rare retry.
+export const TOKEN_BUDGETS = [1200, 3000];
+
+export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, apiKey } = {}) {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: buildPrompt(profile, posting) }
+  ];
+  const usage = { tokensIn: 0, tokensOut: 0, costUsd: 0 };
+  let last = null;
+
+  for (const budget of TOKEN_BUDGETS) {
+    last = await callOpenRouter(messages, budget, { fetchImpl, model, apiKey });
+    usage.tokensIn += last.usage.tokensIn;
+    usage.tokensOut += last.usage.tokensOut;
+    usage.costUsd += last.usage.costUsd;
+    if (last.content.trim() && last.finishReason !== "length") break;
+  }
+
+  try {
+    if (!last.content.trim()) throw new Error(`Empty model response (stopped: ${last.finishReason || "unknown"})`);
+    return { ...parseScore(last.content), usage };
+  } catch (err) {
+    // I keep the usage on the error so failed calls still count toward the run's cost.
+    err.usage = usage;
+    throw err;
+  }
 }
 
 // ---------- Keyword fallback ----------
@@ -181,7 +212,7 @@ export async function scoreAll(profile, postings, opts = {}) {
         : scoreWithKeywords(profile, p, idf);
       return { ...p, ...s, track: s.track || p.track, text: undefined, error: null };
     } catch (err) {
-      return { ...p, fit: null, why: null, gap: null, dealbreaker: null, usage: { tokensIn: 0, tokensOut: 0, costUsd: 0 }, text: undefined, error: err.message };
+      return { ...p, fit: null, why: null, gap: null, dealbreaker: null, usage: err.usage || { tokensIn: 0, tokensOut: 0, costUsd: 0 }, text: undefined, error: err.message };
     }
   });
 

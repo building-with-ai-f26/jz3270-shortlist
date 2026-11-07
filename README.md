@@ -42,7 +42,7 @@ git clone https://github.com/building-with-ai-f26/jz3270-shortlist.git
 cd jz3270-shortlist
 
 npm run demo        # demo mode: fictional postings, no API calls, opens on http://localhost:3000
-npm test            # 22 automated tests
+npm test            # 31 automated tests
 ```
 
 ### Run it on your own search

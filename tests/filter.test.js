@@ -59,3 +59,29 @@ test("drops stale postings", () => {
 test("keeps a posting with no date rather than guessing", () => {
   assert.equal(prefilter(posting({ postedAt: null }), prefs, now).keep, true);
 });
+
+test("matches whole words, so Intern no longer matches International", () => {
+  const r = prefilter(posting({ title: "Applied AI Architect, International Policy" }), { ...prefs, titleInclude: ["Intern"] }, now);
+  assert.equal(r.keep, false);
+  assert.equal(r.reason, "No target keyword in title");
+});
+
+test("plurals and -ship still count as the same word", () => {
+  const p = { ...prefs, titleInclude: ["Intern", "Fellow"] };
+  assert.equal(prefilter(posting({ title: "Strategic Sourcing Internship" }), p, now).keep, true);
+  assert.equal(prefilter(posting({ title: "Urban Analytics Fellowship" }), p, now).keep, true);
+});
+
+test("an exclusion followed by a comma still excludes, but not inside a longer word", () => {
+  const p = { ...prefs, titleExclude: ["Lead ", "VP,"] };
+  assert.match(prefilter(posting({ title: "Brand Strategy Lead, Naming" }), p, now).reason, /Title has "Lead"/);
+  assert.equal(prefilter(posting({ title: "Rotational Leadership Program" }), p, now).keep, true);
+  assert.equal(prefilter(posting({ title: "VP, Sales Strategy" }), p, now).keep, false);
+});
+
+test("short location codes no longer match inside other words", () => {
+  const p = { ...prefs, locations: ["NY"] };
+  assert.equal(prefilter(posting({ location: "Munich, Germany" }), p, now).keep, false);
+  assert.equal(prefilter(posting({ location: "Sunnyvale, CA" }), p, now).keep, false);
+  assert.equal(prefilter(posting({ location: "New York, NY" }), p, now).keep, true);
+});
