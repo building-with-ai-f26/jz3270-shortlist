@@ -3,7 +3,7 @@
 > **One-line pitch:** For MBA students recruiting across several tracks at once, Shortlist checks every company on your list in one run, drops the roles you cannot get, and ranks the rest against your resume with a reason for each.
 
 - **Builder:** Jordan Zhu (`@jz3270`)
-- **Pod:** [Pod Name / Number]
+- **Pod:** [Pod 9]
 - **Product Page & Living PRD:** https://building-with-ai-f26.github.io/jz3270-shortlist/
 - **App:** runs locally through Week 4; add a cloud URL in Build 5.
 
