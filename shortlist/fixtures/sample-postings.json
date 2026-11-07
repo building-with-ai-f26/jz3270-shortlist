@@ -1,0 +1,463 @@
+{
+  "_note": "Fictional companies and postings for demo mode only. Shapes mirror the real Greenhouse, Lever and Ashby public APIs.",
+  "boards": [
+    {
+      "company": "Northwind Robotics",
+      "ats": "greenhouse",
+      "board": "northwind",
+      "response": {
+        "jobs": [
+          {
+            "id": 5001,
+            "title": "MBA Associate, Supply Chain Strategy (Class of 2027)",
+            "location": {
+              "name": "Los Angeles, CA"
+            },
+            "absolute_url": "https://example.com/jobs/5001",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Supply Chain"
+              }
+            ],
+            "content": "&lt;p&gt;Northwind builds autonomous material-handling robots for warehouses.&lt;/p&gt;&lt;p&gt;As an MBA Associate on Supply Chain Strategy, you will own sourcing strategy for drive-train components, run supplier negotiations across Asia and Mexico, and build the cost models leadership uses for make-or-buy calls. You will move through procurement, manufacturing planning and network design over a 24-month rotational program.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;MBA expected May or June 2027&lt;/li&gt;&lt;li&gt;3+ years in operations, procurement, consulting or manufacturing&lt;/li&gt;&lt;li&gt;Strong Excel modeling; SQL or Python a plus&lt;/li&gt;&lt;li&gt;Spanish or Mandarin a plus; Lean or Six Sigma experience a plus&lt;/li&gt;&lt;/ul&gt;",
+            "_daysAgo": 2,
+            "_seenBefore": false
+          },
+          {
+            "id": 5002,
+            "title": "Senior Staff Software Engineer, Autonomy",
+            "location": {
+              "name": "Los Angeles, CA"
+            },
+            "absolute_url": "https://example.com/jobs/5002",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Engineering"
+              }
+            ],
+            "content": "&lt;p&gt;Lead perception and planning for our fleet. 10+ years of C++ and robotics experience.&lt;/p&gt;",
+            "_daysAgo": 5,
+            "_seenBefore": false
+          },
+          {
+            "id": 5003,
+            "title": "Strategic Sourcing Intern, Summer 2027 (MBA)",
+            "location": {
+              "name": "Torrance, CA"
+            },
+            "absolute_url": "https://example.com/jobs/5003",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Supply Chain"
+              }
+            ],
+            "content": "&lt;p&gt;12-week MBA summer internship on our sourcing team. Build a should-cost model for motors and batteries and present a supplier consolidation plan to the COO.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Current first-year MBA student&lt;/li&gt;&lt;li&gt;Procurement or operations background&lt;/li&gt;&lt;/ul&gt;",
+            "_daysAgo": 4,
+            "_seenBefore": false
+          },
+          {
+            "id": 5004,
+            "title": "Program Manager, AI Tools for Supply Chain",
+            "location": {
+              "name": "Long Beach, CA"
+            },
+            "absolute_url": "https://example.com/jobs/5004",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Operations"
+              }
+            ],
+            "content": "&lt;p&gt;Deploy machine-learning forecasting and AI copilots across our planning team.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;6+ years of program management in supply chain or manufacturing&lt;/li&gt;&lt;li&gt;Experience rolling out ML or AI tools to operators&lt;/li&gt;&lt;li&gt;Python or SQL&lt;/li&gt;&lt;/ul&gt;",
+            "_daysAgo": 9,
+            "_seenBefore": true
+          }
+        ]
+      }
+    },
+    {
+      "company": "Halcyon Grid",
+      "ats": "ashby",
+      "board": "halcyongrid",
+      "response": {
+        "apiVersion": "1",
+        "jobs": [
+          {
+            "id": "hg-101",
+            "title": "Associate, Data Center Development",
+            "department": "Development",
+            "team": "Development",
+            "employmentType": "FullTime",
+            "location": "New York, NY",
+            "secondaryLocations": [],
+            "isRemote": false,
+            "isListed": true,
+            "publishedAt": null,
+            "jobUrl": "https://example.com/jobs/hg-101",
+            "applyUrl": "https://example.com/jobs/hg-101/apply",
+            "descriptionHtml": "<p>Halcyon develops powered land and data center campuses. You will screen sites, analyze interconnection queue data, manage entitlement, underwrite land deals, and coordinate with utilities. Qualifications: 2-4 years in real estate development, acquisitions, or infrastructure. MBA or a master&#x27;s in planning a plus. ArcGIS and financial modeling.</p>",
+            "descriptionPlain": "Halcyon develops powered land and data center campuses. You will screen sites, analyze interconnection queue data, manage entitlement, underwrite land deals, and coordinate with utilities. Qualifications: 2-4 years in real estate development, acquisitions, or infrastructure. MBA or a master's in planning a plus. ArcGIS and financial modeling.",
+            "_daysAgo": 1,
+            "_seenBefore": false
+          },
+          {
+            "id": "hg-102",
+            "title": "Director of Interconnection",
+            "department": "Energy",
+            "team": "Energy",
+            "employmentType": "FullTime",
+            "location": "Remote",
+            "secondaryLocations": [],
+            "isRemote": true,
+            "isListed": true,
+            "publishedAt": null,
+            "jobUrl": "https://example.com/jobs/hg-102",
+            "applyUrl": "https://example.com/jobs/hg-102/apply",
+            "descriptionHtml": "<p>Own our interconnection strategy across PJM and ERCOT. 12+ years in transmission planning.</p>",
+            "descriptionPlain": "Own our interconnection strategy across PJM and ERCOT. 12+ years in transmission planning.",
+            "_daysAgo": 6,
+            "_seenBefore": false
+          },
+          {
+            "id": "hg-103",
+            "title": "Business Operations Associate",
+            "department": "Operations",
+            "team": "Operations",
+            "employmentType": "FullTime",
+            "location": "Austin, TX",
+            "secondaryLocations": [],
+            "isRemote": false,
+            "isListed": true,
+            "publishedAt": null,
+            "jobUrl": "https://example.com/jobs/hg-103",
+            "applyUrl": "https://example.com/jobs/hg-103/apply",
+            "descriptionHtml": "<p>Support the COO on planning, board materials and vendor management. 2+ years in consulting or operations.</p>",
+            "descriptionPlain": "Support the COO on planning, board materials and vendor management. 2+ years in consulting or operations.",
+            "_daysAgo": 3,
+            "_seenBefore": false
+          },
+          {
+            "id": "hg-104",
+            "title": "Strategic Finance Intern (MBA), Spring 2027",
+            "department": "Finance",
+            "team": "Finance",
+            "employmentType": "Intern",
+            "location": "San Francisco, CA",
+            "secondaryLocations": [],
+            "isRemote": false,
+            "isListed": true,
+            "publishedAt": null,
+            "jobUrl": "https://example.com/jobs/hg-104",
+            "applyUrl": "https://example.com/jobs/hg-104/apply",
+            "descriptionHtml": "<p>Part-time spring internship for current MBA students. Build pricing models for capacity contracts and power purchase agreements, and support the fundraising data room. Strong Excel required; energy or real estate finance a plus.</p>",
+            "descriptionPlain": "Part-time spring internship for current MBA students. Build pricing models for capacity contracts and power purchase agreements, and support the fundraising data room. Strong Excel required; energy or real estate finance a plus.",
+            "_daysAgo": 6,
+            "_seenBefore": true
+          }
+        ]
+      }
+    },
+    {
+      "company": "Meridian Logistics",
+      "ats": "lever",
+      "board": "meridianlogistics",
+      "response": [
+        {
+          "id": "ml-a1",
+          "text": "Rotational Leadership Program, MBA 2027",
+          "categories": {
+            "location": "Jersey City, NJ",
+            "department": "Leadership Programs",
+            "team": "Leadership Programs",
+            "commitment": "Full-time",
+            "allLocations": [
+              "Jersey City, NJ"
+            ]
+          },
+          "hostedUrl": "https://example.com/jobs/ml-a1",
+          "applyUrl": "https://example.com/jobs/ml-a1/apply",
+          "createdAt": null,
+          "descriptionPlain": "Meridian runs 40+ distribution centers across the Northeast. Our two-year program places MBA graduates in three 8-month rotations: network planning, procurement, and real estate.",
+          "description": "<div>Meridian runs 40+ distribution centers across the Northeast. Our two-year program places MBA graduates in three 8-month rotations: network planning, procurement, and real estate.</div>",
+          "lists": [
+            {
+              "text": "What you'll do",
+              "content": "<li>Model network cost tradeoffs for new DC locations</li><li>Negotiate carrier and vendor contracts</li><li>Support lease renewals and build-to-suit decisions</li>"
+            },
+            {
+              "text": "What we look for",
+              "content": "<li>MBA graduating in 2027</li><li>3+ years of work experience in operations, real estate, or consulting</li><li>Willingness to relocate within the Northeast</li>"
+            }
+          ],
+          "additionalPlain": "",
+          "_daysAgo": 3,
+          "_seenBefore": false
+        },
+        {
+          "id": "ml-a2",
+          "text": "Warehouse Operations Supervisor (Night Shift)",
+          "categories": {
+            "location": "Edison, NJ",
+            "department": "Operations",
+            "team": "Operations",
+            "commitment": "Full-time",
+            "allLocations": [
+              "Edison, NJ"
+            ]
+          },
+          "hostedUrl": "https://example.com/jobs/ml-a2",
+          "applyUrl": "https://example.com/jobs/ml-a2/apply",
+          "createdAt": null,
+          "descriptionPlain": "Lead a team of 25 associates on night shift at our Edison fulfillment center.",
+          "description": "<div>Lead a team of 25 associates on night shift at our Edison fulfillment center.</div>",
+          "lists": [
+            {
+              "text": "Requirements",
+              "content": "<li>2+ years of warehouse supervision</li><li>Forklift certification</li><li>Available nights and weekends</li>"
+            }
+          ],
+          "additionalPlain": "",
+          "_daysAgo": 2,
+          "_seenBefore": false
+        },
+        {
+          "id": "ml-a3",
+          "text": "Real Estate Analyst, Distribution Network",
+          "categories": {
+            "location": "Secaucus, NJ",
+            "department": "Real Estate",
+            "team": "Real Estate",
+            "commitment": "Full-time",
+            "allLocations": [
+              "Secaucus, NJ"
+            ]
+          },
+          "hostedUrl": "https://example.com/jobs/ml-a3",
+          "applyUrl": "https://example.com/jobs/ml-a3/apply",
+          "createdAt": null,
+          "descriptionPlain": "Support site selection and lease negotiations for new distribution centers and underwrite build-to-suit versus lease decisions.",
+          "description": "<div>Support site selection and lease negotiations for new distribution centers and underwrite build-to-suit versus lease decisions.</div>",
+          "lists": [
+            {
+              "text": "Requirements",
+              "content": "<li>1-3 years in commercial or industrial real estate</li><li>Excel modeling; ARGUS a plus</li><li>GIS experience a plus</li>"
+            }
+          ],
+          "additionalPlain": "",
+          "_daysAgo": 12,
+          "_seenBefore": true
+        }
+      ]
+    },
+    {
+      "company": "Atlas Urban Labs",
+      "ats": "greenhouse",
+      "board": "atlasurbanlabs",
+      "response": {
+        "jobs": [
+          {
+            "id": 7001,
+            "title": "Urban Analytics Fellow (2027 Cohort)",
+            "location": {
+              "name": "New York, NY"
+            },
+            "absolute_url": "https://example.com/jobs/7001",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Research"
+              }
+            ],
+            "content": "&lt;p&gt;A one-year paid fellowship for recent graduate degree holders in planning, public policy or business.&lt;/p&gt;&lt;p&gt;Fellows study commercial corridor vacancy using storefront data, small business surveys and interviews with business owners, then publish findings with city agencies.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Python or R&lt;/li&gt;&lt;li&gt;GIS&lt;/li&gt;&lt;li&gt;Mixed-methods research experience&lt;/li&gt;&lt;/ul&gt;",
+            "_daysAgo": 7,
+            "_seenBefore": false
+          },
+          {
+            "id": 7002,
+            "title": "Real Estate Strategy Associate",
+            "location": {
+              "name": "Brooklyn, NY"
+            },
+            "absolute_url": "https://example.com/jobs/7002",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Real Estate"
+              }
+            ],
+            "content": "&lt;p&gt;Help nonprofit partners evaluate ground-floor retail and community facility space. Build pro formas and present to boards.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;2+ years in real estate or consulting&lt;/li&gt;&lt;/ul&gt;",
+            "_daysAgo": 20,
+            "_seenBefore": true
+          },
+          {
+            "id": 7003,
+            "title": "Policy Associate, Housing",
+            "location": {
+              "name": "New York, NY"
+            },
+            "absolute_url": "https://example.com/jobs/7003",
+            "updated_at": null,
+            "first_published": null,
+            "departments": [
+              {
+                "id": 1,
+                "name": "Policy"
+              }
+            ],
+            "content": "&lt;p&gt;Research zoning reform and housing production. Bachelor&#x27;s degree and 1-2 years in policy.&lt;/p&gt;",
+            "_daysAgo": 60,
+            "_seenBefore": false
+          }
+        ]
+      }
+    },
+    {
+      "company": "Kestrel Capital",
+      "ats": "lever",
+      "board": "kestrelcapital",
+      "response": [
+        {
+          "id": "kc-1",
+          "text": "Real Estate Acquisitions Associate (Post-MBA)",
+          "categories": {
+            "location": "New York, NY",
+            "department": "Real Estate",
+            "team": "Real Estate",
+            "commitment": "Full-time",
+            "allLocations": [
+              "New York, NY"
+            ]
+          },
+          "hostedUrl": "https://example.com/jobs/kc-1",
+          "applyUrl": "https://example.com/jobs/kc-1/apply",
+          "createdAt": null,
+          "descriptionPlain": "Kestrel is a $4B real estate investment manager focused on multifamily and industrial assets in the Northeast and Sunbelt.",
+          "description": "<div>Kestrel is a $4B real estate investment manager focused on multifamily and industrial assets in the Northeast and Sunbelt.</div>",
+          "lists": [
+            {
+              "text": "Responsibilities",
+              "content": "<li>Underwrite acquisitions in Excel and ARGUS</li><li>Run site visits and market studies</li><li>Prepare investment committee memos</li>"
+            },
+            {
+              "text": "Requirements",
+              "content": "<li>MBA graduating in 2027</li><li>3+ years in real estate private equity or investment banking required</li>"
+            }
+          ],
+          "additionalPlain": "",
+          "_daysAgo": 2,
+          "_seenBefore": false
+        },
+        {
+          "id": "kc-2",
+          "text": "Summer Analyst, Real Estate (2027)",
+          "categories": {
+            "location": "New York, NY",
+            "department": "Real Estate",
+            "team": "Real Estate",
+            "commitment": "Intern",
+            "allLocations": [
+              "New York, NY"
+            ]
+          },
+          "hostedUrl": "https://example.com/jobs/kc-2",
+          "applyUrl": "https://example.com/jobs/kc-2/apply",
+          "createdAt": null,
+          "descriptionPlain": "Ten-week summer program open to rising seniors pursuing a bachelor's degree.",
+          "description": "<div>Ten-week summer program open to rising seniors pursuing a bachelor&#x27;s degree.</div>",
+          "lists": [
+            {
+              "text": "Requirements",
+              "content": "<li>Expected graduation in 2028</li><li>Strong Excel</li>"
+            }
+          ],
+          "additionalPlain": "",
+          "_daysAgo": 8,
+          "_seenBefore": false
+        },
+        {
+          "id": "kc-3",
+          "text": "Vice President, Debt Originations",
+          "categories": {
+            "location": "New York, NY",
+            "department": "Credit",
+            "team": "Credit",
+            "commitment": "Full-time",
+            "allLocations": [
+              "New York, NY"
+            ]
+          },
+          "hostedUrl": "https://example.com/jobs/kc-3",
+          "applyUrl": "https://example.com/jobs/kc-3/apply",
+          "createdAt": null,
+          "descriptionPlain": "Originate and close bridge loans. 8+ years in CRE lending.",
+          "description": "<div>Originate and close bridge loans. 8+ years in CRE lending.</div>",
+          "lists": [],
+          "additionalPlain": "",
+          "_daysAgo": 4,
+          "_seenBefore": false
+        }
+      ]
+    },
+    {
+      "company": "Riverbend Institute",
+      "ats": "ashby",
+      "board": "riverbend",
+      "response": {
+        "apiVersion": "1",
+        "jobs": [
+          {
+            "id": "rb-11",
+            "title": "Pre-Doctoral Research Fellow, Urban Economics",
+            "department": "Research",
+            "team": "Research",
+            "employmentType": "FullTime",
+            "location": "Remote - US",
+            "secondaryLocations": [],
+            "isRemote": true,
+            "isListed": true,
+            "publishedAt": null,
+            "jobUrl": "https://example.com/jobs/rb-11",
+            "applyUrl": "https://example.com/jobs/rb-11/apply",
+            "descriptionHtml": "<p>A two-year pre-doctoral position for people planning a PhD in economics, urban planning, or business. Fellows clean and analyze property, permit and business-license data and co-author papers on neighborhood change. Stata or R, Python, ArcGIS; spatial econometrics a plus. Bachelor&#x27;s or master&#x27;s degree.</p>",
+            "descriptionPlain": "A two-year pre-doctoral position for people planning a PhD in economics, urban planning, or business. Fellows clean and analyze property, permit and business-license data and co-author papers on neighborhood change. Stata or R, Python, ArcGIS; spatial econometrics a plus. Bachelor's or master's degree.",
+            "_daysAgo": 5,
+            "_seenBefore": false
+          },
+          {
+            "id": "rb-12",
+            "title": "Research Assistant, Labor Economics (Pre-doc)",
+            "department": "Research",
+            "team": "Research",
+            "employmentType": "FullTime",
+            "location": "Chicago, IL",
+            "secondaryLocations": [],
+            "isRemote": false,
+            "isListed": true,
+            "publishedAt": null,
+            "jobUrl": "https://example.com/jobs/rb-12",
+            "applyUrl": "https://example.com/jobs/rb-12/apply",
+            "descriptionHtml": "<p>Support faculty research on labor markets. Stata required.</p>",
+            "descriptionPlain": "Support faculty research on labor markets. Stata required.",
+            "_daysAgo": 10,
+            "_seenBefore": false
+          }
+        ]
+      }
+    }
+  ]
+}

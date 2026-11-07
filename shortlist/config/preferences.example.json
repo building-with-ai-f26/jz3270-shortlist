@@ -1,0 +1,20 @@
+{
+  "tracks": ["Full-time", "Program", "Internship", "Fellowship", "Pre-doc"],
+  "locations": [
+    "New York", "NY", "New Jersey", "NJ",
+    "Los Angeles", "Santa Monica", "Culver City", "El Segundo", "Hawthorne", "Long Beach", "Irvine", "Costa Mesa",
+    "San Francisco", "Bay Area", "Palo Alto", "Mountain View", "Santa Clara", "San Jose",
+    "Remote"
+  ],
+  "titleInclude": [
+    "MBA", "Associate", "Analyst", "Strategy", "Strategist", "Operations", "Supply Chain", "Sourcing", "Procurement",
+    "Real Estate", "Program Manager", "Business", "Rotational", "Program", "Fellow", "Research", "Chief of Staff",
+    "Deployment", "Development", "Intern"
+  ],
+  "titleExclude": [
+    "Senior Staff", "Staff ", "Principal", "Director", "Head of", "Vice President", "VP,", "Lead ", "Senior Manager",
+    "Engineer", "Software", "Recruiter", "Counsel", "Technician"
+  ],
+  "maxAgeDays": 45,
+  "maxToScore": 40
+}

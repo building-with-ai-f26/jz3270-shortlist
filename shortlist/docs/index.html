@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shortlist · Building with AI (Fall 2026)</title>
+
+  <!-- Week 1: create your PostHog account only.
+       Build 2: paste your project's current PostHog web snippet here,
+       then install analytics in the local app and verify events. -->
+
+  <style>
+    :root {
+      --bg: #fafafa;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --border: #e5e7eb;
+      --accent: #1d63dc;
+      --tag-bg: #eff6ff;
+      --tag-text: #1e40af;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "DM Sans", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 28px;
+      margin-bottom: 32px;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 36px;
+      line-height: 1.15;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+    .tagline {
+      font-size: 19px;
+      color: var(--muted);
+      margin: 0 0 20px;
+    }
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 0 0 14px;
+      letter-spacing: -0.01em;
+    }
+    h3 {
+      font-size: 16px;
+      margin: 18px 0 6px;
+    }
+    p, ul {
+      margin: 0 0 12px;
+      color: #1f2937;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .stat-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: var(--bg);
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .log-entry {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      margin-top: 16px;
+    }
+    .log-entry:first-of-type {
+      border-top: none;
+      padding-top: 0;
+      margin-top: 0;
+    }
+    .meta {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    figure {
+      margin: 16px 0 8px;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    figcaption {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .flow {
+      font-size: 15px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HERO / PRODUCT PITCH -->
+    <header>
+      <span class="eyebrow">NYU Stern · Building with AI · Fall 2026</span>
+      <h1>Shortlist</h1>
+      <p class="tagline">For MBA students recruiting across several tracks at once, Shortlist checks every company on your list in one run, drops the roles you cannot get, and ranks the rest against your resume with a reason for each.</p>
+      <div class="cta-row">
+        <a class="btn" href="#live-demo" onclick="window.posthog && posthog.capture('clicked_try_product')">See the Product →</a>
+        <a class="btn btn-secondary" href="#prd">Read the Living PRD</a>
+        <a class="btn btn-secondary" href="#build-log">Weekly Build Log</a>
+      </div>
+    </header>
+
+    <!-- DEMO / SCREENSHOT / VIDEO SHOWCASE -->
+    <section id="live-demo">
+      <h2>Product Showcase (Prototype / Live App / 2-Min Video)</h2>
+      <p>
+        <strong>Current Status:</strong> Build 1 local prototype. It runs on my laptop with <code>npm start</code>, and the cloud app comes in Build 5.<br />
+        <strong>Demo:</strong> Screenshot below. Cloud URL and two-minute video to follow in Build 5.
+      </p>
+      <!-- After your first live run, replace this image with a screenshot of live mode (blur anything personal) and update the caption. -->
+      <figure>
+        <img src="assets/build1-prototype.png" alt="Shortlist prototype showing a ranked list of job postings, each with a large fit score, the company and location, track tags, a New badge, and a one-line reason it fits." />
+        <figcaption>Build 1 prototype in demo mode, running on 19 fictional postings with keyword scoring. Live mode pulls real postings from Greenhouse, Lever and Ashby boards and scores them with Claude Haiku 5.5 through OpenRouter.</figcaption>
+      </figure>
+    </section>
+
+    <!-- LIVING PRD (Updated every week!) -->
+    <section id="prd">
+      <h2>Living PRD (Product Requirements Document)</h2>
+      <p class="meta">Updated every week as we test with real users and learn what works.</p>
+
+      <h3>1. Target User & The Job to Be Done</h3>
+      <p><strong>Who is this for?</strong> Me first, as a Stern MBA Class of 2027 student who is recruiting for full-time roles, rotational programs, real estate roles and a pre-doc at the same time. After that, three to five classmates in my pod and in the Family Business Club who are running the same multi-track search, all of whom I can reach in class or over Slack.</p>
+      <p><strong>The painful "Before" workflow:</strong> Since August, I have applied to or prepared applications for roughly 25 companies across rotational programs, strategy, real estate and research roles. While each company posts its roles in a different place, the check is the same every week: open 12twenty, LinkedIn and each company's career page one by one, then read every description to see whether it wants an MBA, a 2027 start, or five more years of experience than I have. Most of that time goes to roles I could never get, and a program with a short application window can open and close between two of my checks.</p>
+      <p><strong>The "After" workflow with this product:</strong> I keep one watchlist of companies and one profile built from my resume. A single click checks every board on the list, filters out roles that fail my rules on title, location, track and posting age, and scores the rest against my profile. What comes back is a ranked list with one sentence on why each role fits, the biggest gap, any dealbreaker, and a flag on what is new since my last check, which means I only open the postings worth my time.</p>
+
+      <h3>2. Scope & Explicit Non-Goals</h3>
+      <ul>
+        <li><strong>In Scope (Core Workflow):</strong> Check my list. Pull every open role from the Greenhouse, Lever and Ashby boards of the companies I choose, filter them by my rules, score the survivors against my resume, and show a ranked list with what is new since my last check.</li>
+        <li><strong>Out of Scope #1:</strong> Auto-applying or writing cover letters. Shortlist decides where my time goes, but it never submits anything on my behalf.</li>
+        <li><strong>Out of Scope #2:</strong> LinkedIn, Handshake and Stern's 12twenty. They sit behind logins, so this version stays with public job board APIs.</li>
+        <li><strong>Out of Scope #3:</strong> Custom career sites like Amazon's and Tesla's, and Workday portals. Covering them reliably would take most of the six weeks on its own.</li>
+      </ul>
+
+      <h3>3. How It Works Under the Hood & Riskiest Assumption (Week 2+)</h3>
+      <p><strong>Riskiest Assumption:</strong> That a model's fit score lines up with my own judgment closely enough that I trust the ranking instead of opening every posting myself. If the scores feel random, the tool saves no time. Build 1 already showed that keyword matching alone fails this test (see the build log), so the AI scorer is the core of the product rather than an add-on.</p>
+      <p><strong>Simple Architecture:</strong></p>
+      <p class="flow">[Watchlist + resume profile] → [Local Node.js app] → [Greenhouse, Lever and Ashby public APIs] → [Rule-based filter, free] → [Claude Haiku 5.5 via OpenRouter, one call per surviving posting, capped at 40 per run] → [Ranked list with reasons and "new" flags]</p>
+
+      <h3>4. Unit Economics & Analytics Snapshot (Updated Weekly)</h3>
+      <div class="grid-2">
+        <div class="stat-box">
+          <div class="stat-label">Cumulative Build Spend</div>
+          <div class="stat-value">$[FILL]</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Est. Cost Per User Run</div>
+          <div class="stat-value">About $0.01 per run (estimate)</div>
+          <p class="meta" style="margin:6px 0 0">Up to 40 postings at roughly 1,500 input and 150 output tokens each, at Haiku 5.5 list prices. The app logs the real cost OpenRouter reports on every run.</p>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">User Evidence (Analytics from Build 2)</div>
+          <div class="stat-value">Not yet measured</div>
+          <p class="meta" style="margin:6px 0 0">PostHog goes in during Build 2.</p>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Sponsor Call (Week 6)</div>
+          <div class="stat-value">TBD</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WEEKLY BUILD LOG (Updated at least twice a week via Git commits) -->
+    <section id="build-log">
+      <h2>Weekly Build Log</h2>
+      <p class="meta">Build on at least two separate days each week outside class, including the November 3 break. Push commits and log actual progress, failures, PRD changes, costs, and hours here. All build deadlines are noon, New York time.</p>
+
+      <div class="log-entry">
+        <h3>Build 1 · Intent.md & Throwaway Prototype (Due Nov 9)</h3>
+        <ul>
+          <li><strong>What shipped:</strong> A local prototype of the full core workflow (<a href="#live-demo">screenshot above</a>). It includes fetchers for Greenhouse, Lever and Ashby public boards, a free rule-based filter that records why each posting was cut, AI scoring through OpenRouter with a keyword fallback when no key is set, a "new since last check" flag, and a demo mode on 19 fictional postings. All 22 automated tests pass with <code>npm test</code>, including a mocked OpenRouter call that checks how tokens and cost are read. Personal files (my resume and watchlist) live in a gitignored folder, so they never reach this public repo.</li>
+          <li><strong>Things learned with AI:</strong> Many of the tech and startup companies I target publish their open roles as public JSON through their applicant tracking system, which means no scraping is needed for them. The large corporates on my list mostly do not, which is why they sit in the non-goals for now. I also learned that OpenRouter now returns the dollar cost of every call, so cost per run can be measured rather than guessed. [FILL: what you learned from Terminus Episodes 1 and 2.]</li>
+          <li><strong>What broke / changed in PRD:</strong> Keyword scoring ranked a thin real estate analyst posting at 88 while the urban analytics fellowship that fits best scored 36, since overlap rewards short descriptions and cannot read requirements. That moved AI scoring to the center of the PRD and made it the riskiest assumption. The location filter matches city names, so an MBA sourcing internship in Torrance, CA was dropped even though Torrance is in LA County, and I kept a test that documents the gap until I match metro areas instead. Lastly, job descriptions arrive as HTML (Greenhouse encodes it twice), and my first text cleaner left stray spaces that a test caught.</li>
+          <li><strong>Cost & time this week:</strong> $[FILL] · [FILL] hours</li>
+        </ul>
+      </div>
+
+      <div class="log-entry">
+        <h3>Build 2 · Smallest Local Version & PostHog (Due Nov 16)</h3>
+        <ul>
+          <li><strong>What shipped:</strong> [Local working slice, PostHog verified on this page and the local app, PRD v2, and local setup in AGENTS.md]</li>
+          <li><strong>What broke / changed in PRD:</strong> [Fill in]</li>
+          <li><strong>Cost & time this week:</strong> $[0.00] · [0] hours</li>
+        </ul>
+      </div>
+
+      <div class="log-entry">
+        <h3>Build 3 · Build.exe: The Core Workflow (Due Nov 23)</h3>
+        <ul>
+          <li><strong>What shipped:</strong> [End-to-end workflow working with real inputs + PostHog funnel events]</li>
+          <li><strong>What broke / changed in PRD:</strong> [Fill in]</li>
+          <li><strong>Cost & time this week:</strong> $[0.00] · [0] hours</li>
+        </ul>
+      </div>
+
+      <div class="log-entry">
+        <h3>Build 4 · Test.py: Choose Track A or Track B (Due Nov 30)</h3>
+        <ul>
+          <li><strong>Chosen track:</strong> [A: 10-case domain eval and one outside target-user review; OR B: 3-5 outside users and replay findings]</li>
+          <li><strong>Results and improvements:</strong> [Before/after evidence; for Track B, fixes to the top three friction points]</li>
+          <li><strong>PRD v4 changes:</strong> [What the evidence changed]</li>
+          <li><strong>Cost & time this week:</strong> $[0.00] · [0] hours</li>
+        </ul>
+      </div>
+
+      <div class="log-entry">
+        <h3>Build 5 · Ship.installer: Launch Ops, Rollback Check & 2-Min Video (Due Dec 7)</h3>
+        <ul>
+          <li><strong>Launch Ops & Safety:</strong> [Verified no exposed keys, set spend cap, tested 2-minute rollback]</li>
+          <li><strong>2-Minute Video & Final Polish:</strong> [Link/embed above]</li>
+          <li><strong>Cost & time this week:</strong> $[0.00] · [0] hours</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
