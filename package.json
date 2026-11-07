@@ -1,0 +1,17 @@
+{
+  "name": "shortlist",
+  "version": "0.1.0",
+  "description": "Checks the job boards of companies on your list, drops roles you can't get, and ranks the rest against your resume.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node server.js --demo",
+    "scan": "node scripts/run.js",
+    "check": "node scripts/check-sources.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
