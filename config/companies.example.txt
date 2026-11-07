@@ -1,0 +1,169 @@
+# Starter list for `npm run discover`. One company per line. Lines starting with # are ignored.
+# Discovery guesses each company's job board on Greenhouse, Lever and Ashby. If it cannot find one
+# and you know the board, write it like:  Company Name | greenhouse:boardname
+# Companies on Workday or their own career sites (Amazon, Microsoft, Tesla, most banks) are not supported yet.
+
+# AI labs and AI products
+Anthropic
+OpenAI
+Scale AI
+Perplexity
+Cohere
+Mistral AI
+Harvey
+Sierra
+Decagon
+Glean
+Hebbia
+Runway
+ElevenLabs
+Anysphere
+Cognition
+Writer
+Databricks
+Lambda
+CoreWeave
+Crusoe
+Together AI
+Baseten
+Replit
+Vercel
+Notion
+Figma
+Linear
+Retool
+Airtable
+Rippling
+Gusto
+
+# Defense, space and hard tech
+Anduril Industries
+SpaceX
+Palantir
+Shield AI
+Saronic
+Hadrian
+Applied Intuition
+Skydio
+Zipline
+Joby Aviation
+Archer Aviation
+Relativity Space
+Firefly Aerospace
+Astranis
+Varda Space Industries
+Impulse Space
+Hermeus
+Epirus
+Castelion
+Vannevar Labs
+True Anomaly
+Apex Space
+K2 Space
+Radiant Industries
+Neuralink
+xAI
+
+# Robotics and autonomy
+Nuro
+Aurora Innovation
+Figure AI
+Agility Robotics
+Dexterity
+Formic
+
+# Energy, climate and data centers
+Commonwealth Fusion Systems
+Helion Energy
+Fervo Energy
+Form Energy
+Redwood Materials
+Sila Nanotechnologies
+Base Power
+Arcadia
+Watershed
+Antora Energy
+
+# Supply chain and logistics
+Flexport
+Samsara
+Project44
+FourKites
+Stord
+ShipBob
+Loadsmart
+Shippo
+Flock Freight
+Motive
+Verkada
+
+# Fintech
+Stripe
+Ramp
+Brex
+Plaid
+Mercury
+Chime
+Affirm
+Robinhood
+Coinbase
+Carta
+Betterment
+Wealthfront
+Addepar
+Modern Treasury
+
+# Marketplaces and consumer
+Airbnb
+DoorDash
+Instacart
+Lyft
+Faire
+Whatnot
+Pinterest
+Reddit
+Discord
+Duolingo
+Squarespace
+Peloton
+Warby Parker
+Glossier
+Spotify
+Riot Games
+Roblox
+Grammarly
+
+# Real estate and proptech
+Opendoor
+VTS
+Juniper Square
+Fundrise
+Arrived
+Pacaso
+Roofstock
+Belong
+Bilt Rewards
+EliseAI
+Built Technologies
+Cherre
+Placer.ai
+Crexi
+
+# New York
+Datadog
+Oscar Health
+Paxos
+Clear
+Noom
+Ro
+Hinge Health
+
+# Los Angeles
+Snap
+ServiceTitan
+GoodRx
+ChowNow
+Dave
+FabFitFun
+Headspace
+ZipRecruiter

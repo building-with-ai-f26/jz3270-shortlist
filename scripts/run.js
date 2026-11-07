@@ -10,8 +10,10 @@ const { summary, results, errors } = await runPipeline({ demo });
 console.log(`\n${summary.demo ? "DEMO" : "LIVE"} run at ${summary.runAt}`);
 console.log(`Scoring: ${summary.method === "ai" ? summary.model : "keywords"}`);
 console.log(`${summary.companies} companies -> ${summary.found} postings -> ${summary.passedFilter} passed filter -> ${summary.scored} scored, ${summary.newCount} new`);
+console.log(`Scored this run: ${summary.scoredThisRun}. Reused from earlier checks: ${summary.fromCache}. Still waiting: ${summary.waiting}.`);
+if (summary.cacheReset) console.log("Your profile or model changed, so earlier scores were cleared and everything is being rescored.");
 if (summary.method === "ai") {
-  console.log(`Tokens: ${summary.tokensIn} in / ${summary.tokensOut} out. Cost: $${summary.costUsd.toFixed(4)}`);
+  console.log(`Tokens: ${summary.tokensIn} in / ${summary.tokensOut} out. Cost this run: $${summary.costUsd.toFixed(4)}`);
 }
 for (const e of errors) console.log(`  ! ${e.company}: ${e.error}`);
 

@@ -2,6 +2,8 @@
 // the full posting against the profile. Without one, I fall back to keyword overlap so the app
 // still runs (useful for demos and for checking the pipeline without spending anything).
 
+import { pool } from "./pool.js";
+
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 export const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
 const TRACKS = ["Full-time", "Program", "Internship", "Fellowship", "Pre-doc"];
@@ -180,20 +182,6 @@ function buildIdf(postings) {
 }
 
 // ---------- Orchestration ----------
-
-// A small worker pool keeps a long list fast without flooding the API.
-async function pool(items, size, worker) {
-  const results = new Array(items.length);
-  let next = 0;
-  async function run() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await worker(items[i], i);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(size, items.length) }, run));
-  return results;
-}
 
 export async function scoreAll(profile, postings, opts = {}) {
   const { useAI, maxToScore = 40, fetchImpl = fetch } = opts;

@@ -208,12 +208,14 @@
         return;
       }
       $("funnel").innerHTML =
-        `Checked <b>${s.companies}</b> companies and found <b>${s.found}</b> open roles. ` +
-        `<b>${s.passedFilter}</b> passed your filters, ` +
+        `Checked <b>${s.companies.toLocaleString()}</b> companies and found <b>${s.found.toLocaleString()}</b> open roles. ` +
+        `<b>${s.passedFilter.toLocaleString()}</b> passed your filters, ` +
         `and <b class="new">${s.newCount} ${s.newCount === 1 ? "is" : "are"} new</b> since your last check.`;
-      const cost = s.method === "ai" ? ` Scoring cost $${s.costUsd.toFixed(4)} (${s.tokensIn.toLocaleString()} tokens in, ${s.tokensOut.toLocaleString()} out).` : "";
-      const capped = s.skippedOverCap ? ` ${s.skippedOverCap} older matches were not scored to cap cost.` : "";
-      $("when").textContent = `Last checked ${ago(s.runAt)}.${cost}${capped}`;
+      const cost = s.method === "ai" ? ` This check scored ${s.scoredThisRun ?? s.scored} roles for $${s.costUsd.toFixed(4)} (${s.tokensIn.toLocaleString()} tokens in, ${s.tokensOut.toLocaleString()} out).` : "";
+      const reused = s.fromCache ? ` ${s.fromCache.toLocaleString()} scores were reused from earlier checks.` : "";
+      const waiting = s.waiting ? ` ${s.waiting.toLocaleString()} more matches will be scored on your next checks.` : "";
+      const reset = s.cacheReset ? " Your profile changed, so earlier scores were cleared." : "";
+      $("when").textContent = `Last checked ${ago(s.runAt)}.${cost}${reused}${waiting}${reset}`;
     }
 
     function renderControls() {
@@ -278,10 +280,14 @@
 
     function renderDropped() {
       const dropped = data?.dropped || [];
-      if (!dropped.length) { $("dropped").innerHTML = ""; return; }
+      const total = data?.droppedCount ?? dropped.length;
+      if (!total) { $("dropped").innerHTML = ""; return; }
+      const reasons = (data?.droppedByReason || []).map((r) => `${esc(r.reason)}: ${r.count.toLocaleString()}`).join(". ");
+      const showing = dropped.length < total ? ` Showing the first ${dropped.length.toLocaleString()}.` : "";
       $("dropped").innerHTML = `<details>
-        <summary>Filtered out (${dropped.length})</summary>
-        <p class="subtle" style="margin-top:8px">These never reached scoring. If a good role is in here, loosen data/preferences.json.</p>
+        <summary>Filtered out (${total.toLocaleString()})</summary>
+        <p class="subtle" style="margin-top:8px">These never reached scoring. If a good role is in here, loosen data/preferences.json.${showing}</p>
+        ${reasons ? `<p class="subtle" style="margin-top:6px">${reasons}.</p>` : ""}
         <ul class="dropped">${dropped.map((d) => `<li><span>${esc(d.title)}, ${esc(d.company)}</span><span class="r">${esc(d.reason)}</span></li>`).join("")}</ul>
       </details>`;
     }

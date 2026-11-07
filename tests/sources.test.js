@@ -46,3 +46,51 @@ test("a network failure on one board is contained", async () => {
   const r = await fetchBoard({ company: "Co", ats: "lever", board: "co" }, boom);
   assert.match(r.error, /ECONNRESET/);
 });
+
+import { fetchAll, fillDetails } from "../src/sources.js";
+
+test("Greenhouse boards are listed without descriptions to keep big lists light", async () => {
+  let asked = "";
+  const fake = async (url) => { asked = url; return { ok: true, status: 200, json: async () => ({ jobs: [] }) }; };
+  await fetchBoard({ company: "Co", ats: "greenhouse", board: "co" }, fake);
+  assert.equal(asked, "https://boards-api.greenhouse.io/v1/boards/co/jobs");
+});
+
+test("descriptions are fetched only for Greenhouse postings that lack one", async () => {
+  const asked = [];
+  const fake = async (url) => {
+    asked.push(url);
+    if (url.endsWith("/jobs/42")) return { ok: true, status: 200, json: async () => ({ content: "&lt;p&gt;Own sourcing strategy&lt;/p&gt;" }) };
+    return { ok: false, status: 500, json: async () => ({}) };
+  };
+  const out = await fillDetails([
+    { id: "greenhouse:co:42", source: "greenhouse", text: "" },
+    { id: "greenhouse:co:43", source: "greenhouse", text: "" },
+    { id: "lever:co:a1", source: "lever", text: "Already has text" }
+  ], fake);
+  assert.equal(out[0].text, "Own sourcing strategy");
+  assert.equal(out[1].text, "", "a failed detail call keeps the posting instead of dropping it");
+  assert.equal(out[2].text, "Already has text");
+  assert.equal(asked.length, 2, "Lever postings are not re-fetched");
+});
+
+test("checks at most 8 boards at once", async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const fake = async () => {
+    inFlight++; peak = Math.max(peak, inFlight);
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    return { ok: true, status: 200, json: async () => ({ jobs: [] }) };
+  };
+  const list = Array.from({ length: 30 }, (_, i) => ({ company: `Co${i}`, ats: "greenhouse", board: `co${i}` }));
+  const results = await fetchAll(list, fake);
+  assert.equal(results.length, 30);
+  assert.ok(peak <= 8, `peak was ${peak}`);
+});
+
+test("a board that never answers is reported as a timeout, not a crash", async () => {
+  const slow = async () => { const e = new Error("aborted"); e.name = "TimeoutError"; throw e; };
+  const r = await fetchBoard({ company: "Slow Co", ats: "lever", board: "slow" }, slow);
+  assert.match(r.error, /no answer after 20 seconds/);
+});

@@ -2,9 +2,12 @@
 // Greenhouse, Lever and Ashby all publish open roles as public JSON, no login or key needed.
 // I fetch each board and reshape every posting into one common format so the rest of the app
 // never has to care which ATS a job came from.
+import { pool } from "./pool.js";
 
+// For Greenhouse I list jobs WITHOUT descriptions (much smaller), then fetch the full text only for
+// the postings that are about to be scored. With 100+ companies that keeps a check fast and light.
 const ENDPOINTS = {
-  greenhouse: (board) => `https://boards-api.greenhouse.io/v1/boards/${board}/jobs?content=true`,
+  greenhouse: (board) => `https://boards-api.greenhouse.io/v1/boards/${board}/jobs`,
   lever: (board) => `https://api.lever.co/v0/postings/${board}?mode=json`,
   ashby: (board) => `https://api.ashbyhq.com/posting-api/job-board/${board}?includeCompensation=true`
 };
@@ -93,22 +96,51 @@ export function normalize(ats, json, entry) {
   return fn(json, entry);
 }
 
+// A slow board should not hold up the whole check, so every request gives up after 20 seconds.
+export const TIMEOUT_MS = 20000;
+const requestOptions = () => ({
+  headers: { "Accept": "application/json" },
+  signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(TIMEOUT_MS) : undefined
+});
+
+function describeError(err) {
+  return err?.name === "TimeoutError" || err?.name === "AbortError" ? `no answer after ${TIMEOUT_MS / 1000} seconds` : err.message;
+}
+
 // One failed board should never sink the whole run, so I return the error instead of throwing.
 export async function fetchBoard(entry, fetchImpl = fetch) {
   const build = ENDPOINTS[entry.ats];
   if (!build) return { entry, postings: [], error: `Unknown ATS "${entry.ats}"` };
 
   try {
-    const res = await fetchImpl(build(entry.board), { headers: { "Accept": "application/json" } });
+    const res = await fetchImpl(build(entry.board), requestOptions());
     if (res.status === 404) return { entry, postings: [], error: `Board "${entry.board}" not found on ${entry.ats} (check the slug)` };
     if (!res.ok) return { entry, postings: [], error: `${entry.ats} returned HTTP ${res.status}` };
     const json = await res.json();
     return { entry, postings: normalize(entry.ats, json, entry), error: null };
   } catch (err) {
-    return { entry, postings: [], error: `Could not reach ${entry.ats}: ${err.message}` };
+    return { entry, postings: [], error: `Could not reach ${entry.ats}: ${describeError(err)}` };
   }
 }
 
-export async function fetchAll(watchlist, fetchImpl = fetch) {
-  return Promise.all(watchlist.map((entry) => fetchBoard(entry, fetchImpl)));
+// Eight boards at a time is fast but polite.
+export async function fetchAll(watchlist, fetchImpl = fetch, concurrency = 8) {
+  return pool(watchlist, concurrency, (entry) => fetchBoard(entry, fetchImpl));
+}
+
+// Fills in the description for Greenhouse postings listed without one. If the detail call fails,
+// the posting keeps its title and location and gets scored on those alone.
+export async function fillDetails(postings, fetchImpl = fetch, concurrency = 8) {
+  return pool(postings, concurrency, async (p) => {
+    if (p.source !== "greenhouse" || p.text) return p;
+    const [, board, jobId] = p.id.split(":");
+    try {
+      const res = await fetchImpl(`https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}`, requestOptions());
+      if (!res.ok) return p;
+      const job = await res.json();
+      return { ...p, text: htmlToText(job.content) };
+    } catch {
+      return p;
+    }
+  });
 }

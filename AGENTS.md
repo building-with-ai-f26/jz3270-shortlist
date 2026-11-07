@@ -12,7 +12,8 @@
 - **Run locally (live boards):** `npm start`, then open http://localhost:3000
 - **Run locally (demo data, no API calls):** `npm run demo`
 - **Run one check in the terminal:** `npm run scan` (add `-- --demo` for demo data)
-- **Check that every watchlist board slug works:** `npm run check`
+- **Find job boards for a list of company names:** `npm run discover` (reads `data/companies.txt`)
+- **Check that every watchlist board works:** `npm run check` (add `-- --prune` to remove failing boards)
 - **Run deterministic tests:** `npm test`
 - **Run model evals:** not built yet (Build 4, see `tests/README.md`)
 
@@ -20,13 +21,15 @@
 | File | Job |
 | --- | --- |
 | `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run` routes |
-| `src/pipeline.js` | One run: fetch, filter, score, mark new, save to `data/` |
-| `src/sources.js` | Fetches each ATS board and normalizes postings into one shape |
+| `src/pipeline.js` | One run: fetch, filter, score (reusing saved scores), mark new, save to `data/` |
+| `src/sources.js` | Fetches each ATS board (8 at a time, 20-second timeout) and normalizes postings; fetches Greenhouse descriptions only for postings about to be scored |
+| `src/discover.js` | Guesses each company's board name and probes Greenhouse, Lever and Ashby to find it |
+| `src/pool.js` | Small helper that limits how many requests run at once |
 | `src/filter.js` | Free rule-based filter (title, track, location, age), keeps a reason for every drop |
 | `src/score.js` | OpenRouter scoring, JSON parsing, keyword fallback, cost and token totals |
 | `src/env.js` | Loads `.env` without a dependency |
 | `public/index.html` | The whole front end |
-| `config/*.example.*` | Example watchlist, preferences and profile, copied into `data/` on first run |
+| `config/*.example.*` | Example watchlist, preferences, profile and starter company list, copied into `data/` on first use |
 | `fixtures/sample-postings.json` | Fictional postings in real ATS response shapes, for demo mode and tests |
 | `docs/index.html` | Public Product Page, living PRD and build log (GitHub Pages) |
 
@@ -46,3 +49,4 @@
 5. **Keep cost visible.** Any change to scoring must keep the per-run token and dollar totals accurate, and respect `maxToScore` in preferences.
 6. **Every filter drop keeps its reason.** The "Filtered out" list is how the user catches a rule that is too strict.
 7. **Writing style for docs and UI copy:** plain language, short paragraphs, no em dashes or en dashes.
+8. **Pay for each posting once.** Scores are saved in `data/scores.json` by posting ID and reused until the profile or model changes. Do not re-score cached postings.

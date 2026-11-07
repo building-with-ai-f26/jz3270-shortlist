@@ -50,6 +50,10 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, { error: "Not found" });
 });
 
+// A big first check (hundreds of postings to score) can take several minutes, so I turn off
+// Node's default 5-minute request limit instead of letting it cut the check off halfway.
+server.requestTimeout = 0;
+
 server.listen(PORT, () => {
   const s = status(DEMO);
   console.log(`Shortlist running at http://localhost:${PORT}`);
