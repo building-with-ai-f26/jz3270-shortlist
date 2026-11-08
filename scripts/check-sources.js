@@ -10,9 +10,11 @@ ensurePersonalFiles();
 const p = paths(false);
 const prune = process.argv.includes("--prune");
 const watchlist = JSON.parse(fs.readFileSync(p.watchlist, "utf8"));
+const prefs = fs.existsSync(p.preferences) ? JSON.parse(fs.readFileSync(p.preferences, "utf8")) : {};
 
 console.log(`Checking ${watchlist.length} boards...\n`);
-const results = await fetchAll(watchlist);
+// Workday and SmartRecruiters sites are searched with your terms, so their counts are matches, not every opening.
+const results = await fetchAll(watchlist, fetch, 8, { searches: prefs.workdaySearch, maxPerSearch: prefs.workdayMaxPerSearch });
 
 let ok = 0;
 let total = 0;

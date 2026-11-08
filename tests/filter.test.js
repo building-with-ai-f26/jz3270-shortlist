@@ -85,3 +85,18 @@ test("short location codes no longer match inside other words", () => {
   assert.equal(prefilter(posting({ location: "Sunnyvale, CA" }), p, now).keep, false);
   assert.equal(prefilter(posting({ location: "New York, NY" }), p, now).keep, true);
 });
+
+import { classifyCohort } from "../src/filter.js";
+
+test("sorts roles into the 2027 grad column or the open-now column", () => {
+  assert.equal(classifyCohort("Rotational Leadership Program, MBA 2027"), "2027 grad");
+  assert.equal(classifyCohort("Business Analyst, New Grad"), "2027 grad");
+  assert.equal(classifyCohort("Strategy Associate", "This role will start in summer 2027."), "2027 grad");
+  assert.equal(classifyCohort("Strategy & Ops Associate", "Open to MBA candidates graduating in 2027."), "2027 grad");
+  assert.equal(classifyCohort("Associate, Data Center Development", "2-4 years in real estate development."), "Open now");
+});
+
+test("a passing mention of graduates does not move an experienced role", () => {
+  assert.equal(classifyCohort("Director of Strategy", "Mentor recent graduates on our team."), "Open now");
+  assert.equal(classifyCohort("Operations Lead", "We train new graduates every year."), "Open now");
+});

@@ -16,5 +16,7 @@
     "Software", "Recruiter", "Counsel", "Technician"
   ],
   "maxAgeDays": 45,
-  "maxToScore": 40
+  "maxToScore": 40,
+  "workdaySearch": ["MBA", "2027", "new grad", "university", "rotational", "early career", "strategy", "operations", "supply chain", "real estate"],
+  "workdayMaxPerSearch": 40
 }

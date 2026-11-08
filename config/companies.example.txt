@@ -159,7 +159,6 @@ Ro
 Hinge Health
 
 # Los Angeles
-Snap
 ServiceTitan
 GoodRx
 ChowNow
@@ -167,3 +166,206 @@ Dave
 FabFitFun
 Headspace
 ZipRecruiter
+
+
+# More AI and software
+Hippocratic AI
+Abridge
+Ambience Healthcare
+OpenEvidence
+Clay
+Mercor
+Physical Intelligence
+Skild AI
+Poolside
+Luma AI
+Suno
+EvenUp
+Eudia
+Vanta
+Drata
+Ironclad
+Checkr
+Gong
+Clari
+Benchling
+Navan
+Deel
+Hex
+Attentive
+Dataminr
+Chainalysis
+Yext
+Justworks
+Sigma Computing
+dbt Labs
+
+# More hard tech and manufacturing
+Machina Labs
+Divergent
+Formlabs
+Bright Machines
+Path Robotics
+Gecko Robotics
+Vention
+Fictiv
+Augury
+Tulip
+Instrumental
+Saildrone
+Ursa Major
+Stoke Space
+Muon Space
+Northwood Space
+Albedo
+Slingshot Aerospace
+Overland AI
+
+# More climate and energy
+Rondo Energy
+Electric Hydrogen
+Twelve
+Charm Industrial
+Pachama
+Span
+Palmetto
+Aurora Solar
+Lunar Energy
+Camus Energy
+Exowatt
+Elementl Power
+Oklo
+Kairos Power
+X-energy
+Last Energy
+
+# More supply chain and commerce
+Transfix
+Nuvocargo
+Pallet
+Leaf Logistics
+Turvo
+Cargomatic
+Choco
+Gopuff
+Wonder
+Fanatics
+StockX
+ThredUp
+Rent the Runway
+Hims & Hers
+Oura
+Whoop
+Eight Sleep
+Liquid Death
+Olipop
+Athletic Brewing
+Sweetgreen
+SeatGeek
+
+# More fintech
+Marqeta
+Toast
+Varo
+Upgrade
+Pipe
+Column
+Unit
+Alloy
+Persona
+Lemonade
+Stash
+Current
+Tala
+Bolt
+Arc
+
+# More health
+Flatiron Health
+Cityblock Health
+Spring Health
+Lyra Health
+Headway
+Zocdoc
+Capsule
+Devoted Health
+Included Health
+Cedar
+
+# More real estate, construction and proptech
+Esusu
+Flex
+Baselane
+Doorvest
+Common
+Bungalow
+HqO
+Slate Technologies
+Mews
+Canopy
+Higharc
+Mighty Buildings
+Veev
+Cover
+
+# More Los Angeles
+Scopely
+Jam City
+Dollar Shave Club
+Fender
+Thrive Market
+Grindr
+
+# Big tech and large companies, with careers links (Workday and SmartRecruiters, found Nov 2026)
+NVIDIA | https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+Salesforce | https://salesforce.wd12.myworkdayjobs.com/External_Career_Site
+Adobe | https://adobe.wd5.myworkdayjobs.com/external_experienced
+Adobe University | https://adobe.wd5.myworkdayjobs.com/external_university
+Intel | https://intel.wd1.myworkdayjobs.com/External
+KLA | https://kla.wd1.myworkdayjobs.com/Search
+Cisco | https://cisco.wd5.myworkdayjobs.com/Cisco_Careers
+HP Inc | https://hp.wd5.myworkdayjobs.com/ExternalCareerSite
+Hewlett Packard Enterprise | https://hpe.wd5.myworkdayjobs.com/Jobsathpe
+ServiceNow | https://jobs.smartrecruiters.com/ServiceNow
+Workday | https://workday.wd5.myworkdayjobs.com/Workday
+Workday Early Career | https://workday.wd5.myworkdayjobs.com/Workday_Early_Career
+Visa | https://visa.wd5.myworkdayjobs.com/Visa
+Mastercard | https://mastercard.wd1.myworkdayjobs.com/CorporateCareers
+Capital One | https://capitalone.wd12.myworkdayjobs.com/Capital_One
+eBay | https://ebay.wd5.myworkdayjobs.com/apply
+Snap | https://snapchat.wd1.myworkdayjobs.com/snap
+Disney | https://disney.wd5.myworkdayjobs.com/disneycareer
+Walmart | https://walmart.wd5.myworkdayjobs.com/WalmartExternal
+Target | https://target.wd5.myworkdayjobs.com/targetcareers
+
+# Aerospace, autos, energy, real estate and logistics majors, with careers links (found Nov 2026)
+Boeing | https://boeing.wd1.myworkdayjobs.com/EXTERNAL_CAREERS
+Northrop Grumman | https://ngc.wd1.myworkdayjobs.com/Northrop_Grumman_External_Site
+RTX | https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway
+Blue Origin | https://blueorigin.wd5.myworkdayjobs.com/BlueOrigin
+Rocket Lab | greenhouse:rocketlab
+Lucid Motors | greenhouse:lucidmotors
+General Motors | https://generalmotors.wd5.myworkdayjobs.com/Careers_GM
+Toyota North America | https://toyota.wd503.myworkdayjobs.com/TMNA
+Toyota College | https://toyota.wd503.myworkdayjobs.com/TMNA_College
+GE Aerospace | https://geaerospace.wd5.myworkdayjobs.com/GE_ExternalSite
+GE Vernova | https://gevernova.wd5.myworkdayjobs.com/Vernova_ExternalSite
+Equinix | https://equinix.wd1.myworkdayjobs.com/External
+Prologis | https://prologis.wd5.myworkdayjobs.com/Prologis_External_Careers
+JLL | https://jll.wd1.myworkdayjobs.com/jllcareers
+Cushman & Wakefield | https://cw.wd1.myworkdayjobs.com/External
+Brookfield | https://brookfield.wd5.myworkdayjobs.com/brookfield
+Blackstone | https://blackstone.wd1.myworkdayjobs.com/Blackstone_Careers
+Blackstone Campus | https://blackstone.wd1.myworkdayjobs.com/Blackstone_Campus_Careers
+Tishman Speyer | https://ts.wd5.myworkdayjobs.com/tishmanspeyer
+Essex Property Trust | https://essex.wd5.myworkdayjobs.com/essexcareers
+Simon Property Group | https://simon.wd1.myworkdayjobs.com/Simon
+C.H. Robinson | https://chrobinson.wd5.myworkdayjobs.com/CHRobinson
+Ryder | https://ryder.wd5.myworkdayjobs.com/RyderCareers
+Maersk | https://maersk.wd3.myworkdayjobs.com/Maersk_Careers
+Pacific Life | https://pacificlife.wd1.myworkdayjobs.com/PacificLifeCareers
+
+# Not readable yet. Their own careers systems: Google, Apple, Amazon, Meta, TikTok, Oracle, IBM, AMD, Dell, Intuit, Uber,
+# LinkedIn, American Express, Tesla, Ford, Rivian, General Dynamics, L3Harris, CBRE, Related Companies, Hines,
+# Equity Residential, AvalonBay, UPS, FedEx, XPO. On Eightfold: Microsoft, Netflix, Qualcomm, Micron, Applied Materials,
+# Lam Research, PayPal, Lockheed Martin.

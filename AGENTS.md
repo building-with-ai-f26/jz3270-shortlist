@@ -3,7 +3,7 @@
 > Give this file to your coding agent and check that it is using these instructions. Keep the stack, commands, and ground rules current.
 
 ## 1. Project Overview
-- **What this repo builds:** Shortlist, a local web app that checks the public job boards (Greenhouse, Lever, Ashby) of companies on a watchlist, filters out roles that fail the user's rules, scores the rest against the user's resume with a model, and shows a ranked list with what is new since the last check.
+- **What this repo builds:** Shortlist, a local web app that checks the public job boards (Greenhouse, Lever, Ashby, Workday) of companies on a watchlist, filters out roles that fail the user's rules, scores the rest against the user's resume with a model, and shows a ranked list with what is new since the last check.
 - **Primary user & core workflow:** MBA students recruiting across several tracks at once (full-time, rotational programs, internships, fellowships, pre-docs). Core workflow: "Check my list." See the living PRD in `docs/index.html`.
 - **Tech stack:** Node.js 18+ with zero npm dependencies (built-in `fetch`, `http`, `node:test`). Plain HTML/CSS/JS front end in `public/index.html`. JSON files for storage. Scoring through the OpenRouter chat completions API, default model `anthropic/claude-haiku-5.5`.
 
@@ -12,7 +12,7 @@
 - **Run locally (live boards):** `npm start`, then open http://localhost:3000
 - **Run locally (demo data, no API calls):** `npm run demo`
 - **Run one check in the terminal:** `npm run scan` (add `-- --demo` for demo data)
-- **Find job boards for a list of company names:** `npm run discover` (reads `data/companies.txt`)
+- **Find job boards for a list of company names:** `npm run discover` (reads `data/companies.txt`; a line can be a name, or a name plus a pasted careers link: `NVIDIA | https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite`). Add `-- --merge-starter` to pull in starter-list names you don't have yet.
 - **Check that every watchlist board works:** `npm run check` (add `-- --prune` to remove failing boards)
 - **Run deterministic tests:** `npm test`
 - **Run model evals:** not built yet (Build 4, see `tests/README.md`)
@@ -22,7 +22,7 @@
 | --- | --- |
 | `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run` routes |
 | `src/pipeline.js` | One run: fetch, filter, score (reusing saved scores), mark new, save to `data/` |
-| `src/sources.js` | Fetches each ATS board (8 at a time, 20-second timeout) and normalizes postings; fetches Greenhouse descriptions only for postings about to be scored |
+| `src/sources.js` | Fetches each board (8 at a time, 20-second timeout) and normalizes postings. Workday sites are searched with `workdaySearch` terms (20 results per page, Workday's limit) instead of downloaded whole. Greenhouse and Workday descriptions are fetched only for postings about to be scored. `parseBoardUrl` turns any careers link into a watchlist entry |
 | `src/discover.js` | Guesses each company's board name and probes Greenhouse, Lever and Ashby to find it |
 | `src/pool.js` | Small helper that limits how many requests run at once |
 | `src/filter.js` | Free rule-based filter (title, track, location, age), keeps a reason for every drop |

@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import { fetchAll, fillDetails, normalize } from "./sources.js";
-import { runFilter } from "./filter.js";
+import { runFilter, prefilter, classifyCohort, COHORTS } from "./filter.js";
 import { scoreAll, DEFAULT_MODEL } from "./score.js";
 import { hasRealKey } from "./env.js";
 
@@ -99,7 +99,11 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
     const earlier = new Date(now - 3 * 86400000).toISOString();
     for (const id of fx.seenBefore) state.seen[id] = earlier;
   } else {
-    fetched = await fetchAll(watchlist, fetchImpl);
+    fetched = await fetchAll(watchlist, fetchImpl, 8, {
+      searches: prefs.workdaySearch,
+      maxPerSearch: prefs.workdayMaxPerSearch,
+      now
+    });
   }
   const all = fetched.flatMap((r) => r.postings);
   const errors = fetched.filter((r) => r.error).map((r) => ({ company: r.entry.company, error: r.error }));
@@ -111,7 +115,9 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   // If the profile or the model changes, the saved scores no longer apply and I start over.
   const useAI = !demo && hasRealKey();
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
-  const cacheKey = `${useAI ? `ai:${model}` : "keywords"}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
+  // SCORE_VERSION goes up whenever the scoring prompt changes what it returns, so old scores are redone once.
+  const SCORE_VERSION = 2;
+  const cacheKey = `v${SCORE_VERSION}:${useAI ? `ai:${model}` : "keywords"}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
   const saved = demo ? { key: cacheKey, scores: {} } : readJson(p.scores, { key: cacheKey, scores: {} });
   const cache = saved.key === cacheKey ? saved : { key: cacheKey, scores: {} };
   const cacheReset = !demo && saved.key !== cacheKey && Object.keys(saved.scores || {}).length > 0;
@@ -128,13 +134,25 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   const cap = prefs.maxToScore || 40;
   const queue = unscored.sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999)).slice(0, cap);
   const waiting = unscored.length - queue.length;
-  const withText = demo ? queue : await fillDetails(queue, fetchImpl);
+  const filled = demo ? queue : await fillDetails(queue, fetchImpl);
+  // Some boards (Workday) only reveal the real location on the detail page, so I run the filter
+  // once more now that it is known, and drop anything that fails before paying to score it.
+  const lateDropped = [];
+  const withText = [];
+  for (const x of filled) {
+    const again = prefilter(x, prefs, now);
+    if (again.keep) withText.push({ ...x, cohort: classifyCohort(x.title, x.text) });
+    else lateDropped.push({ ...again.posting, reason: again.reason, text: undefined });
+  }
+  dropped.push(...lateDropped);
   const { scored: fresh, totals, method } = await scoreAll(profile, withText, { useAI, maxToScore: cap, fetchImpl, model });
+  // The model reads the whole posting, so if it says the role is for new grads, I trust that too.
+  for (const f of fresh) if (f.newGrad) f.cohort = COHORTS.grad;
 
   const scoredAt = new Date(now).toISOString();
   for (const f of fresh) {
     if (f.error) continue;
-    cache.scores[f.id] = { fit: f.fit, track: f.track, why: f.why, gap: f.gap, dealbreaker: f.dealbreaker, scoredAt };
+    cache.scores[f.id] = { fit: f.fit, track: f.track, why: f.why, gap: f.gap, dealbreaker: f.dealbreaker, cohort: f.cohort, scoredAt };
   }
   // I drop saved scores for postings that have closed, so the file does not grow forever.
   const open = new Set(all.map((x) => x.id));
@@ -175,7 +193,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
     companies: fetched.length,
     boardsFailed: errors.length,
     found: all.length,
-    passedFilter: kept.length,
+    passedFilter: kept.length - lateDropped.length,
     scored: scored.filter((x) => x.fit !== null).length,
     scoredThisRun: fresh.filter((x) => x.fit !== null).length,
     fromCache: fromCache.length,
@@ -183,6 +201,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
     cacheReset,
     scoreErrors: fresh.filter((x) => x.error).length,
     newCount: scored.filter((x) => x.isNew).length,
+    gradCount: scored.filter((x) => x.cohort === COHORTS.grad).length,
     tokensIn: totals.tokensIn,
     tokensOut: totals.tokensOut,
     costUsd: Number(totals.costUsd.toFixed(6))

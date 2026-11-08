@@ -3,8 +3,9 @@
 // its own name (e.g. "Anduril Industries" -> "andurilindustries") and ask each system whether that
 // board exists and has open roles. The first match wins.
 import { pool } from "./pool.js";
+import { parseBoardUrl } from "./sources.js";
 
-const ATS_ORDER = ["greenhouse", "lever", "ashby"];
+const ATS_ORDER = ["greenhouse", "lever", "ashby", "smartrecruiters"];
 // Words that are often left out of a board name: legal suffixes and generic industry words.
 const DROP_WORDS = new Set(["inc", "llc", "corp", "corporation", "company", "co", "the", "technologies", "technology", "labs", "group",
   "holdings", "ai", "energy", "space", "health", "robotics", "aviation", "industries", "materials", "systems", "games", "software",
@@ -24,12 +25,17 @@ export function slugVariants(name) {
   return [...new Set(variants)].filter((v) => v.length >= 3);
 }
 
-// A line is either "Company Name" or "Company Name | greenhouse:board" when you already know the board.
+// A line is "Company Name", or "Company Name | <careers link>", or "Company Name | greenhouse:board".
+// A pasted link is the most reliable way to add a company, and the only way for Workday.
 export function parseCompanyLine(line) {
-  const trimmed = line.replace(/#.*$/, "").trim();
+  const trimmed = line.replace(/(^|\s)#.*$/, "").trim();
   if (!trimmed) return null;
   const [name, manual] = trimmed.split("|").map((x) => x.trim());
   if (manual) {
+    if (/^https?:\/\//i.test(manual)) {
+      const parsed = parseBoardUrl(manual);
+      return parsed ? { name, ...parsed } : { name, unsupported: manual };
+    }
     const [ats, board] = manual.split(":").map((x) => x.trim());
     if (ATS_ORDER.includes(ats) && board) return { name, ats, board };
   }
@@ -60,6 +66,11 @@ const PROBES = {
     const list = await getJson(f, `https://api.lever.co/v0/postings/${slug}?mode=json`);
     return Array.isArray(list) && list.length ? { boardName: null, count: list.length, sample: list[0].text } : null;
   },
+  smartrecruiters: async (slug, f) => {
+    const json = await getJson(f, `https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=1`);
+    const list = Array.isArray(json?.content) ? json.content : [];
+    return list.length ? { boardName: list[0].company?.name || null, count: json.totalFound || list.length, sample: list[0].name } : null;
+  },
   ashby: async (slug, f) => {
     const json = await getJson(f, `https://api.ashbyhq.com/posting-api/job-board/${slug}`);
     const list = Array.isArray(json?.jobs) ? json.jobs : [];
@@ -87,8 +98,10 @@ export async function discoverAll(lines, watchlist, { fetchImpl = fetch, concurr
   const notFound = [];
   let done = 0;
 
+  const unsupported = [];
   await pool(todo, concurrency, async (c) => {
-    const hit = c.ats ? { company: c.name, ats: c.ats, board: c.board, manual: true } : await discoverCompany(c.name, fetchImpl);
+    if (c.unsupported) { unsupported.push(`${c.name} (${c.unsupported})`); done++; return; }
+    const hit = c.ats ? { company: c.name, ats: c.ats, board: c.board, url: c.url, manual: true } : await discoverCompany(c.name, fetchImpl);
     done++;
     if (onProgress) onProgress(done, todo.length, c.name, hit);
     if (!hit) { notFound.push(c.name); return; }
@@ -98,6 +111,6 @@ export async function discoverAll(lines, watchlist, { fetchImpl = fetch, concurr
     added.push(hit);
   });
 
-  const entries = added.map(({ company, ats, board }) => ({ company, ats, board }));
-  return { added, notFound, skipped: lines.map(parseCompanyLine).filter(Boolean).length - todo.length, watchlist: [...watchlist, ...entries] };
+  const entries = added.map(({ company, ats, board, url }) => (url ? { company, ats, board, url } : { company, ats, board }));
+  return { added, notFound, unsupported, skipped: lines.map(parseCompanyLine).filter(Boolean).length - todo.length, watchlist: [...watchlist, ...entries] };
 }

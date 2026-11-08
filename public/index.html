@@ -38,7 +38,7 @@
     a { color: var(--violet); }
     :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 
-    .page { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
+    .page { max-width: 1240px; margin: 0 auto; padding: 32px 24px 80px; }
 
     /* Top bar */
     .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -75,15 +75,22 @@
 
     /* Ranked list: the score rail is the one loud element */
     .list { list-style: none; margin: 0; padding: 0; }
-    .row { display: grid; grid-template-columns: 88px 1fr auto; gap: 4px 20px; padding: 22px 0; border-bottom: 1px solid var(--rule); }
-    .score { font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-align: right; }
+    /* Two columns: 2027 and new grad roles on the left, other open full-time roles on the right */
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; margin-top: 8px; }
+    .col-head { font-size: 20px; font-weight: 750; letter-spacing: -0.01em; margin: 20px 0 2px; display: flex; align-items: baseline; gap: 10px; }
+    .col-head .n { font-size: 15px; font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+    .col-grad .col-head { color: var(--violet); }
+    .col-sub { margin: 0 0 6px; font-size: 14px; color: var(--ink-soft); max-width: 52ch; }
+    .col-empty { padding: 20px 0; color: var(--ink-soft); font-size: 15px; border-top: 1px solid var(--rule); }
+    .row { display: grid; grid-template-columns: 64px 1fr; gap: 4px 16px; padding: 20px 0; border-top: 1px solid var(--rule); }
+    .score { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-align: right; }
     .score small { display: block; font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ink-soft); margin-top: 6px; }
     .band-high .score { color: var(--high); }
     .band-mid .score { color: var(--mid); }
     .band-low .score { color: var(--low); }
     .blocked .score { color: var(--low); }
     .blocked .score .num { text-decoration: line-through; text-decoration-thickness: 3px; text-decoration-color: var(--brick); }
-    .title { font-size: 19px; font-weight: 650; margin: 0; line-height: 1.3; }
+    .title { font-size: 17px; font-weight: 650; margin: 0; line-height: 1.3; }
     .title a { color: var(--ink); text-decoration: none; }
     .title a:hover { text-decoration: underline; }
     .where { margin: 2px 0 10px; color: var(--ink-soft); font-size: 15px; }
@@ -94,7 +101,7 @@
     .gap { color: var(--ink-soft); }
     .stop { color: var(--brick); font-weight: 600; }
     .why b, .gap b { font-weight: 600; }
-    .open { align-self: start; font-size: 14px; font-weight: 600; padding: 8px 14px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .open { grid-column: 2; justify-self: start; margin-top: 8px; align-self: start; font-size: 14px; font-weight: 600; padding: 8px 14px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); text-decoration: none; white-space: nowrap; }
     .open:hover { border-color: var(--ink); }
 
     .empty { padding: 48px 0; max-width: 52ch; }
@@ -109,16 +116,18 @@
     .errors { margin-top: 24px; padding: 14px 16px; border-left: 3px solid var(--brick); background: #fbefee; font-size: 14px; }
     .errors p { margin: 0 0 4px; }
 
+    @media (max-width: 980px) {
+      .columns { grid-template-columns: 1fr; }
+    }
     @media (max-width: 640px) {
-      .row { grid-template-columns: 56px 1fr; }
-      .score { font-size: 34px; }
-      .open { grid-column: 2; justify-self: start; margin-top: 8px; }
+      .row { grid-template-columns: 52px 1fr; }
+      .score { font-size: 32px; }
       .toggles { margin-left: 0; }
       .funnel { font-size: 18px; }
       .dropped li { flex-direction: column; gap: 0; }
     }
     @media (prefers-reduced-motion: no-preference) {
-      .list.fresh .row { animation: settle 360ms ease-out both; }
+      .columns.fresh .row { animation: settle 360ms ease-out both; }
       @keyframes settle { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     }
   </style>
@@ -150,7 +159,19 @@
       </div>
     </div>
 
-    <ol class="list" id="list"></ol>
+    <div id="message"></div>
+    <div class="columns" id="columns" hidden>
+      <section class="col col-grad" aria-labelledby="gradHead">
+        <h2 class="col-head" id="gradHead">2027 and new grad <span class="n" id="gradCount"></span></h2>
+        <p class="col-sub">New grad, campus, MBA 2027 and rotational programs.</p>
+        <ol class="list" id="listGrad"></ol>
+      </section>
+      <section class="col col-open" aria-labelledby="openHead">
+        <h2 class="col-head" id="openHead">Full-time, open now <span class="n" id="openCount"></span></h2>
+        <p class="col-sub">Other full-time roles that passed your filters.</p>
+        <ol class="list" id="listOpen"></ol>
+      </section>
+    </div>
     <div id="dropped"></div>
     <div id="errors"></div>
   </div>
@@ -209,7 +230,7 @@
       }
       $("funnel").innerHTML =
         `Checked <b>${s.companies.toLocaleString()}</b> companies and found <b>${s.found.toLocaleString()}</b> open roles. ` +
-        `<b>${s.passedFilter.toLocaleString()}</b> passed your filters, ` +
+        `<b>${s.passedFilter.toLocaleString()}</b> passed your filters` + (s.gradCount ? ` (<b>${s.gradCount.toLocaleString()}</b> scored so far are aimed at 2027 or new grads), ` : ", ") +
         `and <b class="new">${s.newCount} ${s.newCount === 1 ? "is" : "are"} new</b> since your last check.`;
       const cost = s.method === "ai" ? ` This check scored ${s.scoredThisRun ?? s.scored} roles for $${s.costUsd.toFixed(4)} (${s.tokensIn.toLocaleString()} tokens in, ${s.tokensOut.toLocaleString()} out).` : "";
       const reused = s.fromCache ? ` ${s.fromCache.toLocaleString()} scores were reused from earlier checks.` : "";
@@ -230,52 +251,60 @@
       }).join("");
     }
 
+    function rowHtml(r) {
+      const score = r.fit === null ? "?" : r.fit;
+      const label = r.error ? "not scored" : "fit";
+      return `<li class="row ${r.error ? "band-low" : band(r)}">
+        <div class="score" aria-label="Fit ${esc(score)} out of 100"><span class="num">${esc(score)}</span><small>${label}</small></div>
+        <div>
+          <h3 class="title"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>
+            <span class="tags">${r.isNew ? `<span class="tag is-new">New</span>` : ""}<span class="tag">${esc(r.track)}</span></span>
+          </h3>
+          <p class="where">${esc(r.company)}, ${esc(r.location || "location not listed")}${r.ageDays !== null && r.ageDays !== undefined ? `, ${posted(r.ageDays)}` : ""}</p>
+          ${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
+          ${r.why ? `<p class="why"><b>Why it fits:</b> ${esc(r.why)}</p>` : ""}
+          ${r.gap ? `<p class="gap"><b>Gap:</b> ${esc(r.gap)}</p>` : ""}
+          ${r.error ? `<p class="stop">Could not score: ${esc(r.error)}</p>` : ""}
+        </div>
+        <a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-id="${esc(r.id)}">Open posting</a>
+      </li>`;
+    }
+
+    function showMessage(title, body) {
+      $("columns").hidden = true;
+      $("message").innerHTML = title ? `<div class="empty"><h2>${title}</h2><p>${body}</p></div>` : "";
+    }
+
     function renderList(fresh) {
       const all = data?.results || [];
-      const list = $("list");
-      list.classList.toggle("fresh", Boolean(fresh));
+      $("columns").classList.toggle("fresh", Boolean(fresh));
 
       if (!data?.summary) {
-        list.innerHTML = `<li class="empty"><h2>No check yet</h2><p>Press Check my list to pull every open role from the ${st?.watchlistCount ?? ""} companies in your watchlist, filter them, and rank what's left against your profile.</p></li>`;
-        return;
+        return showMessage("No check yet", `Press Check my list to pull every open role from the ${st?.watchlistCount ?? ""} companies in your watchlist, filter them, and rank what's left against your profile.`);
       }
-
       if (!all.length) {
         const failed = data.summary.boardsFailed;
-        list.innerHTML = failed
-          ? `<li class="empty"><h2>No roles came back</h2><p>${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board slug and your connection.</p></li>`
-          : `<li class="empty"><h2>No roles passed your filters</h2><p>Open "Filtered out" below to see what was cut and why, then loosen data/preferences.json.</p></li>`;
-        return;
+        return failed
+          ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board name and your connection.`)
+          : showMessage("No roles passed your filters", `Open "Filtered out" below to see what was cut and why, then loosen data/preferences.json.`);
       }
 
       const rows = all.filter((r) =>
         (view.track === "All" || r.track === view.track) &&
         (!view.newOnly || r.isNew) &&
         ((r.fit ?? 0) >= view.minFit));
-
       if (!rows.length) {
-        list.innerHTML = `<li class="empty"><h2>Nothing matches these filters</h2><p>Clear "New only" or lower the minimum fit to see more.</p></li>`;
-        return;
+        return showMessage("Nothing matches these filters", `Clear "New only" or lower the minimum fit to see more.`);
       }
 
-      list.innerHTML = rows.map((r) => {
-        const score = r.fit === null ? "?" : r.fit;
-        const label = r.error ? "not scored" : "fit";
-        return `<li class="row ${r.error ? "band-low" : band(r)}">
-          <div class="score" aria-label="Fit ${esc(score)} out of 100"><span class="num">${esc(score)}</span><small>${label}</small></div>
-          <div>
-            <h3 class="title"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>
-              <span class="tags">${r.isNew ? `<span class="tag is-new">New</span>` : ""}<span class="tag">${esc(r.track)}</span></span>
-            </h3>
-            <p class="where">${esc(r.company)}, ${esc(r.location || "location not listed")}${r.ageDays !== null ? `, ${posted(r.ageDays)}` : ""}</p>
-            ${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
-            ${r.why ? `<p class="why"><b>Why it fits:</b> ${esc(r.why)}</p>` : ""}
-            ${r.gap ? `<p class="gap"><b>Gap:</b> ${esc(r.gap)}</p>` : ""}
-            ${r.error ? `<p class="stop">Could not score: ${esc(r.error)}</p>` : ""}
-          </div>
-          <a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-id="${esc(r.id)}">Open posting</a>
-        </li>`;
-      }).join("");
+      showMessage("");
+      $("columns").hidden = false;
+      const grad = rows.filter((r) => r.cohort === "2027 grad");
+      const open = rows.filter((r) => r.cohort !== "2027 grad");
+      $("gradCount").textContent = grad.length;
+      $("openCount").textContent = open.length;
+      $("listGrad").innerHTML = grad.length ? grad.map(rowHtml).join("") : `<li class="col-empty">No 2027 or new grad roles in this view.</li>`;
+      $("listOpen").innerHTML = open.length ? open.map(rowHtml).join("") : `<li class="col-empty">No other open roles in this view.</li>`;
     }
 
     function renderDropped() {

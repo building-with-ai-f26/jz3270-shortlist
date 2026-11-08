@@ -33,7 +33,8 @@ Return JSON with exactly these keys:
   "track": one of ${JSON.stringify(TRACKS)},
   "why": one sentence naming the strongest specific match between the profile and this role,
   "gap": one sentence naming the biggest gap, or "None",
-  "dealbreaker": short phrase if the candidate clearly fails a hard requirement (for example "Undergraduates only" or "Requires 5+ years in REPE"), otherwise null
+  "dealbreaker": short phrase if the candidate clearly fails a hard requirement (for example "Undergraduates only" or "Requires 5+ years in REPE"), otherwise null,
+  "new_grad": true if the role is built for new or upcoming graduates (new grad, university or campus hire, MBA class of 2026 or 2027, an early-career or rotational program, or a start date tied to 2027 graduation), otherwise false
 }`;
 }
 
@@ -52,7 +53,8 @@ export function parseScore(content) {
     track: TRACKS.includes(raw.track) ? raw.track : null,
     why: String(raw.why || "").trim(),
     gap: raw.gap && String(raw.gap).trim() !== "None" ? String(raw.gap).trim() : null,
-    dealbreaker: raw.dealbreaker ? String(raw.dealbreaker).trim() : null
+    dealbreaker: raw.dealbreaker ? String(raw.dealbreaker).trim() : null,
+    newGrad: raw.new_grad === true
   };
 }
 
@@ -166,6 +168,7 @@ export function scoreWithKeywords(profile, posting, idf) {
     why: top.length ? `Keyword overlap: ${top.join(", ")}` : "Little keyword overlap with your profile",
     gap: null,
     dealbreaker: bar ? bar.label : null,
+    newGrad: false,
     usage: { tokensIn: 0, tokensOut: 0, costUsd: 0 }
   };
 }

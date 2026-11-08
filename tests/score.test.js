@@ -109,3 +109,9 @@ test("handles content sent as a list of parts", async () => {
   const s = await scoreWithAI("profile", posting, { fetchImpl: fake, model: "m", apiKey: "k" });
   assert.equal(s.fit, 55);
 });
+
+test("reads the model's new_grad flag, treating anything but true as false", () => {
+  assert.equal(parseScore("{\"fit\": 70, \"why\": \"x\", \"new_grad\": true}").newGrad, true);
+  assert.equal(parseScore("{\"fit\": 70, \"why\": \"x\", \"new_grad\": \"yes\"}").newGrad, false);
+  assert.equal(parseScore("{\"fit\": 70, \"why\": \"x\"}").newGrad, false);
+});
