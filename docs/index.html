@@ -216,7 +216,7 @@
       <div class="grid-2">
         <div class="stat-box">
           <div class="stat-label">Cumulative Build Spend</div>
-          <div class="stat-value">$0.01</div>
+          <div class="stat-value">$0.10</div>
           <p class="meta" style="margin:6px 0 0">OpenRouter scoring calls only. My coding agent, Claude, ran on my existing subscription, so it added no new spend.</p>
         </div>
         <div class="stat-box">
@@ -247,7 +247,7 @@
           <li><strong>What shipped:</strong> A local prototype of the full core workflow (<a href="#live-demo">screenshot above</a>). It includes fetchers for Greenhouse, Lever and Ashby public boards, a free rule-based filter that records why each posting was cut, AI scoring through OpenRouter with a keyword fallback when no key is set, a "new since last check" flag, and a demo mode on 19 fictional postings. The first live run checked 9 companies, pulled 8,860 open postings, passed 353 through the filter, and scored 40 for $0.0078. All 31 automated tests pass with <code>npm test</code>, including mocked OpenRouter calls that check how tokens, cost and retries are handled. Personal files (my resume and watchlist) live in a gitignored folder, so they never reach this public repo.</li>
           <li><strong>Things learned with AI:</strong> Many of the tech and startup companies I target publish their open roles as public JSON through their applicant tracking system, which means no scraping is needed for them. The large corporates on my list mostly do not, which is why they sit in the non-goals for now. I also learned that OpenRouter now returns the dollar cost of every call, so cost per run can be measured rather than guessed. [In the terminal, I learned that every command runs in whichever folder I am in, which I found out the hard way when a failed cd sent a copy command onto my Desktop; chaining steps with &amp;&amp; now stops the chain when one fails. I also learned that hidden files such as .gitignore and .env do not show in Finder and are easy to lose in a browser upload, that a .gitignore rule with leading spaces silently stops working, and that .gitignore protects Git pushes but not website uploads.]</li>
           <li><strong>What broke / changed in PRD:</strong> Keyword scoring ranked a thin real estate analyst posting at 88 while the urban analytics fellowship that fits best scored 36, since overlap rewards short descriptions and cannot read requirements. That moved AI scoring to the center of the PRD and made it the riskiest assumption. The location filter matches city names, so an MBA sourcing internship in Torrance, CA was dropped even though Torrance is in LA County, and I kept a test that documents the gap until I match metro areas instead. Job descriptions also arrive as HTML (Greenhouse encodes it twice), and my first text cleaner left stray spaces that a test caught. Lastly, the first live run surfaced two more problems. At least one of the 40 postings came back with an empty score because Haiku 5.5 spent its whole reply budget thinking, and the filter let roles like "Applied AI Architect, International Policy" through because "Intern" matched part of "International." I added one retry with a larger budget and switched the filter to whole-word matching.</li>
-          <li><strong>Cost & time this week:</strong> $0.01 · [N] hours</li>
+          <li><strong>Cost & time this week:</strong> $0.10 · [2] hours</li>
         </ul>
       </div>
 
