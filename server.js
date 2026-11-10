@@ -4,7 +4,8 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { loadEnv } from "./src/env.js";
-import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles } from "./src/pipeline.js";
+import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths } from "./src/pipeline.js";
+import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
 
 loadEnv(ROOT);
 const DEMO = process.argv.includes("--demo") || process.env.SHORTLIST_DEMO === "1";
@@ -22,6 +23,21 @@ function send(res, code, body, type = "application/json") {
 
 let running = null;
 
+// Reads an uploaded file sent as the raw request body, refusing anything over the size limit.
+function readBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > limit) { reject(new Error("That file is over 10 MB. Export a smaller PDF and try again.")); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -29,7 +45,18 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, fs.readFileSync(path.join(ROOT, "public", "index.html"), "utf8"), "text/html; charset=utf-8");
   }
   if (req.method === "GET" && url.pathname === "/api/status") {
-    return send(res, 200, status(DEMO));
+    return send(res, 200, { ...status(DEMO), resume: DEMO ? null : readResumeMeta(paths(false).dataDir) });
+  }
+  // The browser sends the resume file as the raw body, with its name in a header.
+  if (req.method === "POST" && url.pathname === "/api/resume") {
+    if (DEMO) return send(res, 400, { error: "Resume upload works in live mode. Stop the demo and run npm start." });
+    try {
+      const filename = decodeURIComponent(req.headers["x-filename"] || "resume.pdf");
+      const meta = await saveResume(await readBody(req, MAX_BYTES), filename, paths(false).dataDir);
+      return send(res, 200, meta);
+    } catch (err) {
+      return send(res, 400, { error: err.message });
+    }
   }
   if (req.method === "GET" && url.pathname === "/api/latest") {
     return send(res, 200, readLatest(DEMO) || { summary: null, results: [], dropped: [], errors: [] });

@@ -8,6 +8,7 @@ import { fetchAll, fillDetails, normalize } from "./sources.js";
 import { runFilter, prefilter, classifyCohort, COHORTS } from "./filter.js";
 import { scoreAll, DEFAULT_MODEL } from "./score.js";
 import { hasRealKey } from "./env.js";
+import { peopleLinks } from "./people.js";
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -169,6 +170,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   }
 
   scored.sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1));
+  for (const s of scored) s.people = peopleLinks(s, prefs);
 
   // With 100+ companies the filtered-out list can run to tens of thousands, so I send counts by
   // reason plus the first 300 examples instead of the whole list.

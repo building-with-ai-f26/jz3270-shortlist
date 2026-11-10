@@ -4,187 +4,259 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shortlist</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%273%27 y=%273%27 width=%2710%27 height=%2710%27 rx=%272%27 fill=%27%235b2a86%27/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%272%27 y=%272%27 width=%2712%27 height=%2712%27 rx=%272%27 fill=%27%2357068C%27/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400..800;1,400..600&display=swap" rel="stylesheet" />
-  <!-- Build 2: paste the PostHog web snippet here and capture "run_clicked", "posting_opened", "filter_changed". -->
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet" />
+  <!-- Build 2: paste the PostHog web snippet here and capture "run_clicked", "resume_uploaded", "posting_opened", "people_link_opened". -->
   <style>
     :root {
-      --ink: #1d1b2a;
-      --ink-soft: #4a4759;
-      --paper: #f4f4f8;
+      --violet: #57068c;
+      --violet-ink: #1c1427;
+      --violet-mid: #2a1f3a;
+      --violet-tint: #efe6f7;
+      --side-text: #ede7f6;
+      --side-muted: #a99bc0;
+      --side-rule: #3a2d4d;
+      --board: #eef0f2;
       --surface: #ffffff;
-      --rule: #dddbe6;
-      --violet: #5b2a86;
-      --violet-soft: #ece4f4;
-      --high: #1e6b47;
-      --mid: #9a6400;
-      --low: #7c7a8c;
-      --brick: #a8322a;
-      --radius-control: 8px;
+      --ink: #121417;
+      --muted: #5a606b;
+      --rule: #d9dde2;
+      --high: #18794e;
+      --mid: #a15c00;
+      --low: #8a8f98;
+      --stop: #b42318;
+      --narrow: "wdth" 62;
+      --semi: "wdth" 85;
     }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
-      font-family: "Schibsted Grotesk", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-      font-size: 16px;
+      font-family: "Archivo", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
       line-height: 1.5;
       color: var(--ink);
-      background: var(--paper);
+      background: var(--board);
     }
-    a { color: var(--violet); }
+    a { color: inherit; }
     :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+    button { font: inherit; }
 
-    .page { max-width: 1240px; margin: 0 auto; padding: 32px 24px 80px; }
+    .app { display: grid; grid-template-columns: 312px 1fr; min-height: 100vh; }
 
-    /* Top bar */
-    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .wordmark { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
-    .wordmark span { display: inline-block; width: 10px; height: 10px; background: var(--violet); border-radius: 2px; margin-left: 4px; vertical-align: 2px; }
-    .mode { font-size: 14px; color: var(--ink-soft); margin: 2px 0 0; }
-    .mode strong { color: var(--ink); font-weight: 600; }
-    .run-btn {
-      font: inherit; font-weight: 600; font-size: 16px;
-      padding: 12px 22px; border: 0; border-radius: var(--radius-control);
-      background: var(--violet); color: #fff; cursor: pointer;
+    /* ---------- Sidebar: your file ---------- */
+    .side {
+      background: var(--violet-ink);
+      color: var(--side-text);
+      padding: 28px 24px 32px;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 24px;
     }
-    .run-btn:hover { background: #4a1f70; }
-    .run-btn[disabled] { opacity: 0.7; cursor: progress; }
+    .wordmark { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variation-settings: var(--semi); line-height: 1; }
+    .wordmark span { color: #b58be0; }
+    .mode { margin: 6px 0 0; font-size: 13px; color: var(--side-muted); }
 
-    /* Funnel sentence */
-    .funnel { margin: 28px 0 8px; font-size: 20px; line-height: 1.45; max-width: 60ch; }
-    .funnel b { font-weight: 700; font-variant-numeric: tabular-nums; }
-    .funnel .new { color: var(--violet); }
-    .subtle { color: var(--ink-soft); font-size: 14px; margin: 0; }
+    .resume { border: 1px dashed var(--side-rule); border-radius: 10px; padding: 14px 14px 12px; }
+    .resume h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--side-muted); }
+    .resume .file { margin: 0; font-size: 15px; font-weight: 650; word-break: break-word; }
+    .resume .when { margin: 2px 0 10px; font-size: 13px; color: var(--side-muted); }
+    .resume .pick { background: transparent; color: var(--side-text); border: 1px solid var(--side-rule); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .resume .pick:hover { border-color: var(--side-muted); }
+    .resume .hint { display: block; margin-top: 8px; font-size: 12px; color: var(--side-muted); }
 
-    /* Controls */
-    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 28px 0 8px; padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
-    .tracks { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip {
-      font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px;
-      border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer;
+    .run {
+      width: 100%; border: 0; border-radius: 8px; padding: 14px 16px;
+      background: #b58be0; color: var(--violet-ink);
+      font-size: 16px; font-weight: 750; cursor: pointer;
     }
-    .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-    .chip .n { font-variant-numeric: tabular-nums; opacity: 0.65; margin-left: 4px; }
-    .toggles { display: flex; gap: 16px; align-items: center; font-size: 14px; margin-left: auto; }
-    .toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-    select { font: inherit; font-size: 14px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--rule); background: var(--surface); }
+    .run:hover { background: #c7a5ea; }
+    .run[disabled] { opacity: 0.75; cursor: progress; }
+    .last { margin: 8px 0 0; font-size: 13px; color: var(--side-muted); }
 
-    /* Ranked list: the score rail is the one loud element */
-    .list { list-style: none; margin: 0; padding: 0; }
-    /* Two columns: 2027 and new grad roles on the left, other open full-time roles on the right */
-    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; margin-top: 8px; }
-    .col-head { font-size: 20px; font-weight: 750; letter-spacing: -0.01em; margin: 20px 0 2px; display: flex; align-items: baseline; gap: 10px; }
-    .col-head .n { font-size: 15px; font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+    .funnel { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--side-rule); }
+    .funnel li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--side-rule); }
+    .funnel .k { font-size: 13px; color: var(--side-muted); }
+    .funnel .v { font-size: 24px; font-weight: 800; font-variation-settings: var(--narrow); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .funnel .v.new { color: #c7a5ea; }
+    .cost { margin: 0; font-size: 13px; color: var(--side-muted); }
+
+    .filters h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--side-muted); }
+    .tracks { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .chip { font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--side-rule); background: transparent; color: var(--side-text); cursor: pointer; }
+    .chip[aria-pressed="true"] { background: var(--side-text); color: var(--violet-ink); border-color: var(--side-text); }
+    .chip .n { opacity: 0.65; margin-left: 4px; font-variant-numeric: tabular-nums; }
+    .toggles { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+    .toggles label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .toggles select { font: inherit; font-size: 13px; background: var(--violet-mid); color: var(--side-text); border: 1px solid var(--side-rule); border-radius: 6px; padding: 3px 6px; }
+
+    /* ---------- Board ---------- */
+    .board { padding: 28px 32px 64px; min-width: 0; }
+    .notice { margin: 0 0 16px; padding: 12px 14px; border-radius: 8px; font-size: 14px; background: var(--violet-tint); color: var(--violet-ink); }
+    .notice.bad { background: #fdecea; color: #7a1a12; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+    .col-head { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; font-variation-settings: var(--semi); display: flex; align-items: baseline; gap: 10px; }
+    .col-head .n { font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; font-variation-settings: normal; }
     .col-grad .col-head { color: var(--violet); }
-    .col-sub { margin: 0 0 6px; font-size: 14px; color: var(--ink-soft); max-width: 52ch; }
-    .col-empty { padding: 20px 0; color: var(--ink-soft); font-size: 15px; border-top: 1px solid var(--rule); }
-    .row { display: grid; grid-template-columns: 64px 1fr; gap: 4px 16px; padding: 20px 0; border-top: 1px solid var(--rule); }
-    .score { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; text-align: right; }
-    .score small { display: block; font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ink-soft); margin-top: 6px; }
+    .col-sub { margin: 2px 0 10px; font-size: 13px; color: var(--muted); }
+
+    .list { list-style: none; margin: 0; padding: 0; }
+    .row { display: grid; grid-template-columns: 76px 1fr; gap: 2px 16px; padding: 18px 0 20px; border-top: 1px solid var(--rule); }
+    .score { text-align: right; font-size: 58px; line-height: 0.9; font-weight: 850; font-variation-settings: var(--narrow); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .score small { display: block; margin-top: 6px; font-size: 11px; line-height: 1.2; font-weight: 500; letter-spacing: 0; font-variation-settings: normal; color: var(--muted); }
     .band-high .score { color: var(--high); }
     .band-mid .score { color: var(--mid); }
-    .band-low .score { color: var(--low); }
-    .blocked .score { color: var(--low); }
-    .blocked .score .num { text-decoration: line-through; text-decoration-thickness: 3px; text-decoration-color: var(--brick); }
-    .title { font-size: 17px; font-weight: 650; margin: 0; line-height: 1.3; }
-    .title a { color: var(--ink); text-decoration: none; }
+    .band-low .score, .blocked .score { color: var(--low); }
+    .blocked .score .num { text-decoration: line-through; text-decoration-thickness: 4px; text-decoration-color: var(--stop); }
+
+    .title { margin: 0; font-size: 17px; line-height: 1.3; font-weight: 650; }
+    .title a { text-decoration: none; }
     .title a:hover { text-decoration: underline; }
-    .where { margin: 2px 0 10px; color: var(--ink-soft); font-size: 15px; }
-    .tags { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: 3px; }
-    .tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: #eceaf2; color: var(--ink-soft); }
-    .tag.is-new { background: var(--violet-soft); color: var(--violet); }
-    .why, .gap, .stop { margin: 0 0 4px; font-size: 15px; max-width: 68ch; }
-    .gap { color: var(--ink-soft); }
-    .stop { color: var(--brick); font-weight: 600; }
-    .why b, .gap b { font-weight: 600; }
-    .open { grid-column: 2; justify-self: start; margin-top: 8px; align-self: start; font-size: 14px; font-weight: 600; padding: 8px 14px; border: 1px solid var(--rule); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); text-decoration: none; white-space: nowrap; }
-    .open:hover { border-color: var(--ink); }
+    .tags { display: inline-flex; gap: 6px; margin-right: 8px; vertical-align: 1px; }
+    .tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: #e6e9ed; color: var(--muted); }
+    .tag.is-new { background: var(--violet-tint); color: var(--violet); }
+    .where { margin: 2px 0 8px; font-size: 14px; color: var(--muted); }
+    .why, .gap, .stop { margin: 0 0 4px; font-size: 14px; max-width: 70ch; }
+    .gap { color: var(--muted); }
+    .stop { color: var(--stop); font-weight: 600; }
+    .why b, .gap b { font-weight: 650; }
 
-    .empty { padding: 48px 0; max-width: 52ch; }
-    .empty h2 { font-size: 22px; margin: 0 0 8px; }
+    .reach { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; padding: 9px 12px; background: var(--surface); border-radius: 8px; font-size: 13px; }
+    .reach .lbl { font-weight: 650; color: var(--violet); }
+    .reach a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+    .reach a:hover { color: var(--violet); text-decoration-color: var(--violet); }
+    .open { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 650; color: var(--violet); text-underline-offset: 3px; }
 
-    /* Dropped + errors */
-    details { margin-top: 32px; }
-    summary { cursor: pointer; font-weight: 600; font-size: 16px; }
-    .dropped { margin: 12px 0 0; padding: 0; list-style: none; font-size: 14px; }
-    .dropped li { padding: 6px 0; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 16px; }
-    .dropped .r { color: var(--ink-soft); white-space: nowrap; }
-    .errors { margin-top: 24px; padding: 14px 16px; border-left: 3px solid var(--brick); background: #fbefee; font-size: 14px; }
+    .col-empty { padding: 18px 0; border-top: 1px solid var(--rule); color: var(--muted); font-size: 14px; }
+    .empty { max-width: 56ch; padding: 40px 0; }
+    .empty h2 { margin: 0 0 8px; font-size: 24px; font-weight: 800; font-variation-settings: var(--semi); }
+    .empty p { margin: 0; color: var(--muted); }
+
+    details { margin-top: 32px; border-top: 1px solid var(--rule); padding-top: 14px; }
+    summary { cursor: pointer; font-weight: 650; }
+    .subtle { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+    .dropped { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; }
+    .dropped li { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; border-bottom: 1px solid var(--rule); }
+    .dropped .r { color: var(--muted); white-space: nowrap; }
+    .errors { margin-top: 20px; padding: 12px 14px; border-left: 3px solid var(--stop); background: #fdecea; font-size: 13px; }
     .errors p { margin: 0 0 4px; }
 
-    @media (max-width: 980px) {
-      .columns { grid-template-columns: 1fr; }
+    /* ---------- Drop overlay: the one moment of motion ---------- */
+    .drop {
+      position: fixed; inset: 0; z-index: 10;
+      display: grid; place-items: center;
+      background: rgba(28, 20, 39, 0.94);
+      backdrop-filter: blur(6px);
+      color: var(--side-text);
     }
-    @media (max-width: 640px) {
-      .row { grid-template-columns: 52px 1fr; }
-      .score { font-size: 32px; }
-      .toggles { margin-left: 0; }
-      .funnel { font-size: 18px; }
-      .dropped li { flex-direction: column; gap: 0; }
-    }
+    .drop .frame { border: 2px dashed #b58be0; border-radius: 20px; padding: 64px 72px; text-align: center; max-width: 640px; margin: 24px; }
+    .drop strong { display: block; font-size: 44px; letter-spacing: -0.02em; font-weight: 800; font-variation-settings: var(--semi); line-height: 1.15; }
+    .drop span { display: block; margin-top: 10px; color: var(--side-muted); }
     @media (prefers-reduced-motion: no-preference) {
-      .columns.fresh .row { animation: settle 360ms ease-out both; }
-      @keyframes settle { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      .drop { animation: fade 160ms ease-out; }
+      .columns.fresh .row { animation: settle 320ms ease-out both; }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    }
+
+    @media (max-width: 1100px) { .columns { grid-template-columns: 1fr; } .col-open { margin-top: 28px; } }
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; }
+      .side { position: static; height: auto; gap: 16px; padding: 20px 16px 20px; }
+      .resume { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 12px; }
+      .resume h2, .resume .file, .resume .when { grid-column: 1; }
+      .resume .pick { grid-column: 2; grid-row: 1 / span 3; }
+      .resume .hint { display: none; }
+      .funnel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 12px; border: 0; }
+      .funnel li { flex-direction: column-reverse; align-items: flex-start; gap: 0; padding: 0; border: 0; }
+      .funnel .k { font-size: 12px; line-height: 1.3; }
+      .board { padding: 20px 16px 48px; }
+      .row { grid-template-columns: 54px 1fr; }
+      .score { font-size: 44px; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <div class="top">
+  <div class="app">
+    <aside class="side" aria-label="Your search">
       <div>
-        <h1 class="wordmark">Shortlist<span aria-hidden="true"></span></h1>
+        <h1 class="wordmark">Shortlist<span aria-hidden="true">.</span></h1>
         <p class="mode" id="mode">Loading...</p>
       </div>
-      <button class="run-btn" id="run" type="button">Check my list</button>
-    </div>
 
-    <p class="funnel" id="funnel" aria-live="polite"></p>
-    <p class="subtle" id="when"></p>
+      <section class="resume" id="resume" aria-labelledby="resumeHead">
+        <h2 id="resumeHead">Your resume</h2>
+        <p class="file" id="resumeFile">Not uploaded yet</p>
+        <p class="when" id="resumeWhen">Shortlist is using data/profile.md.</p>
+        <button class="pick" id="pick" type="button">Upload resume</button>
+        <span class="hint">PDF, Word or text. You can also drop it anywhere on the page.</span>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" hidden />
+      </section>
 
-    <div class="controls" id="controls" hidden>
-      <div class="tracks" id="tracks" role="group" aria-label="Filter by track"></div>
-      <div class="toggles">
-        <label><input type="checkbox" id="newOnly" /> New only</label>
-        <label>Min fit
-          <select id="minFit">
-            <option value="0">Any</option>
-            <option value="50">50+</option>
-            <option value="70">70+</option>
-          </select>
-        </label>
+      <div>
+        <button class="run" id="run" type="button">Check my list</button>
+        <p class="last" id="last"></p>
       </div>
-    </div>
 
-    <div id="message"></div>
-    <div class="columns" id="columns" hidden>
-      <section class="col col-grad" aria-labelledby="gradHead">
-        <h2 class="col-head" id="gradHead">2027 and new grad <span class="n" id="gradCount"></span></h2>
-        <p class="col-sub">New grad, campus, MBA 2027 and rotational programs.</p>
-        <ol class="list" id="listGrad"></ol>
+      <ul class="funnel" id="funnel" hidden aria-live="polite"></ul>
+      <p class="cost" id="cost"></p>
+
+      <section class="filters" id="filters" hidden aria-labelledby="filterHead">
+        <h2 id="filterHead">Show</h2>
+        <div class="tracks" id="tracks" role="group" aria-label="Filter by track"></div>
+        <div class="toggles">
+          <label><input type="checkbox" id="newOnly" /> New since last check only</label>
+          <label>Minimum fit
+            <select id="minFit">
+              <option value="0">Any</option>
+              <option value="50">50+</option>
+              <option value="70">70+</option>
+            </select>
+          </label>
+        </div>
       </section>
-      <section class="col col-open" aria-labelledby="openHead">
-        <h2 class="col-head" id="openHead">Full-time, open now <span class="n" id="openCount"></span></h2>
-        <p class="col-sub">Other full-time roles that passed your filters.</p>
-        <ol class="list" id="listOpen"></ol>
-      </section>
+    </aside>
+
+    <main class="board">
+      <div id="notice"></div>
+      <div id="message"></div>
+      <div class="columns" id="columns" hidden>
+        <section class="col col-grad" aria-labelledby="gradHead">
+          <h2 class="col-head" id="gradHead">2027 and new grad <span class="n" id="gradCount"></span></h2>
+          <p class="col-sub">New grad, campus, MBA 2027 and rotational programs.</p>
+          <ol class="list" id="listGrad"></ol>
+        </section>
+        <section class="col col-open" aria-labelledby="openHead">
+          <h2 class="col-head" id="openHead">Full-time, open now <span class="n" id="openCount"></span></h2>
+          <p class="col-sub">Other full-time roles that passed your filters.</p>
+          <ol class="list" id="listOpen"></ol>
+        </section>
+      </div>
+      <div id="dropped"></div>
+      <div id="errors"></div>
+    </main>
+  </div>
+
+  <div class="drop" id="drop" hidden aria-hidden="true">
+    <div class="frame">
+      <strong>Drop your resume to rescore every role</strong>
+      <span>PDF, Word or text. Contact details are removed before anything is scored.</span>
     </div>
-    <div id="dropped"></div>
-    <div id="errors"></div>
   </div>
 
   <script>
-    // Everything shown here comes from outside job boards, so every string goes through esc() before it touches the page.
+    // Everything from job boards is outside text, so every string goes through esc() before it reaches the page.
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
     const $ = (id) => document.getElementById(id);
     const TRACK_ORDER = ["Full-time", "Program", "Internship", "Fellowship", "Pre-doc"];
     const view = { track: "All", newOnly: false, minFit: 0 };
     let data = null;
     let st = null;
+    let busy = false;
 
+    const n = (x) => Number(x || 0).toLocaleString();
     function ago(iso) {
       if (!iso) return "";
       const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -195,110 +267,94 @@
       const days = Math.round(hrs / 24);
       return `${days} day${days === 1 ? "" : "s"} ago`;
     }
-    function posted(days) {
-      if (days === null || days === undefined) return "";
-      if (days <= 0) return "posted today";
-      return `posted ${days} day${days === 1 ? "" : "s"} ago`;
-    }
+    const posted = (d) => (d === null || d === undefined) ? "" : d <= 0 ? ", posted today" : `, posted ${d} day${d === 1 ? "" : "s"} ago`;
     function band(r) {
+      if (r.error) return "band-low";
       if (r.dealbreaker) return "blocked";
       if (r.fit >= 75) return "band-high";
       if (r.fit >= 50) return "band-mid";
       return "band-low";
     }
+    function notice(text, bad) { $("notice").innerHTML = text ? `<p class="notice${bad ? " bad" : ""}" role="status">${text}</p>` : ""; }
 
-    function renderMode() {
-      if (!st) return;
-      $("mode").innerHTML = st.demo
-        ? "<strong>Demo data.</strong> Fictional postings, keyword scoring, no API calls."
-        : st.aiOn
-          ? `<strong>${st.watchlistCount} companies.</strong> Scoring with ${esc(st.model)} through OpenRouter.`
-          : `<strong>${st.watchlistCount} companies.</strong> Keyword scoring. Add OPENROUTER_API_KEY to .env for AI scoring.`;
-    }
-
-    function renderFunnel() {
+    // ---------- Sidebar ----------
+    function renderSide() {
+      if (st) {
+        $("mode").textContent = st.demo
+          ? "Demo data: fictional postings, keyword scoring, no API calls."
+          : st.aiOn ? `${n(st.watchlistCount)} companies, scored by ${st.model.split("/").pop()}.`
+                    : `${n(st.watchlistCount)} companies, keyword scoring. Add an OpenRouter key for AI scoring.`;
+        const r = st.resume;
+        $("resumeFile").textContent = r ? r.fileName : st.demo ? "Sample profile (demo)" : "Not uploaded yet";
+        $("resumeWhen").textContent = r ? `Updated ${ago(r.uploadedAt)}` : st.demo ? "Uploads work in live mode." : "Shortlist is using data/profile.md.";
+        $("pick").textContent = r ? "Replace resume" : "Upload resume";
+      }
       const s = data?.summary;
-      if (!s) {
-        $("funnel").textContent = "";
-        $("when").textContent = "";
-        return;
-      }
-      if (!s.found) {
-        $("funnel").innerHTML = `Checked <b>${s.companies}</b> companies and found no open roles.`;
-        $("when").textContent = `Last checked ${ago(s.runAt)}.`;
-        return;
-      }
-      $("funnel").innerHTML =
-        `Checked <b>${s.companies.toLocaleString()}</b> companies and found <b>${s.found.toLocaleString()}</b> open roles. ` +
-        `<b>${s.passedFilter.toLocaleString()}</b> passed your filters` + (s.gradCount ? ` (<b>${s.gradCount.toLocaleString()}</b> scored so far are aimed at 2027 or new grads), ` : ", ") +
-        `and <b class="new">${s.newCount} ${s.newCount === 1 ? "is" : "are"} new</b> since your last check.`;
-      const cost = s.method === "ai" ? ` This check scored ${s.scoredThisRun ?? s.scored} roles for $${s.costUsd.toFixed(4)} (${s.tokensIn.toLocaleString()} tokens in, ${s.tokensOut.toLocaleString()} out).` : "";
-      const reused = s.fromCache ? ` ${s.fromCache.toLocaleString()} scores were reused from earlier checks.` : "";
-      const waiting = s.waiting ? ` ${s.waiting.toLocaleString()} more matches will be scored on your next checks.` : "";
-      const reset = s.cacheReset ? " Your profile changed, so earlier scores were cleared." : "";
-      $("when").textContent = `Last checked ${ago(s.runAt)}.${cost}${reused}${waiting}${reset}`;
+      $("funnel").hidden = !s;
+      $("filters").hidden = !(data?.results || []).length;
+      if (!s) { $("last").textContent = ""; $("cost").textContent = ""; return; }
+      $("last").textContent = `Last checked ${ago(s.runAt)}`;
+      $("funnel").innerHTML = [
+        ["Companies checked", s.companies],
+        ["Open roles found", s.found],
+        ["Passed your filters", s.passedFilter],
+        ["Scored so far", s.scored],
+        ["New since last check", s.newCount, "new"]
+      ].map(([k, v, cls]) => `<li><span class="k">${k}</span><span class="v${cls ? " " + cls : ""}">${n(v)}</span></li>`).join("");
+      const parts = [];
+      if (s.method === "ai") parts.push(`This check scored ${n(s.scoredThisRun ?? s.scored)} roles for $${(s.costUsd || 0).toFixed(4)}.`);
+      if (s.waiting) parts.push(`${n(s.waiting)} more will be scored on your next checks.`);
+      if (s.cacheReset) parts.push("Your resume changed, so every role is being rescored.");
+      $("cost").textContent = parts.join(" ");
     }
 
-    function renderControls() {
+    function renderTracks() {
       const results = data?.results || [];
-      $("controls").hidden = results.length === 0;
-      const counts = Object.fromEntries(TRACK_ORDER.map((t) => [t, 0]));
+      const counts = {};
       results.forEach((r) => { counts[r.track] = (counts[r.track] || 0) + 1; });
       const options = ["All", ...TRACK_ORDER.filter((t) => counts[t])];
-      $("tracks").innerHTML = options.map((t) => {
-        const n = t === "All" ? results.length : counts[t];
-        return `<button class="chip" type="button" data-track="${esc(t)}" aria-pressed="${view.track === t}">${esc(t)}<span class="n">${n}</span></button>`;
-      }).join("");
+      if (!options.includes(view.track)) view.track = "All";
+      $("tracks").innerHTML = options.map((t) =>
+        `<button class="chip" type="button" data-track="${esc(t)}" aria-pressed="${view.track === t}">${esc(t)}<span class="n">${t === "All" ? results.length : counts[t]}</span></button>`).join("");
     }
 
+    // ---------- Board ----------
     function rowHtml(r) {
-      const score = r.fit === null ? "?" : r.fit;
-      const label = r.error ? "not scored" : "fit";
-      return `<li class="row ${r.error ? "band-low" : band(r)}">
-        <div class="score" aria-label="Fit ${esc(score)} out of 100"><span class="num">${esc(score)}</span><small>${label}</small></div>
+      const score = r.fit === null || r.fit === undefined ? "?" : r.fit;
+      const people = (r.people || []).map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" data-kind="people">${esc(p.label)}</a>`).join("");
+      return `<li class="row ${band(r)}">
+        <div class="score" aria-label="Fit ${esc(score)} out of 100"><span class="num">${esc(score)}</span><small>${r.error ? "not scored" : "fit"}</small></div>
         <div>
-          <h3 class="title"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>
-            <span class="tags">${r.isNew ? `<span class="tag is-new">New</span>` : ""}<span class="tag">${esc(r.track)}</span></span>
-          </h3>
-          <p class="where">${esc(r.company)}, ${esc(r.location || "location not listed")}${r.ageDays !== null && r.ageDays !== undefined ? `, ${posted(r.ageDays)}` : ""}</p>
+          <h3 class="title"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a></h3>
+          <p class="where"><span class="tags">${r.isNew ? `<span class="tag is-new">New</span>` : ""}<span class="tag">${esc(r.track)}</span></span>${esc(r.company)}, ${esc(r.location || "location not listed")}${posted(r.ageDays)}</p>
           ${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
           ${r.why ? `<p class="why"><b>Why it fits:</b> ${esc(r.why)}</p>` : ""}
           ${r.gap ? `<p class="gap"><b>Gap:</b> ${esc(r.gap)}</p>` : ""}
           ${r.error ? `<p class="stop">Could not score: ${esc(r.error)}</p>` : ""}
+          ${people ? `<div class="reach"><span class="lbl">Reach out</span>${people}</div>` : ""}
+          <a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">Open posting</a>
         </div>
-        <a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-id="${esc(r.id)}">Open posting</a>
       </li>`;
     }
 
     function showMessage(title, body) {
-      $("columns").hidden = true;
+      $("columns").hidden = Boolean(title);
       $("message").innerHTML = title ? `<div class="empty"><h2>${title}</h2><p>${body}</p></div>` : "";
     }
 
-    function renderList(fresh) {
+    function renderBoard(fresh) {
       const all = data?.results || [];
       $("columns").classList.toggle("fresh", Boolean(fresh));
-
-      if (!data?.summary) {
-        return showMessage("No check yet", `Press Check my list to pull every open role from the ${st?.watchlistCount ?? ""} companies in your watchlist, filter them, and rank what's left against your profile.`);
-      }
+      if (!data?.summary) return showMessage("No check yet", `Press Check my list to pull every open role from the ${n(st?.watchlistCount)} companies on your watchlist, filter them, and rank what is left against your resume.`);
       if (!all.length) {
         const failed = data.summary.boardsFailed;
         return failed
-          ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board name and your connection.`)
-          : showMessage("No roles passed your filters", `Open "Filtered out" below to see what was cut and why, then loosen data/preferences.json.`);
+          ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board and your connection.`)
+          : showMessage("No roles passed your filters", "Open Filtered out below to see what was cut and why, then loosen data/preferences.json.");
       }
-
-      const rows = all.filter((r) =>
-        (view.track === "All" || r.track === view.track) &&
-        (!view.newOnly || r.isNew) &&
-        ((r.fit ?? 0) >= view.minFit));
-      if (!rows.length) {
-        return showMessage("Nothing matches these filters", `Clear "New only" or lower the minimum fit to see more.`);
-      }
-
+      const rows = all.filter((r) => (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && ((r.fit ?? 0) >= view.minFit));
+      if (!rows.length) return showMessage("Nothing matches these filters", "Turn off New since last check only, or lower the minimum fit.");
       showMessage("");
-      $("columns").hidden = false;
       const grad = rows.filter((r) => r.cohort === "2027 grad");
       const open = rows.filter((r) => r.cohort !== "2027 grad");
       $("gradCount").textContent = grad.length;
@@ -311,65 +367,103 @@
       const dropped = data?.dropped || [];
       const total = data?.droppedCount ?? dropped.length;
       if (!total) { $("dropped").innerHTML = ""; return; }
-      const reasons = (data?.droppedByReason || []).map((r) => `${esc(r.reason)}: ${r.count.toLocaleString()}`).join(". ");
-      const showing = dropped.length < total ? ` Showing the first ${dropped.length.toLocaleString()}.` : "";
-      $("dropped").innerHTML = `<details>
-        <summary>Filtered out (${total.toLocaleString()})</summary>
-        <p class="subtle" style="margin-top:8px">These never reached scoring. If a good role is in here, loosen data/preferences.json.${showing}</p>
-        ${reasons ? `<p class="subtle" style="margin-top:6px">${reasons}.</p>` : ""}
-        <ul class="dropped">${dropped.map((d) => `<li><span>${esc(d.title)}, ${esc(d.company)}</span><span class="r">${esc(d.reason)}</span></li>`).join("")}</ul>
-      </details>`;
+      const reasons = (data?.droppedByReason || []).map((r) => `${esc(r.reason)}: ${n(r.count)}`).join(". ");
+      const showing = dropped.length < total ? ` Showing the first ${n(dropped.length)}.` : "";
+      $("dropped").innerHTML = `<details><summary>Filtered out (${n(total)})</summary>
+        <p class="subtle">These never reached scoring. If a good role is in here, loosen data/preferences.json.${showing}</p>
+        ${reasons ? `<p class="subtle">${reasons}.</p>` : ""}
+        <ul class="dropped">${dropped.map((d) => `<li><span>${esc(d.title)}, ${esc(d.company)}</span><span class="r">${esc(d.reason)}</span></li>`).join("")}</ul></details>`;
     }
 
     function renderErrors() {
       const errors = data?.errors || [];
       $("errors").innerHTML = errors.length
-        ? `<div class="errors" role="status"><p><strong>${errors.length} board${errors.length === 1 ? "" : "s"} could not be checked.</strong> Run npm run check to test each one.</p>${errors.map((e) => `<p>${esc(e.company)}: ${esc(e.error)}</p>`).join("")}</div>`
+        ? `<div class="errors" role="status"><p><strong>${errors.length} board${errors.length === 1 ? "" : "s"} could not be checked.</strong> Run npm run check -- --prune to remove broken ones.</p>${errors.slice(0, 20).map((e) => `<p>${esc(e.company)}: ${esc(e.error)}</p>`).join("")}</div>`
         : "";
     }
 
-    function renderAll(fresh) {
-      renderMode(); renderFunnel(); renderControls(); renderList(fresh); renderDropped(); renderErrors();
-    }
+    function renderAll(fresh) { renderSide(); renderTracks(); renderBoard(fresh); renderDropped(); renderErrors(); }
 
-    async function load() {
-      [st, data] = await Promise.all([
-        fetch("/api/status").then((r) => r.json()),
-        fetch("/api/latest").then((r) => r.json())
-      ]);
-      renderAll(false);
-    }
+    async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
 
-    $("run").addEventListener("click", async () => {
+    // ---------- Actions ----------
+    async function runCheck(label) {
+      if (busy) return;
+      busy = true;
       const btn = $("run");
       btn.disabled = true;
-      btn.textContent = `Checking ${st?.watchlistCount ?? ""} boards...`;
+      btn.textContent = label || `Checking ${n(st?.watchlistCount)} boards...`;
       try {
         const res = await fetch("/api/run", { method: "POST" });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
         data = json;
-        st = await fetch("/api/status").then((r) => r.json());
+        await refreshStatus();
+        notice("");
         renderAll(true);
+        return true;
       } catch (err) {
-        $("errors").innerHTML = `<div class="errors" role="alert"><p><strong>The check stopped:</strong> ${esc(err.message)}</p><p>Check the terminal where npm start is running for details.</p></div>`;
+        notice(`The check stopped: ${esc(err.message)}. The terminal running npm start has the details.`, true);
+        return false;
       } finally {
+        busy = false;
         btn.disabled = false;
         btn.textContent = "Check my list";
       }
-    });
+    }
 
+    async function uploadResume(file) {
+      if (!file || busy) return;
+      if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) return notice("Use a PDF, Word (.docx) or text file.", true);
+      notice(`Reading ${esc(file.name)}...`);
+      try {
+        const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        await refreshStatus();
+        renderSide();
+        notice(`Read ${n(json.chars)} characters from ${esc(json.fileName)}. Rescoring your roles against it now.`);
+        if (!(await runCheck("Rescoring with your new resume..."))) return;
+        const s = data?.summary || {};
+        notice((data?.results || []).length
+          ? `Rescored against ${esc(json.fileName)}.${s.waiting ? ` ${n(s.waiting)} more roles will be rescored on your next checks.` : ""}`
+          : `Saved ${esc(json.fileName)}. The check finished but no roles came back, so there was nothing to rescore yet.`);
+      } catch (err) {
+        notice(`Could not use that resume: ${esc(err.message)}`, true);
+      }
+    }
+
+    $("run").addEventListener("click", () => runCheck());
+    $("pick").addEventListener("click", () => $("fileInput").click());
+    $("fileInput").addEventListener("change", (e) => uploadResume(e.target.files[0]));
     $("tracks").addEventListener("click", (e) => {
       const chip = e.target.closest(".chip");
       if (!chip) return;
       view.track = chip.dataset.track;
-      renderControls(); renderList(false);
+      renderTracks(); renderBoard(false);
     });
-    $("newOnly").addEventListener("change", (e) => { view.newOnly = e.target.checked; renderList(false); });
-    $("minFit").addEventListener("change", (e) => { view.minFit = Number(e.target.value); renderList(false); });
+    $("newOnly").addEventListener("change", (e) => { view.newOnly = e.target.checked; renderBoard(false); });
+    $("minFit").addEventListener("change", (e) => { view.minFit = Number(e.target.value); renderBoard(false); });
 
-    setInterval(renderFunnel, 60000);
-    load();
+    // Drag a file anywhere on the page to replace the resume.
+    let dragDepth = 0;
+    const hasFile = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+    window.addEventListener("dragenter", (e) => { if (!hasFile(e)) return; e.preventDefault(); dragDepth++; $("drop").hidden = false; });
+    window.addEventListener("dragover", (e) => { if (hasFile(e)) e.preventDefault(); });
+    window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").hidden = true; });
+    window.addEventListener("drop", (e) => {
+      if (!hasFile(e)) return;
+      e.preventDefault();
+      dragDepth = 0;
+      $("drop").hidden = true;
+      uploadResume(e.dataTransfer.files[0]);
+    });
+
+    setInterval(renderSide, 60000);
+    (async () => {
+      [st, data] = await Promise.all([fetch("/api/status").then((r) => r.json()), fetch("/api/latest").then((r) => r.json())]);
+      renderAll(false);
+    })();
   </script>
 </body>
 </html>
