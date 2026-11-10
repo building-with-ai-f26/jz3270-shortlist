@@ -93,7 +93,8 @@ export function normalizeAshby(json, entry) {
 // Every Workday careers site answers the same search request its own search box sends, so instead of
 // downloading thousands of postings I run a handful of searches ("MBA", "2027", "new grad"...) per company.
 
-export const WORKDAY_DEFAULT_SEARCHES = ["MBA", "2027", "new grad", "university", "rotational", "early career", "strategy", "operations", "supply chain", "real estate"];
+// Used only when preferences have no workdaySearch. Setup writes searches that match the user's chosen roles.
+export const WORKDAY_DEFAULT_SEARCHES = ["MBA", "2027", "new grad", "university", "rotational", "early career", "strategy", "operations"];
 
 // Reads a careers link such as https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite
 // or https://wd1.myworkdaysite.com/recruiting/acme/Careers.

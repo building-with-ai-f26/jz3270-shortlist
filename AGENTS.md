@@ -29,6 +29,7 @@
 | `src/score.js` | OpenRouter scoring, JSON parsing, keyword fallback, cost and token totals |
 | `src/resume.js` | Reads an uploaded PDF, Word or text resume, removes contact details, and swaps it into `data/profile.md` (keeping "What I'm looking for" and a backup in `profile.previous.md`) |
 | `src/people.js` | Builds the "Reach out" LinkedIn people-search links for each role from the company, the team and `networkSchools` |
+| `src/setup.js` | Turns setup choices (kinds of roles, cities, schools) into `preferences.json`: title words, locations, Workday searches and `networkSchools` |
 | `src/env.js` | Loads `.env` without a dependency |
 | `public/index.html` | The whole front end |
 | `config/*.example.*` | Example watchlist, preferences, profile and starter company list, copied into `data/` on first use |

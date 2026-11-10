@@ -34,7 +34,12 @@ test("each role gets 4 or 5 links built from my schools", () => {
     ["NYU Stern alumni", "Columbia alumni", "2nd-degree connections", "University recruiters", "Supply chain team"]);
   assert.match(grad[1].url, /Columbia\+University\+Northwind/);
 
-  const open = peopleLinks({ company: "Acme", title: "Analyst", cohort: "Open now" }, {});
+  const open = peopleLinks({ company: "Acme", title: "Analyst", cohort: "Open now" }, { networkSchools: ["NYU Stern"] });
   assert.deepEqual(open.map((l) => l.label), ["NYU Stern alumni", "2nd-degree connections", "Recruiters", "MBAs there"]);
   assert.deepEqual(peopleLinks({ company: "" }, {}), []);
+});
+
+test("with no schools set, there are no alumni links instead of a guessed school", () => {
+  const open = peopleLinks({ company: "Acme", title: "Analyst", cohort: "Open now" }, {});
+  assert.deepEqual(open.map((l) => l.label), ["2nd-degree connections", "Recruiters", "MBAs there"]);
 });

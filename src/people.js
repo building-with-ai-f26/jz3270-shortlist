@@ -1,4 +1,4 @@
-// "Who could I reach out to?" For each role I build 4-5 LinkedIn search links instead of pulling
+// "Who could I reach out to?" For each role I build 3-5 LinkedIn search links instead of pulling
 // names myself. LinkedIn's terms forbid automated collection, and its own search, opened while the
 // user is logged in, shows real and current people. Nothing about anyone is fetched or stored here.
 
@@ -41,7 +41,8 @@ export function searchUrl(keywords, network) {
 export function peopleLinks(posting, prefs = {}) {
   const company = peopleCompanyName(posting.company);
   if (!company) return [];
-  const schools = (prefs.networkSchools || ["NYU Stern"]).slice(0, 2);
+  // No schools set means no alumni links, rather than guessing someone's school.
+  const schools = (prefs.networkSchools || []).slice(0, 2);
   const isGrad = posting.cohort === "2027 grad";
   const team = teamFor(posting.title);
 
