@@ -47,7 +47,9 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, fs.readFileSync(path.join(ROOT, "public", "index.html"), "utf8"), "text/html; charset=utf-8");
   }
   if (req.method === "GET" && url.pathname === "/api/status") {
-    return send(res, 200, { ...status(DEMO), resume: DEMO ? null : readResumeMeta(paths(false).dataDir) });
+    // PostHog runs in the page only when POSTHOG_KEY is set. It is a public project key that can only send events.
+    const analytics = process.env.POSTHOG_KEY ? { key: process.env.POSTHOG_KEY, host: process.env.POSTHOG_HOST || "https://us.i.posthog.com" } : null;
+    return send(res, 200, { ...status(DEMO), resume: DEMO ? null : readResumeMeta(paths(false).dataDir), analytics });
   }
   // The browser sends the resume file as the raw body, with its name in a header.
   if (req.method === "POST" && url.pathname === "/api/resume") {

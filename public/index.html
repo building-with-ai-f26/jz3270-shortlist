@@ -697,6 +697,58 @@
 
     async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
 
+    // ---------- Usage analytics ----------
+    // PostHog loads only when POSTHOG_KEY is set in .env. This page shows a resume, job titles and scores, so
+    // automatic click capture and session recording are off, and track() sends only the properties listed here.
+    // Never add resume text, scores, titles, company names or setup choices.
+    const EVENTS = {
+      run_clicked: ["scoring"],
+      resume_uploaded: ["file_type", "from"],
+      posting_opened: ["column", "how"],
+      people_link_opened: ["link_type"],
+      setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time"]
+    };
+    function startAnalytics(cfg) {
+      if (!cfg?.key || window.posthog?.__loaded) return;
+      // PostHog's standard loader: queues calls until array.js arrives from PostHog's servers.
+      !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once unregister identify reset get_distinct_id opt_in_capturing opt_out_capturing has_opted_out_capturing set_config".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+      // Project settings in PostHog can switch on extra capture (dead clicks, web vitals, heatmaps, surveys),
+      // so each is turned off here, and before_send drops any event that is not one of mine or a page view.
+      const SYSTEM_EVENTS = ["$pageview", "$pageleave", "$identify"];
+      posthog.init(cfg.key, {
+        api_host: cfg.host,
+        autocapture: false,
+        rageclick: false,
+        capture_dead_clicks: false,
+        capture_performance: false,
+        enable_heatmaps: false,
+        disable_surveys: true,
+        disable_session_recording: true,
+        capture_pageview: true,
+        person_profiles: "identified_only",
+        before_send: (event) => (event && (EVENTS[event.event] || SYSTEM_EVENTS.includes(event.event)) ? event : null)
+      });
+      posthog.register({ app: "local", mode: st?.demo ? "demo" : "live" });
+    }
+    function track(event, props = {}) {
+      if (!window.posthog || !EVENTS[event]) return;
+      const safe = {};
+      for (const k of EVENTS[event]) if (props[k] !== undefined) safe[k] = props[k];
+      posthog.capture(event, safe);
+    }
+    const fileType = (name) => (/\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : "text");
+    // The kind of Reach out link, never the school or company in it.
+    const linkType = (label) => (/alumni/i.test(label) ? "alumni" : /2nd-degree/i.test(label) ? "connections" : /recruit/i.test(label) ? "recruiters" : /MBAs/i.test(label) ? "mbas" : "team");
+    // Opening a posting or a Reach out link, by click (including a middle click for a new tab) or the O key.
+    function trackOpen(e) {
+      const a = e.target.closest("a[data-kind]");
+      if (!a) return;
+      if (a.dataset.kind === "posting") track("posting_opened", { column: a.closest("#boardGrad") ? "grad" : "open", how: "click" });
+      else if (a.dataset.kind === "people") track("people_link_opened", { link_type: linkType(a.textContent) });
+    }
+    $("boards").addEventListener("click", trackOpen);
+    $("boards").addEventListener("auxclick", (e) => { if (e.button === 1) trackOpen(e); });
+
     // ---------- Actions ----------
     async function runCheck(label) {
       if (busy) return;
@@ -733,6 +785,7 @@
         const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("resume_uploaded", { file_type: fileType(json.fileName), from: "board" });
         await refreshStatus();
         renderTop();
         notice(`Read ${n(json.chars)} characters from ${esc(json.fileName)}. Rescoring your roles against it now.`);
@@ -746,7 +799,10 @@
       }
     }
 
-    $("run").addEventListener("click", () => runCheck());
+    $("run").addEventListener("click", () => {
+      track("run_clicked", { scoring: st?.demo ? "demo" : st?.aiOn ? "ai" : "keywords" });
+      runCheck();
+    });
     $("pick").addEventListener("click", () => $("fileInput").click());
     // On the setup screen a new resume is only saved; the check runs when setup is saved.
     $("fileInput").addEventListener("change", (e) => {
@@ -785,6 +841,7 @@
         next.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       } else if (key === "o" && current) {
         e.preventDefault();
+        track("posting_opened", { column: current.closest("#boardGrad") ? "grad" : "open", how: "keyboard" });
         window.open(current.dataset.url, "_blank", "noopener");
       } else if (key === "enter" && current === e.target && current.classList.contains("compact")) {
         e.preventDefault();
@@ -958,6 +1015,7 @@
         const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("resume_uploaded", { file_type: fileType(json.fileName), from: "setup" });
         await refreshStatus();
         setup.sampleResume = false;
         $("resumeLine").innerHTML = resumeLine(setup);
@@ -993,6 +1051,11 @@
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        // Counts and the scoring choice only, never which roles, cities, sectors or schools.
+        track("setup_saved", {
+          roles_count: picked("roles").length, cities_count: picked("cities").length, sectors_count: picked("sectors").length,
+          schools_count: schools.length, scoring, first_time: Boolean(st?.needsSetup)
+        });
         $("orKey").value = "";
         setup = json;
         await refreshStatus();
@@ -1037,6 +1100,7 @@
     setInterval(renderTop, 60000);
     (async () => {
       [st, data] = await Promise.all([fetch("/api/status").then((r) => r.json()), fetch("/api/latest").then((r) => r.json())]);
+      startAnalytics(st.analytics);
       renderAll(false);
       // A fresh install goes straight to setup. Changing the hash runs route() through hashchange.
       if (st.needsSetup && location.hash !== "#setup") location.hash = "#setup";
