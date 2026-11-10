@@ -35,34 +35,35 @@ Create your PostHog account in Week 1. Install it on the Product Page and local 
 
 ## Local setup
 
-Requires Node.js 18 or newer (`node --version`). There are no npm packages to install.
+Requires Node.js 22 or newer (`node --version`).
 
 ```bash
 git clone https://github.com/building-with-ai-f26/jz3270-shortlist.git
 cd jz3270-shortlist
+npm install         # two small packages for reading PDF and Word resumes
 
 npm run demo        # demo mode: fictional postings, no API calls, opens on http://localhost:3000
-npm test            # 31 automated tests
+npm test            # 89 automated tests
 ```
 
 ### Run it on your own search
 
 ```bash
-cp .env.example .env          # then paste your OpenRouter key into .env
-npm run check                 # creates data/ on first run and tests every board in your watchlist
-npm start                     # live mode on http://localhost:3000, press "Check my list"
+npm start           # live mode on http://localhost:3000
 ```
 
-On the first live run, Shortlist copies three example files into `data/`, which is gitignored:
+The first time, a setup screen opens in the browser. Add your resume, then pick the kinds of roles, cities, sectors of companies to watch, and your schools, and write a few sentences on what you are looking for. Choose free keyword scoring, or paste an OpenRouter key for AI scoring. Save, and Shortlist runs its first check. Settings, under the logo, reopens setup any time.
 
-| File | What to put in it |
+Everything you enter stays in `data/`, which is gitignored:
+
+| File | What it holds |
 | --- | --- |
-| `data/profile.md` | Your resume as plain text, plus a short paragraph on what you want |
-| `data/watchlist.json` | Companies to check: `{ "company": "Anthropic", "ats": "greenhouse", "board": "anthropic" }` |
-| `data/preferences.json` | Tracks, locations, title keywords to include or exclude, max posting age, max postings to score per run |
+| `data/profile.md` | Your resume as plain text, with email, phone and links removed, plus what you are looking for |
+| `data/watchlist.json` | Companies to check. Setup adds a sector's companies; you can add others by hand: `{ "company": "Anthropic", "ats": "greenhouse", "board": "anthropic" }` |
+| `data/preferences.json` | Setup writes roles, cities, schools and scoring. Excluded title words, max posting age and max postings to score per check are edited here by hand |
 
-To find a company's board slug, open one of its job postings. A URL like `boards.greenhouse.io/anthropic/...` or `job-boards.greenhouse.io/anthropic/...` means `"ats": "greenhouse", "board": "anthropic"`. Lever uses `jobs.lever.co/<board>` and Ashby uses `jobs.ashbyhq.com/<board>`. Run `npm run check` after adding companies to confirm each slug works.
+To add a company setup does not offer, put its name in `data/companies.txt` and run `npm run discover`, or paste its careers link on the same line, like `NVIDIA | https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite`. Run `npm run check` afterwards to confirm each board works.
 
-Without a real `OPENROUTER_API_KEY`, live mode still runs but scores with keyword overlap, which is much less accurate. With a key, each run prints and displays the token count and the dollar cost OpenRouter reports.
+With keyword scoring, roles are ranked against each other by shared words, which is free but much less accurate. With an OpenRouter key, each check shows the token count and the dollar cost OpenRouter reports, and each role is paid for once. Your key is saved only in `.env`.
 
 Keep private keys out of source code, browser code, screenshots, and commits. The template ignores `.env`; `.env.example` contains placeholders only. Your resume and watchlist stay in `data/`, which is also ignored.
