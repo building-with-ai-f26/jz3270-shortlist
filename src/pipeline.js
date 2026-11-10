@@ -223,11 +223,15 @@ export function readLatest(demo) {
 
 export function status(demo) {
   const p = paths(demo);
+  const runs = readJson(p.state, { runs: [] }).runs.length;
   return {
     demo,
     aiOn: !demo && hasRealKey(),
     model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
     watchlistCount: readJson(p.watchlist, []).length,
-    runs: readJson(p.state, { runs: [] }).runs.length
+    runs,
+    // A fresh install: setup has never been saved and nothing has been checked yet.
+    // Anyone who already ran checks before setup existed is not sent through it.
+    needsSetup: !demo && !readJson(p.preferences, {}).setup && runs === 0
   };
 }

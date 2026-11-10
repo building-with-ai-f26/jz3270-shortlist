@@ -1,5 +1,12 @@
 // Setup turns a few plain choices (kinds of roles, cities, schools) into the preferences file the
 // filter reads, so nobody has to edit JSON by hand. The first-run screen sends these choices.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { LOOKING_FOR } from "./resume.js";
+
+const SAMPLE_PROFILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config", "profile.example.md");
+const MAX_LOOKING_FOR = 2000;
 
 // Every MBA search starts from these. They catch programs and roles built for people graduating in 2027,
 // whatever the function.
@@ -77,4 +84,84 @@ export function buildPreferences(answers = {}, existing = {}) {
     // The choices themselves, so the setup screen can show them again later.
     setup: { roles, cities }
   };
+}
+
+function readJson(file, fallback) {
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; }
+}
+
+// Preferences written before setup existed have no `setup` record, so I work out which choices
+// they already match: a role counts if one of its searches is there or all of its title words are,
+// and a city counts if its main name is listed.
+function inferChoices(prefs) {
+  const searches = new Set((prefs.workdaySearch || []).map((s) => s.toLowerCase()));
+  const titles = new Set((prefs.titleInclude || []).map((s) => s.toLowerCase()));
+  const locations = new Set(prefs.locations || []);
+  const matches = (r) => r.searches.some((s) => searches.has(s)) || r.titles.every((t) => titles.has(t.toLowerCase()));
+  return {
+    roles: Object.keys(ROLE_FAMILIES).filter((k) => matches(ROLE_FAMILIES[k])),
+    cities: Object.keys(CITIES).filter((k) => locations.has(CITIES[k].locations[0]))
+  };
+}
+
+export function lookingForText(profile = "") {
+  const m = profile.match(LOOKING_FOR);
+  return m ? profile.slice(m.index + m[0].length).trim() : "";
+}
+
+// Replaces the "What I'm looking for" section and leaves the resume above it alone.
+export function withLookingFor(profile = "", text) {
+  const m = profile.match(LOOKING_FOR);
+  const top = (m ? profile.slice(0, m.index) : profile).trimEnd();
+  return `${top || "# Profile"}\n\n## What I'm looking for\n\n${text.trim()}\n`;
+}
+
+// Everything above "What I'm looking for", which is the resume.
+function resumePart(profile = "") {
+  const m = profile.match(LOOKING_FOR);
+  return (m ? profile.slice(0, m.index) : profile).trim();
+}
+
+// What the setup screen shows: the choices on offer and what this user picked.
+// A fresh install still has the fictional sample profile. sampleResume tells the screen to ask for a
+// real resume, and the sample's own "What I'm looking for" is left out of the form.
+export function readSetup(dataDir) {
+  const prefs = readJson(path.join(dataDir, "preferences.json"), {});
+  const profile = fs.existsSync(path.join(dataDir, "profile.md")) ? fs.readFileSync(path.join(dataDir, "profile.md"), "utf8") : "";
+  const sample = fs.readFileSync(SAMPLE_PROFILE, "utf8");
+  const sampleResume = !resumePart(profile) || resumePart(profile) === resumePart(sample);
+  const lookingFor = lookingForText(profile);
+  // On a fresh install the preferences are the starter example, which is not this user's choice.
+  const fresh = !prefs.setup && sampleResume;
+  const chosen = prefs.setup || (fresh ? { roles: [], cities: [] } : inferChoices(prefs));
+  return {
+    roles: chosen.roles,
+    cities: chosen.cities,
+    schools: fresh ? [] : (prefs.networkSchools || []),
+    lookingFor: lookingFor === lookingForText(sample) ? "" : lookingFor,
+    sampleResume,
+    options: {
+      roles: Object.entries(ROLE_FAMILIES).map(([key, r]) => ({ key, label: r.label })),
+      cities: Object.entries(CITIES).map(([key, c]) => ({ key, label: c.label }))
+    }
+  };
+}
+
+// Saves the setup form. The profile is only rewritten if "What I'm looking for" actually changed,
+// because any change to the profile means every saved score is redone (and paid for) on the next check.
+export function saveSetup(input = {}, dataDir) {
+  const prefsPath = path.join(dataDir, "preferences.json");
+  const prefs = buildPreferences(input, readJson(prefsPath, {}));
+
+  const lookingFor = typeof input.lookingFor === "string" ? input.lookingFor.trim() : "";
+  if (lookingFor.length > MAX_LOOKING_FOR) throw new Error(`Keep "What I'm looking for" under ${MAX_LOOKING_FOR} characters.`);
+
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(prefsPath, JSON.stringify(prefs, null, 2) + "\n");
+
+  const profilePath = path.join(dataDir, "profile.md");
+  const profile = fs.existsSync(profilePath) ? fs.readFileSync(profilePath, "utf8") : "";
+  if (lookingFor && lookingFor !== lookingForText(profile)) fs.writeFileSync(profilePath, withLookingFor(profile, lookingFor));
+
+  return readSetup(dataDir);
 }

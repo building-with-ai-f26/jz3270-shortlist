@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const MAX_BYTES = 10 * 1024 * 1024;
-const LOOKING_FOR = /^##\s*what i'?m looking for\s*$/im;
+export const LOOKING_FOR = /^##\s*what i'?m looking for\s*$/im;
 
 export function fileKind(filename = "") {
   const ext = path.extname(filename).toLowerCase();

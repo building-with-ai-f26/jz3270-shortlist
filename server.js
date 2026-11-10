@@ -6,6 +6,7 @@ import path from "node:path";
 import { loadEnv } from "./src/env.js";
 import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths } from "./src/pipeline.js";
 import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
+import { readSetup, saveSetup } from "./src/setup.js";
 
 loadEnv(ROOT);
 const DEMO = process.argv.includes("--demo") || process.env.SHORTLIST_DEMO === "1";
@@ -23,14 +24,15 @@ function send(res, code, body, type = "application/json") {
 
 let running = null;
 
-// Reads an uploaded file sent as the raw request body, refusing anything over the size limit.
-function readBody(req, limit) {
+// Reads the raw request body, refusing anything over the size limit. Past the limit I stop keeping
+// chunks but let the upload finish, so the browser gets the error message instead of a dropped connection.
+function readBody(req, limit, tooBig = "That file is over 10 MB. Export a smaller PDF and try again.") {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     req.on("data", (c) => {
       size += c.length;
-      if (size > limit) { reject(new Error("That file is over 10 MB. Export a smaller PDF and try again.")); req.destroy(); return; }
+      if (size > limit) { reject(new Error(tooBig)); return; }
       chunks.push(c);
     });
     req.on("end", () => resolve(Buffer.concat(chunks)));
@@ -54,6 +56,20 @@ const server = http.createServer(async (req, res) => {
       const filename = decodeURIComponent(req.headers["x-filename"] || "resume.pdf");
       const meta = await saveResume(await readBody(req, MAX_BYTES), filename, paths(false).dataDir);
       return send(res, 200, meta);
+    } catch (err) {
+      return send(res, 400, { error: err.message });
+    }
+  }
+  // Setup: the choices on offer and what this user picked, and saving the setup form.
+  if (url.pathname === "/api/setup" && (req.method === "GET" || req.method === "POST")) {
+    if (DEMO) return send(res, 400, { error: "Setup works in live mode. Stop the demo and run npm start." });
+    const dataDir = paths(false).dataDir;
+    if (req.method === "GET") return send(res, 200, readSetup(dataDir));
+    try {
+      const body = await readBody(req, 64 * 1024, "That form is too large.");
+      let input;
+      try { input = JSON.parse(body.toString("utf8")); } catch { throw new Error("The form did not arrive as JSON."); }
+      return send(res, 200, saveSetup(input, dataDir));
     } catch (err) {
       return send(res, 400, { error: err.message });
     }
