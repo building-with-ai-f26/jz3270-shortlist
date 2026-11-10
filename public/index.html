@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%271%27 y=%271%27 width=%2714%27 height=%2714%27 fill=%27%23141618%27/%3E%3Crect x=%274%27 y=%274%27 width=%278%27 height=%273%27 fill=%27%230f7a4a%27/%3E%3Crect x=%274%27 y=%279%27 width=%275%27 height=%273%27 fill=%27%23fbfbf9%27/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Public+Sans:wght@400..800&display=swap" rel="stylesheet" />
   <!-- Build 2: paste the PostHog web snippet here and capture "run_clicked", "resume_uploaded", "posting_opened", "people_link_opened". -->
   <style>
     :root {
@@ -63,7 +63,7 @@
       padding: 12px 14px; background: var(--strip); border: 1px dashed var(--ink-3);
     }
     .resume .lbl { grid-column: 1; margin: 0; font-size: 12px; color: var(--ink-3); }
-    .resume .file { grid-column: 1; margin: 0; font-weight: 650; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+    .resume .file { grid-column: 1; margin: 0; font-weight: 700; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
     .resume .when { grid-column: 1; margin: 0; font-size: 12px; color: var(--ink-3); }
     .resume .pick {
       grid-column: 2; grid-row: 1 / span 3; align-self: center;
@@ -172,20 +172,20 @@
 
     .s-body { min-width: 0; }
     .s-head { display: flex; align-items: flex-start; gap: 14px; }
-    .s-title { flex: 1; margin: 0; font-size: 16px; line-height: 1.3; font-weight: 650; text-wrap: pretty; }
+    .s-title { flex: 1; margin: 0; font-size: 16px; line-height: 1.3; font-weight: 700; text-wrap: pretty; }
     .s-title a { text-decoration: none; }
     .s-title a:hover { text-decoration: underline; }
     .open {
       flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; margin-top: -2px;
-      border: 1px solid var(--ink); font-size: 12px; font-weight: 650; text-decoration: none; white-space: nowrap;
+      border: 1px solid var(--ink); font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap;
       transition: background 140ms var(--ease), color 140ms var(--ease);
     }
     .open:hover { background: var(--ink); color: var(--strip); }
     .meta { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
     .meta .co { color: var(--ink); font-weight: 600; }
-    .new-tag { display: inline-block; padding: 1px 6px; background: var(--new); color: var(--ink); font-size: 11px; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+    .new-tag { display: inline-block; padding: 1px 6px; background: var(--new); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
     .track { display: inline-block; padding: 0 6px; border: 1px solid var(--rule); font-size: 11px; font-weight: 600; color: var(--ink-2); }
-    .stop { margin: 8px 0 0; font-size: 13px; font-weight: 650; color: var(--stop); }
+    .stop { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--stop); }
     .report { margin: 10px 0 0; display: grid; gap: 4px; font-size: 14px; max-width: 72ch; }
     .report div { display: grid; grid-template-columns: 92px 1fr; gap: 12px; }
     .report dt { font-size: 12px; font-weight: 700; color: var(--ink-3); padding-top: 2px; }
@@ -269,7 +269,7 @@
     .dropzone .big { font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; line-height: 1.05; }
     .dropzone p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
     .dropzone .icon { width: 30px; height: 30px; stroke-width: 1.5; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--ink); background: transparent; font-size: 14px; font-weight: 650; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--ink); background: transparent; font-size: 14px; font-weight: 700; }
     .btn:hover { background: var(--ink); color: var(--strip); }
     .btn.solid { background: var(--ink); color: var(--strip); }
     .btn.solid:hover { box-shadow: var(--lift); }
