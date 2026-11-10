@@ -57,6 +57,7 @@
     .brand { align-self: center; }
     .wordmark { margin: 0; font-family: var(--display); font-weight: 900; font-size: 44px; line-height: 0.9; letter-spacing: 0.01em; text-transform: uppercase; }
     .mode { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); max-width: 46ch; }
+    .settings { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
 
     .resume {
       display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-content: center;
@@ -307,6 +308,9 @@
     .savebar .wrap { display: flex; align-items: center; gap: 18px; padding-top: 12px; padding-bottom: 12px; }
     .savebar p { margin: 0; font-size: 14px; color: var(--ink-2); }
     .savebar p b { color: var(--ink); font-family: var(--display); font-size: 22px; font-weight: 800; }
+    .savebar p.setup-msg { color: var(--ink); font-weight: 600; }
+    .savebar p.setup-msg.bad { color: var(--stop); }
+    .savebar p.setup-msg:empty { display: none; }
     .savebar .run { width: auto; min-height: 50px; margin-left: auto; font-size: 22px; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -402,6 +406,7 @@
         <div class="brand">
           <h1 class="wordmark">Shortlist</h1>
           <p class="mode" id="mode">Loading...</p>
+          <a class="settings" href="#setup">Settings</a>
         </div>
 
         <section class="resume" aria-label="Your resume">
@@ -455,9 +460,9 @@
     </main>
   </div>
 
-  <!-- First-run setup. A static preview for now, opened at /#setup. It renders from the same shape GET /api/setup returns. -->
+  <!-- Setup, at /#setup. It opens by itself on a fresh install and from Settings after that. Demo mode shows a preview that does not save. -->
   <div id="setupView" hidden>
-    <div class="preview-note"><div class="wrap">Preview of the first-run setup screen. Nothing here is saved yet. <a href="#">Back to the board</a></div></div>
+    <div class="preview-note" id="setupNote" hidden><div class="wrap" id="setupNoteText"></div></div>
     <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
     <main class="wrap setup">
       <ol class="steps" id="setupSteps"></ol>
@@ -465,6 +470,7 @@
     </main>
     <div class="savebar"><div class="wrap">
       <p id="setupSummary"></p>
+      <p class="setup-msg" id="setupMsg" role="status" aria-live="polite"></p>
       <button class="run" id="setupSave" type="button"><span>Save and check my list</span></button>
     </div></div>
   </div>
@@ -523,7 +529,8 @@
         $("mode").textContent = st.demo
           ? "Demo data: fictional postings, keyword scoring, no API calls."
           : st.aiOn ? `${n(st.watchlistCount)} companies on your watchlist, scored by ${st.model.split("/").pop()}.`
-                    : `${n(st.watchlistCount)} companies on your watchlist, keyword scoring. Add an OpenRouter key for AI scoring.`;
+          : st.keywordsChosen ? `${n(st.watchlistCount)} companies on your watchlist, free keyword scoring.`
+                    : `${n(st.watchlistCount)} companies on your watchlist, keyword scoring. Add an OpenRouter key in Settings for AI scoring.`;
         const r = st.resume;
         $("resumeFile").textContent = r ? r.fileName : st.demo ? "Sample profile (demo)" : "Not uploaded yet";
         $("resumeWhen").textContent = r ? `Updated ${ago(r.uploadedAt)}. Drop a new file anywhere to replace it.` : st.demo ? "Uploads work in live mode." : "Shortlist is using data/profile.md. Drop a resume anywhere.";
@@ -617,7 +624,7 @@
         const failed = data.summary.boardsFailed;
         return failed
           ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board and your connection.`)
-          : showMessage("No roles passed your filters", "Open Filtered out below to see what was cut and why, then loosen data/preferences.json.");
+          : showMessage("No roles passed your filters", 'Open Filtered out below to see what was cut and why. Add roles or cities in <a href="#setup">Settings</a>, or loosen the other rules in data/preferences.json.');
       }
       const rows = all.filter((r) => (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && ((r.fit ?? 0) >= view.minFit));
       if (!rows.length) return showMessage("Nothing matches these filters", "Turn off New since last check only, or lower the minimum fit.");
@@ -639,7 +646,7 @@
       $("dropped").innerHTML = `<details class="cut"><summary><h3>Filtered out</h3><span class="sub tnum">${n(total)} roles never reached scoring</span>${icon("chev", "chev")}</summary>
         <div class="cut-body">
           ${reasons ? `<ul class="reasons">${reasons}</ul>` : ""}
-          <p class="cost">If a good role is in here, a rule is too strict. Loosen it in data/preferences.json.${showing}</p>
+          <p class="cost">If a good role is in here, a rule is too strict. Roles and cities are in <a href="#setup">Settings</a>; the other rules are in data/preferences.json.${showing}</p>
           <table class="dropped"><thead><tr><th>Role</th><th>Company</th><th>Why it was cut</th></tr></thead>
           <tbody>${dropped.map((d) => `<tr><td>${esc(d.title)}</td><td>${esc(d.company)}</td><td class="r">${esc(d.reason)}</td></tr>`).join("")}</tbody></table>
         </div></details>`;
@@ -709,7 +716,12 @@
 
     $("run").addEventListener("click", () => runCheck());
     $("pick").addEventListener("click", () => $("fileInput").click());
-    $("fileInput").addEventListener("change", (e) => uploadResume(e.target.files[0]));
+    // On the setup screen a new resume is only saved; the check runs when setup is saved.
+    $("fileInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if ($("setupView").hidden) uploadResume(file); else setupUpload(file);
+    });
     $("tracks").addEventListener("click", (e) => {
       const b = e.target.closest("button");
       if (!b) return;
@@ -760,12 +772,12 @@
       e.preventDefault();
       dragDepth = 0;
       $("drop").hidden = true;
-      if ($("setupView").hidden) uploadResume(e.dataTransfer.files[0]);
+      if ($("setupView").hidden) uploadResume(e.dataTransfer.files[0]); else setupUpload(e.dataTransfer.files[0]);
     });
 
-    // ---------- Setup preview ----------
-    // Sample data in the shape GET /api/setup returns. Sectors and counts are copied from the starter list
-    // by sector being built on main; wiring this to the real routes comes next.
+    // ---------- Setup ----------
+    // Live mode reads and saves GET and POST /api/setup. Demo mode has no setup to save, so it shows this
+    // sample in the same shape, with saving turned off.
     const SETUP_PREVIEW = {
       roles: ["strategy", "programs"],
       cities: ["newYork"],
@@ -774,6 +786,8 @@
       lookingFor: "",
       sampleResume: true,
       watchlistCount: 0,
+      scoring: "keywords",
+      hasKey: false,
       options: {
         roles: [
           { key: "strategy", label: "Strategy and operations" }, { key: "product", label: "Product management" },
@@ -791,10 +805,27 @@
         ]
       }
     };
-    const LOOKING_FOR_MAX = 1500;
+    const LOOKING_FOR_MAX = 2000;
+    let setup = null;
+    let schools = [];
 
     function choiceList(name, options, picked) {
       return `<div class="choices">${options.map((o) => `<label class="choice"><input type="checkbox" name="${name}" value="${esc(o.key)}"${picked.includes(o.key) ? " checked" : ""} /><span class="box">${icon("check")}</span>${esc(o.label)}${o.count !== undefined ? `<span class="count" aria-label="${n(o.count)} companies">${n(o.count)}</span>` : ""}</label>`).join("")}</div>`;
+    }
+
+    function setupMsg(text, bad) {
+      $("setupMsg").textContent = text || "";
+      $("setupMsg").classList.toggle("bad", Boolean(bad));
+    }
+
+    function resumeLine(s) {
+      if (s.sampleResume) return `<p class="warn" id="sampleWarn"><b>Sample</b>Right now Shortlist would score against a fictional sample resume. Add yours to continue.</p>`;
+      const r = st?.resume;
+      return `<p class="warn"><b>Ready</b>${r ? `Using ${esc(r.fileName)}, added ${ago(r.uploadedAt)}.` : "Using the resume in data/profile.md."} Add a new file to replace it.</p>`;
+    }
+
+    function renderSchools() {
+      $("schoolTokens").innerHTML = schools.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-i="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("");
     }
 
     function renderSetup(s) {
@@ -803,16 +834,19 @@
         ["schools", "Your schools"], ["lookingFor", "What you are looking for"], ["scoring", "Scoring"]
       ];
       $("setupSteps").innerHTML = sections.map(([id, label]) => {
-        const done = id === "resume" ? !s.sampleResume : Array.isArray(s[id]) ? s[id].length > 0 : id === "lookingFor" ? Boolean(s.lookingFor) : false;
+        const done = id === "resume" ? !s.sampleResume : Array.isArray(s[id]) ? s[id].length > 0 : id === "lookingFor" ? Boolean(s.lookingFor) : id === "scoring";
         return `<li><a href="#setup" data-jump="q-${id}" class="${done ? "done" : ""}">${label}</a></li>`;
       }).join("");
+      // AI scoring shows as chosen only when a key is saved, since without one every check falls back to keywords.
+      const ai = s.scoring === "ai" && s.hasKey;
+      schools = [...s.schools];
       $("setupForm").innerHTML = `
-        <h1>Set up your board</h1>
-        <p class="lede">Tell Shortlist what you are recruiting for. It checks your companies' job boards, cuts what does not fit these rules, and ranks the rest against your resume. You can change any of this later.</p>
+        <h1>${st?.needsSetup ? "Set up your board" : "Settings"}</h1>
+        <p class="lede">Tell Shortlist what you are recruiting for. It checks your companies' job boards, cuts what does not fit these rules, and ranks the rest against your resume. You can change any of this later from Settings.</p>
         <section class="q" id="q-resume"><h2>Your resume</h2>
           <p class="help">PDF, Word or text. Shortlist removes your email, phone and links before anything is saved or scored. The file itself is not kept.</p>
-          <div class="dropzone">${icon("up")}<div><div class="big">Drop your resume here</div><p>or choose a file from your computer</p></div><button type="button" class="btn">Choose file</button></div>
-          ${s.sampleResume ? `<p class="warn"><b>Sample</b>Right now Shortlist is scoring against a fictional sample resume.</p>` : ""}
+          <div class="dropzone">${icon("up")}<div><div class="big">Drop your resume here</div><p>or choose a file from your computer</p></div><button type="button" class="btn" id="setupPick">Choose file</button></div>
+          <div id="resumeLine">${resumeLine(s)}</div>
         </section>
         <section class="q" id="q-roles"><h2>Kinds of roles</h2>
           <p class="help">Pick every kind you would apply to. MBA 2027 and new grad titles are always included.</p>
@@ -823,64 +857,158 @@
           ${choiceList("cities", s.options.cities, s.cities)}
         </section>
         <section class="q" id="q-sectors"><h2>Companies to watch</h2>
-          <p class="help">Start from a ready list of companies in each sector; the number is how many companies each adds. You can add or remove single companies later.</p>
+          <p class="help">Start from a ready list of companies in each sector; the number is how many companies each adds. Unchecking a sector removes only its starter companies, never ones you added yourself.</p>
           ${choiceList("sectors", s.options.sectors, s.sectors)}
         </section>
         <section class="q" id="q-schools"><h2>Your schools</h2>
-          <p class="help">Used for the Reach out links on each role, so you find alumni at that company first.</p>
-          <div class="chips-in">${s.schools.map((x) => `<span class="token">${esc(x)}<button type="button" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("")}<input type="text" placeholder="Add a school, like Wharton or your undergrad" aria-label="Add a school" /></div>
+          <p class="help">Used for the Reach out links on each role, so you find alumni at that company first. Press Enter after each one.</p>
+          <div class="chips-in"><span id="schoolTokens" style="display:contents"></span><input type="text" id="schoolInput" maxlength="80" placeholder="Add a school, like Wharton or your undergrad" aria-label="Add a school" /></div>
         </section>
         <section class="q" id="q-lookingFor"><h2>What you are looking for</h2>
-          <p class="help">A few sentences in your own words. The model reads this next to your resume when it scores each role.</p>
+          <p class="help">A few sentences in your own words. The model reads this next to your resume when it scores each role. Changing it means every role is scored again on your next check.</p>
           <textarea class="field" name="lookingFor" maxlength="${LOOKING_FOR_MAX}" placeholder="For example: Strategy or operations roles at a growth stage company in New York. Open to rotational programs. Not interested in pure sales.">${esc(s.lookingFor)}</textarea>
           <p class="count-line tnum"><span id="lfCount">${s.lookingFor.length}</span> of ${n(LOOKING_FOR_MAX)} characters</p>
         </section>
         <section class="q" id="q-scoring"><h2>Scoring</h2>
-          <p class="help">Keyword scoring is free and works right away. AI scoring reads each role against your resume and explains the fit and the gap. Each role is paid for once.</p>
+          <p class="help">Keyword scoring is free and works right away. AI scoring reads each role against your resume and explains the fit and the gap. Each role is paid for once, and switching back and forth keeps the scores you paid for.</p>
           <div class="modes">
-            <label class="choice"><input type="radio" name="scoring" value="keywords" checked /><span class="t"><span class="box">${icon("check")}</span>Keyword scoring</span><small>Free. No account needed.</small></label>
-            <label class="choice"><input type="radio" name="scoring" value="ai" /><span class="t"><span class="box">${icon("check")}</span>AI scoring with OpenRouter</span><small>Needs an OpenRouter key. Cost shows after every check.</small></label>
+            <label class="choice"><input type="radio" name="scoring" value="keywords"${ai ? "" : " checked"} /><span class="t"><span class="box">${icon("check")}</span>Keyword scoring</span><small>Free. No account needed.</small></label>
+            <label class="choice"><input type="radio" name="scoring" value="ai"${ai ? " checked" : ""} /><span class="t"><span class="box">${icon("check")}</span>AI scoring with OpenRouter</span><small>Needs an OpenRouter key. Cost shows after every check.</small></label>
           </div>
-          <div class="key-row" id="keyRow" hidden><label for="orKey">OpenRouter key</label><input class="field" id="orKey" type="password" autocomplete="off" placeholder="Paste your key. It stays on this computer." /></div>
+          <div class="key-row" id="keyRow" hidden><label for="orKey">OpenRouter key</label><input class="field" id="orKey" type="password" autocomplete="off" placeholder="${s.hasKey ? "A key is saved. Paste a new one only to replace it." : "Paste your key from openrouter.ai/keys. It stays on this computer."}" /></div>
         </section>`;
+      renderSchools();
+      setupMsg("");
       updateSetupSummary();
     }
 
     function updateSetupSummary() {
+      if (!setup) return;
       const form = $("setupForm");
       const picked = (name) => [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
-      const sectors = SETUP_PREVIEW.options.sectors.filter((x) => picked("sectors").includes(x.key));
+      const sectors = setup.options.sectors.filter((x) => picked("sectors").includes(x.key));
       const companies = sectors.reduce((a, x) => a + x.count, 0);
       const roles = picked("roles").length;
       const cities = picked("cities").length;
-      $("setupSummary").innerHTML = `<b class="tnum">${n(companies)}</b> companies to watch. ${roles} kind${roles === 1 ? "" : "s"} of role, ${cities ? `${cities} cit${cities === 1 ? "y" : "ies"}` : "every city"}.`;
+      $("setupSummary").innerHTML = `<b class="tnum">${n(companies)}</b> starter companies to watch. ${roles} kind${roles === 1 ? "" : "s"} of role, ${cities ? `${cities} cit${cities === 1 ? "y" : "ies"}` : "every city"}.`;
       $("keyRow").hidden = form.querySelector('input[name="scoring"]:checked')?.value !== "ai";
+    }
+
+    async function openSetup() {
+      const demo = st?.demo;
+      try {
+        setup = demo ? SETUP_PREVIEW : await fetch("/api/setup").then((r) => r.json());
+      } catch {
+        setup = null;
+      }
+      $("setupNote").hidden = Boolean(st?.needsSetup) && !demo;
+      $("setupNoteText").innerHTML = demo
+        ? 'Preview of the setup screen. It saves in live mode (npm start). <a href="#">Back to the board</a>'
+        : 'Changes apply when you save. <a href="#">Back to the board</a> without saving.';
+      if (!setup?.options) return setupMsg("Could not load setup. Is npm start still running?", true);
+      renderSetup(setup);
+    }
+
+    function addSchool() {
+      const input = $("schoolInput");
+      const name = input.value.replace(/,/g, " ").trim();
+      if (name && !schools.some((x) => x.toLowerCase() === name.toLowerCase())) schools.push(name);
+      input.value = "";
+      renderSchools();
+    }
+
+    async function setupUpload(file) {
+      if (!file) return;
+      if (st?.demo) return setupMsg("Resume upload works in live mode. Stop the demo and run npm start.", true);
+      if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) return setupMsg("Use a PDF, Word (.docx) or text file.", true);
+      setupMsg(`Reading ${file.name}...`);
+      try {
+        const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        await refreshStatus();
+        setup.sampleResume = false;
+        $("resumeLine").innerHTML = resumeLine(setup);
+        $("setupSteps").querySelector('[data-jump="q-resume"]').classList.add("done");
+        setupMsg(`Read ${n(json.chars)} characters from ${json.fileName}.`);
+      } catch (err) {
+        setupMsg(`Could not use that resume: ${err.message}`, true);
+      }
+    }
+
+    async function saveSetup() {
+      if (st?.demo) return setupMsg("This is a preview. Stop the demo and run npm start to set up your own board.", true);
+      if (!setup) return;
+      const form = $("setupForm");
+      const picked = (name) => [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
+      if ($("schoolInput").value.trim()) addSchool();
+      const scoring = form.querySelector('input[name="scoring"]:checked')?.value || "keywords";
+      const apiKey = $("orKey").value.trim();
+      if (setup.sampleResume) return setupMsg("Add your resume first. Shortlist ranks every role against it.", true);
+      if (!picked("sectors").length && !setup.watchlistCount) return setupMsg("Pick at least one sector so there are companies to check.", true);
+      if (scoring === "ai" && !setup.hasKey && !apiKey) return setupMsg("Paste your OpenRouter key, or choose keyword scoring.", true);
+      const btn = $("setupSave");
+      btn.disabled = true;
+      setupMsg(apiKey ? "Checking your key with OpenRouter..." : "Saving...");
+      try {
+        const res = await fetch("/api/setup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roles: picked("roles"), cities: picked("cities"), sectors: picked("sectors"), schools,
+            lookingFor: form.querySelector('textarea[name="lookingFor"]').value, scoring, ...(apiKey ? { apiKey } : {})
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        $("orKey").value = "";
+        setup = json;
+        await refreshStatus();
+        location.hash = "";
+        runCheck();
+      } catch (err) {
+        setupMsg(err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     $("setupForm").addEventListener("change", updateSetupSummary);
     $("setupForm").addEventListener("input", (e) => { if (e.target.name === "lookingFor") $("lfCount").textContent = e.target.value.length; });
+    $("setupForm").addEventListener("keydown", (e) => {
+      if (e.target.id !== "schoolInput") return;
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSchool(); }
+      else if (e.key === "Backspace" && !e.target.value && schools.length) { schools.pop(); renderSchools(); }
+    });
+    $("setupForm").addEventListener("click", (e) => {
+      const remove = e.target.closest("#schoolTokens button");
+      if (remove) { schools.splice(Number(remove.dataset.i), 1); renderSchools(); $("schoolInput").focus(); }
+      if (e.target.closest("#setupPick")) $("fileInput").click();
+    });
     $("setupSteps").addEventListener("click", (e) => {
       const a = e.target.closest("a[data-jump]");
       if (!a) return;
       e.preventDefault();
       $(a.dataset.jump).scrollIntoView({ block: "start" });
     });
-    $("setupSave").addEventListener("click", () => alert("This is a preview. Saving is not wired up yet."));
+    $("setupSave").addEventListener("click", saveSetup);
 
     function route() {
-      const setup = location.hash === "#setup";
-      $("app").hidden = setup;
-      $("setupView").hidden = !setup;
-      if (setup && !$("setupForm").innerHTML) renderSetup(SETUP_PREVIEW);
+      const onSetup = location.hash === "#setup";
+      $("app").hidden = onSetup;
+      $("setupView").hidden = !onSetup;
+      if (onSetup) openSetup();
       window.scrollTo(0, 0);
     }
     window.addEventListener("hashchange", route);
-    route();
 
     setInterval(renderTop, 60000);
     (async () => {
       [st, data] = await Promise.all([fetch("/api/status").then((r) => r.json()), fetch("/api/latest").then((r) => r.json())]);
       renderAll(false);
+      // A fresh install goes straight to setup. Changing the hash runs route() through hashchange.
+      if (st.needsSetup && location.hash !== "#setup") location.hash = "#setup";
+      else route();
     })();
   </script>
 </body>
