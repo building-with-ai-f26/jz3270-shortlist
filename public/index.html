@@ -431,7 +431,7 @@
       <div class="bar" id="filters" hidden>
         <div><span class="lbl">Track</span><span class="seg" id="tracks" role="group" aria-label="Filter by track"></span></div>
         <label class="switch"><input type="checkbox" id="newOnly" /> New since last check only</label>
-        <div><span class="lbl">Minimum fit</span><span class="seg" id="minFit" role="group" aria-label="Minimum fit">
+        <div><span class="lbl" id="minFitLbl">Minimum fit</span><span class="seg" id="minFit" role="group" aria-labelledby="minFitLbl">
           <button type="button" data-min="0" aria-pressed="true">Any</button><button type="button" data-min="50" aria-pressed="false">50+</button><button type="button" data-min="75" aria-pressed="false">75+</button>
         </span></div>
         <p class="keys"><kbd>J</kbd> <kbd>K</kbd> move between roles, <kbd>O</kbd> opens the posting</p>
@@ -510,12 +510,35 @@
       return `${days} day${days === 1 ? "" : "s"} ago`;
     }
     const posted = (d) => (d === null || d === undefined) ? "" : d <= 0 ? "posted today" : `posted ${d} day${d === 1 ? "" : "s"} ago`;
+    // Keyword scores measure word overlap with the resume, not fit, and rarely pass 40. So with keyword scoring
+    // I rank roles against each other instead: the top quarter, the next third, and the rest.
+    const KEYWORD_TIERS = [
+      { key: "strong", name: "Closest match", range: "top quarter by keyword overlap" },
+      { key: "possible", name: "Some overlap", range: "the next third" },
+      { key: "long", name: "Little overlap", range: "the rest, dealbreakers and unscored" }
+    ];
+    const keywordMode = () => data?.summary?.method === "keywords";
+    let cuts = { strong: 75, possible: 50 };
+    function setCuts() {
+      cuts = { strong: 75, possible: 50 };
+      if (!keywordMode()) return;
+      const fits = (data.results || []).filter((r) => !r.error && !r.dealbreaker && r.fit > 0).map((r) => r.fit).sort((a, b) => b - a);
+      // The score at a share of the way down the list. Roles tied with it land in the same tier.
+      const at = (share) => fits.length ? fits[Math.max(0, Math.ceil(fits.length * share) - 1)] : Infinity;
+      cuts = { strong: at(0.25), possible: at(0.6) };
+    }
     // Which tier a role sits in, and the color of its score tile.
     function tier(r) {
-      if (r.error || r.fit === null || r.fit === undefined || r.dealbreaker) return "long";
-      if (r.fit >= 75) return "strong";
-      if (r.fit >= 50) return "possible";
+      if (r.error || r.fit === null || r.fit === undefined || r.dealbreaker || r.fit <= 0) return "long";
+      if (r.fit >= cuts.strong) return "strong";
+      if (r.fit >= cuts.possible) return "possible";
       return "long";
+    }
+    // Minimum fit: a score in AI mode, a tier in keyword mode (50 means the top two tiers, 75 the top one).
+    function passesMin(r) {
+      if (!view.minFit) return true;
+      if (!keywordMode()) return (r.fit ?? 0) >= view.minFit;
+      return view.minFit >= 75 ? tier(r) === "strong" : tier(r) !== "long";
     }
     function band(r) {
       if (r.dealbreaker) return "b-blocked";
@@ -550,7 +573,7 @@
       ].map(([k, v, cls]) => `<li${cls ? ` class="${cls}"` : ""}><span class="v">${n(v)}</span><span class="k">${k}</span></li>`).join("");
       const parts = [];
       if (s.method === "ai") parts.push(`This check scored ${n(s.scoredThisRun ?? s.scored)} roles for $${(s.costUsd || 0).toFixed(4)}.`);
-      else parts.push("Keyword scoring, so checks cost nothing.");
+      else parts.push("Keyword scoring, so checks cost nothing. Roles are ranked against each other by shared words; AI scoring in Settings gives a real fit score.");
       if (s.waiting) parts.push(`${n(s.waiting)} more will be scored on your next checks.`);
       if (s.cacheReset) parts.push("Your resume changed, so every role is being rescored.");
       $("cost").textContent = parts.join(" ");
@@ -569,8 +592,9 @@
     // ---------- Boards ----------
     function scoreTile(r) {
       const score = r.fit === null || r.fit === undefined ? "?" : r.fit;
-      const label = r.error ? "Not scored" : r.dealbreaker ? `Fit ${score} out of 100, blocked by a dealbreaker` : `Fit ${score} out of 100`;
-      return `<div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : "fit"}</span></div>`;
+      const kind = keywordMode() ? "Keyword match" : "Fit";
+      const label = r.error ? "Not scored" : r.dealbreaker ? `${kind} ${score} out of 100, blocked by a dealbreaker` : `${kind} ${score} out of 100`;
+      return `<div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : keywordMode() ? "match" : "fit"}</span></div>`;
     }
     function metaHtml(r) {
       return `<p class="meta">${r.isNew ? `<span class="new-tag">New</span>` : ""}${r.dealbreaker ? `<span class="stop-tag">Dealbreaker</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
@@ -603,7 +627,7 @@
 
     function boardHtml(rows, emptyText) {
       if (!rows.length) return `<p class="board-empty">${emptyText}</p>`;
-      return TIERS.map((t) => {
+      return (keywordMode() ? KEYWORD_TIERS : TIERS).map((t) => {
         const list = rows.filter((r) => tier(r) === t.key);
         if (!list.length) return "";
         return `<div class="tier t-${t.key}"><h3 class="tier-head"><span class="sw" aria-hidden="true"></span>${t.name} <span class="range">${t.range}</span><span class="n">${list.length}</span></h3>
@@ -626,7 +650,7 @@
           ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board and your connection.`)
           : showMessage("No roles passed your filters", 'Open Filtered out below to see what was cut and why. Add roles or cities in <a href="#setup">Settings</a>, or loosen the other rules in data/preferences.json.');
       }
-      const rows = all.filter((r) => (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && ((r.fit ?? 0) >= view.minFit));
+      const rows = all.filter((r) => (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && passesMin(r));
       if (!rows.length) return showMessage("Nothing matches these filters", "Turn off New since last check only, or lower the minimum fit.");
       showMessage("");
       const grad = rows.filter((r) => r.cohort === "2027 grad");
@@ -661,7 +685,15 @@
         : "";
     }
 
-    function renderAll(fresh) { renderTop(); renderTracks(); renderBoards(fresh); renderDropped(); renderErrors(); }
+    // The minimum-fit buttons name tiers in keyword mode, since a keyword score of 50 is rare.
+    function renderMinFit() {
+      const kw = keywordMode();
+      $("minFitLbl").textContent = kw ? "Show" : "Minimum fit";
+      const labels = kw ? ["All", "Some overlap and up", "Closest only"] : ["Any", "50+", "75+"];
+      $("minFit").querySelectorAll("button").forEach((b, i) => { b.textContent = labels[i]; });
+    }
+
+    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderBoards(fresh); renderDropped(); renderErrors(); }
 
     async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
 
