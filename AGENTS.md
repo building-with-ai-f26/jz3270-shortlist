@@ -3,8 +3,8 @@
 > Give this file to your coding agent and check that it is using these instructions. Keep the stack, commands, and ground rules current.
 
 ## 1. Project Overview
-- **What this repo builds:** Shortlist, a local web app that checks the public job boards (Greenhouse, Lever, Ashby, Workday, SmartRecruiters) of companies on a watchlist, filters out roles that fail the user's rules, scores the rest against the user's resume with a model, and shows two ranked columns (2027 and new grad, and full-time roles open now) with what is new since the last check. Each role also gets 4 or 5 LinkedIn search links for people worth reaching out to.
-- **Primary user & core workflow:** MBA students recruiting off-cycle for full-time roles and programs. Core workflow: drop in a resume, then "Check my list." See the living PRD in `docs/index.html`.
+- **What this repo builds:** Shortlist, a local web app that checks the public job boards (Greenhouse, Lever, Ashby, Workday, SmartRecruiters) of companies on a watchlist, filters out roles that fail the user's rules, scores the rest against the user's resume with a model, and shows two ranked columns (2027 and new grad, and full-time roles open now) with what is new since the last check. Each role also gets 3 to 5 LinkedIn search links for people worth reaching out to.
+- **Primary user & core workflow:** MBA students recruiting off-cycle for full-time roles and programs. Core workflow: on first run a setup screen asks for the resume, kinds of roles, cities, sectors of companies, schools and scoring; after that, "Check my list." See the living PRD in `docs/index.html`.
 - **Tech stack:** Node.js 22+ (built-in `fetch`, `http`, `node:test`). Two npm packages, both only for reading uploaded resumes: `unpdf` (PDF) and `mammoth` (Word). Plain HTML/CSS/JS front end in `public/index.html`. JSON files for storage. Scoring through the OpenRouter chat completions API, default model `anthropic/claude-haiku-5.5`.
 
 ## 2. Commands
@@ -21,7 +21,7 @@
 ## 3. Map of the code
 | File | Job |
 | --- | --- |
-| `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run`, `/api/resume` routes |
+| `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run`, `/api/resume`, `/api/setup` routes |
 | `src/pipeline.js` | One run: fetch, filter, score (reusing saved scores), mark new, save to `data/` |
 | `src/sources.js` | Fetches each board (8 at a time, 20-second timeout) and normalizes postings. Workday sites are searched with `workdaySearch` terms (20 results per page, Workday's limit) instead of downloaded whole. Greenhouse and Workday descriptions are fetched only for postings about to be scored. `parseBoardUrl` turns any careers link into a watchlist entry |
 | `src/discover.js` | Guesses each company's board name and probes Greenhouse, Lever and Ashby to find it |
@@ -30,9 +30,10 @@
 | `src/score.js` | OpenRouter scoring, JSON parsing, keyword fallback, cost and token totals |
 | `src/resume.js` | Reads an uploaded PDF, Word or text resume, removes contact details, and swaps it into `data/profile.md` (keeping "What I'm looking for" and a backup in `profile.previous.md`) |
 | `src/people.js` | Builds the "Reach out" LinkedIn people-search links for each role from the company, the team and `networkSchools` |
-| `src/setup.js` | Turns setup choices (kinds of roles, cities, schools) into `preferences.json`: title words, locations, Workday searches and `networkSchools` |
+| `src/setup.js` | The setup screen's server side. Turns choices (kinds of roles, cities, schools, scoring) into `preferences.json`, adds or removes starter companies by sector in `watchlist.json`, and rewrites "What I'm looking for" only when it changed |
 | `src/env.js` | Loads `.env` without a dependency. Saves a key pasted in setup to `.env` after a free check with OpenRouter; the key is never sent back to the page |
-| `public/index.html` | The whole front end |
+| `public/index.html` | The whole front end: the board and the setup screen at `/#setup`. Keyword-scored roles are tiered by rank, AI-scored roles by fit |
+| `PRODUCT.md`, `DESIGN.md`, `.impeccable/` | Product principles and the design system from the Big Board redesign. Read `DESIGN.md` before changing the look |
 | `config/*.example.*` | Example watchlist, preferences, profile and starter company list, copied into `data/` on first use. Each heading in `companies.example.txt` is a sector |
 | `config/starter-watchlist.json` | Built by `npm run build-starter`: every starter company with a working board, tagged by sector, so setup can add a sector at once |
 | `fixtures/sample-postings.json` | Fictional postings in real ATS response shapes, for demo mode and tests |
@@ -66,11 +67,14 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Build 2 (due Mon Nov 16, noon):** PRD v2 and the Build 2 log on `docs/index.html`, the smallest local version, PostHog installed on the Product Page and the local app with events verified, and local setup documented here.
 
-**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 4 or 5 "Reach out" LinkedIn search links per role, the redesigned app, Node 22+ with `npm install`, 68 tests.
+**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 89 tests.
+
+**Done Nov 10: anyone can set it up.** A classmate can clone, `npm install`, `npm start`, and finish setup in the browser. A fresh install opens setup by itself; Settings reopens it. Setup covers the resume, kinds of roles, cities, sectors of starter companies (242 companies with working boards, from `config/starter-watchlist.json`), schools, "What I'm looking for", and AI scoring with an OpenRouter key or free keyword scoring. Jordan's own defaults (real estate and supply chain searches, NYU Stern) are now choices, not code. Testing on Nov 10 spent $0.0175 on OpenRouter (37 test roles scored by mistake while checking the setup screen).
+
+**Known limits:** `npm run build-starter` finds no board for 76 of 318 starter companies (their own careers sites), and a guess by name can match a different company, so review its "Double-check these" list. Keyword scores only rank roles against each other. Setup sets roles and cities; the other filter rules (excluded words, max age, max to score) are still in `data/preferences.json`. The `redesign-app` branch and its worktree in `.claude/worktrees/redesign` are merged and can be removed.
 
 **Next, in order:**
-1. **Make it work for anyone, not just Jordan.** Stays a local app through Week 4 (course rule), so "anyone" means a classmate can clone it, run `npm install` and `npm start`, and set everything up in the browser. Add a first-run setup screen (resume, target roles, locations, schools, "What I'm looking for", OpenRouter key or keyword-only mode) that writes to `data/`, so nobody edits JSON by hand. Move Jordan-specific defaults into choices: the starter company list leans real estate and supply chain, `WORKDAY_DEFAULT_SEARCHES` includes "real estate" and "supply chain", and `networkSchools` defaults to NYU Stern.
-2. **PostHog.** Snippet on `docs/index.html` and `public/index.html`. Events: `run_clicked`, `resume_uploaded`, `posting_opened`, `people_link_opened`. Never send resume text, scores or company lists as event properties. Verify in PostHog's live events view.
-3. **Product Page fixes.** The live tagline still says "recruiting across several tracks at once". The off-cycle version Jordan wrote is in a stray root `index.html` that Pages does not serve: move that tagline into `docs/index.html`, then delete the root `index.html`. Fill the "[N]" placeholder in the Build 1 entry. In `README.md`, change the setup line to Node 22+ with `npm install`, and the test count to 68.
+1. **PostHog.** Snippet on `docs/index.html` and `public/index.html`. Events: `run_clicked`, `resume_uploaded`, `posting_opened`, `people_link_opened`, plus `setup_saved` (send only counts, never the choices). Never send resume text, scores or company lists as event properties. Verify in PostHog's live events view.
+2. **Product Page fixes.** The live tagline still says "recruiting across several tracks at once". The off-cycle version Jordan wrote is in a stray root `index.html` that Pages does not serve: move that tagline into `docs/index.html`, then delete the root `index.html`. Fill the "[N]" placeholder in the Build 1 entry. `README.md` has the same old tagline, and its setup section needs the new flow (a draft was shown to Jordan on Nov 10).
 
 **Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.
