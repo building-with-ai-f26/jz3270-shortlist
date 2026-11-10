@@ -96,7 +96,9 @@
       content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
       background: var(--strip); border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); transform: rotate(45deg);
     }
-    .funnel .v { display: block; font-family: var(--display); font-weight: 800; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .funnel li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 10px; padding-bottom: 10px; }
+    .funnel .k { margin-top: 0 !important; }
+    .funnel .v { display: block; font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; }
     .funnel .k { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-2); }
     .funnel li.new { background: var(--new); }
     .funnel li.new::before { background: var(--new); }
@@ -140,19 +142,27 @@
     .t-possible .sw { background: var(--possible); }
     .t-long .sw { background: var(--long); }
 
-    .strips { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    /* One ruled board per tier: strips share hairlines instead of floating as separate cards. */
+    .strips { list-style: none; margin: 0; padding: 0; background: var(--strip); border: 1px solid var(--rule-soft); }
     .strip {
-      display: grid; grid-template-columns: 76px 1fr; gap: 0 16px;
-      padding: 14px 16px 14px 14px; background: var(--strip); border: 1px solid var(--rule-soft);
-      outline: none; transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), border-color 180ms var(--ease);
+      position: relative; display: grid; grid-template-columns: 76px 1fr; gap: 0 16px;
+      padding: 14px 16px 14px 14px; background: var(--strip); border-top: 1px solid var(--rule-soft);
+      outline: none; transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), background 180ms var(--ease);
     }
-    .strip:hover { border-color: var(--rule); }
-    .strip:focus-visible, .strip.is-focus { transform: translateY(-2px); box-shadow: var(--lift); border-color: var(--ink); }
+    .strip:first-child { border-top: 0; }
+    .strip:hover { background: #fff; }
+    .strip:focus-visible, .strip.is-focus { z-index: 1; transform: translateY(-2px); box-shadow: var(--lift); outline: 1px solid var(--ink); }
 
     .tile {
       position: relative; width: 76px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: #fff; background: var(--long);
+      color: #fff; background: var(--long); box-shadow: 0 1px 2px rgba(20, 22, 24, 0.25);
     }
+    /* Rank buys space: possible roles get a smaller tile and a tighter report than strong ones. */
+    .t-possible .strip { grid-template-columns: 60px 1fr; padding-top: 11px; padding-bottom: 11px; }
+    .t-possible .tile { width: 60px; height: 60px; }
+    .t-possible .tile .num { font-size: 40px; }
+    .t-possible .tile .unit { font-size: 9px; }
+    .t-possible .reach { border-top: 0; padding-top: 0; margin-top: 6px; }
     .tile .num { font-family: var(--display); font-weight: 900; font-size: 50px; line-height: 0.85; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
     .tile .unit { margin-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.9; }
     .b-strong .tile { background: var(--strong); }
@@ -181,8 +191,10 @@
     .report dt { font-size: 12px; font-weight: 700; color: var(--ink-3); padding-top: 2px; }
     .report dd { margin: 0; }
     .report .gap dd { color: var(--ink-2); }
-    .reach { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 0; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--rule-soft); font-size: 13px; }
-    .reach .lbl { width: 104px; font-size: 12px; font-weight: 700; color: var(--ink-3); }
+    .reach { display: grid; grid-template-columns: 104px 1fr; align-items: baseline; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--rule-soft); font-size: 13px; }
+    .reach .lbl { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+    .reach .links { display: flex; flex-wrap: wrap; gap: 4px 0; }
+    .stop-tag { color: var(--stop); font-weight: 700; }
     .reach a { display: inline-flex; align-items: center; gap: 3px; margin-right: 14px; text-decoration: underline; text-decoration-color: var(--rule); }
     .reach a:hover { text-decoration-color: var(--ink); }
     .reach a .icon { width: 11px; height: 11px; opacity: 0.55; }
@@ -235,7 +247,7 @@
     /* ---------- Drop overlay ---------- */
     .drop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(20, 22, 24, 0.92); color: var(--strip); }
     .drop .frame { border: 2px dashed var(--strip); padding: 60px 64px; text-align: center; max-width: 660px; margin: 24px; }
-    .drop strong { display: block; font-family: var(--display); font-weight: 900; font-size: 52px; line-height: 0.95; text-transform: uppercase; }
+    .drop strong { display: block; font-family: var(--display); font-weight: 900; font-size: 56px; line-height: 0.95; }
     .drop span { display: block; margin-top: 14px; color: #c9cdc8; }
 
     /* ---------- Setup preview ---------- */
@@ -262,7 +274,7 @@
     .btn.solid { background: var(--ink); color: var(--strip); }
     .btn.solid:hover { box-shadow: var(--lift); }
     .warn { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
-    .warn b { display: inline-block; padding: 0 6px; background: var(--new); color: var(--ink); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; }
+    .warn b { display: inline-block; padding: 0 6px; background: var(--ink); color: var(--strip); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; }
     .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
     .choice { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--strip); border: 1px solid var(--rule); font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color 140ms var(--ease), background 140ms var(--ease); }
     .choice:hover { border-color: var(--ink); }
@@ -338,7 +350,8 @@
       .funnel li:nth-child(3n+1) { border-left: 0; }
       .funnel li::before { display: none; }
       .funnel li.new { grid-column: span 2; }
-      .funnel .v { font-size: 32px; }
+      .funnel li { flex-direction: column; gap: 2px; }
+      .funnel .v { font-size: 28px; }
       .funnel .k { font-size: 12px; line-height: 1.3; }
       .bar { gap: 10px 14px; }
       .bar .lbl { display: block; margin: 0 0 4px; font-size: 12px; }
@@ -346,10 +359,17 @@
       .strip { grid-template-columns: 58px 1fr; gap: 0 12px; padding: 12px; }
       .tile { width: 58px; height: 58px; }
       .tile .num { font-size: 38px; }
-      .s-head { flex-direction: column; gap: 6px; }
-      .open { order: 2; margin-top: 0; }
+      .t-possible .strip { grid-template-columns: 50px 1fr; }
+      .t-possible .tile { width: 50px; height: 50px; }
+      .t-possible .tile .num { font-size: 32px; }
+      .s-body { display: flex; flex-direction: column; }
+      .s-head { display: contents; }
+      .s-title { order: 1; }
+      .s-body > .meta { order: 2; }
+      .s-body .open { order: 3; align-self: flex-start; margin-top: 8px; }
+      .s-body > .stop, .s-body > .report, .s-body > .reach { order: 4; }
       .report div { grid-template-columns: 1fr; gap: 0; }
-      .reach .lbl { width: 100%; }
+      .reach { grid-template-columns: 1fr; }
       .c-more { padding: 2px 12px 12px; }
       .dropped thead { display: none; }
       .dropped tr { display: grid; padding: 6px 0; border-bottom: 1px solid var(--rule-soft); }
@@ -546,14 +566,14 @@
       return `<div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : "fit"}</span></div>`;
     }
     function metaHtml(r) {
-      return `<p class="meta">${r.isNew ? `<span class="new-tag">New</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
+      return `<p class="meta">${r.isNew ? `<span class="new-tag">New</span>` : ""}${r.dealbreaker ? `<span class="stop-tag">Dealbreaker</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
     }
     function reportHtml(r) {
       const people = (r.people || []).map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" data-kind="people">${esc(p.label)}${icon("out")}</a>`).join("");
       return `${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
         ${r.error ? `<p class="stop">Could not score: ${esc(r.error)}</p>` : ""}
         ${r.why || r.gap ? `<dl class="report">${r.why ? `<div><dt>Why it fits</dt><dd>${esc(r.why)}</dd></div>` : ""}${r.gap ? `<div class="gap"><dt>Gap</dt><dd>${esc(r.gap)}</dd></div>` : ""}</dl>` : ""}
-        ${people ? `<div class="reach"><span class="lbl">Reach out</span>${people}</div>` : ""}`;
+        ${people ? `<div class="reach"><span class="lbl">Reach out</span><span class="links">${people}</span></div>` : ""}`;
     }
     const openLink = (r) => `<a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">Open posting${icon("out")}</a>`;
 
@@ -744,12 +764,12 @@
     });
 
     // ---------- Setup preview ----------
-    // Sample data in the shape GET /api/setup returns. Sectors and their counts are placeholders
-    // until the starter list by sector lands; wiring this to the real routes comes next.
+    // Sample data in the shape GET /api/setup returns. Sectors and counts are copied from the starter list
+    // by sector being built on main; wiring this to the real routes comes next.
     const SETUP_PREVIEW = {
       roles: ["strategy", "programs"],
       cities: ["newYork"],
-      sectors: ["tech", "supplyChain"],
+      sectors: ["ai", "supplyChain"],
       schools: ["NYU Stern"],
       lookingFor: "",
       sampleResume: true,
@@ -764,10 +784,10 @@
         cities: ["New York", "San Francisco Bay Area", "Los Angeles", "Boston", "Chicago", "Seattle", "Washington, DC", "Austin", "Dallas", "Atlanta", "Denver", "Miami", "Remote"]
           .map((label) => ({ key: label === "New York" ? "newYork" : label.replace(/\W/g, ""), label })),
         sectors: [
-          { key: "tech", label: "Tech", count: 64 }, { key: "consumer", label: "Consumer and retail", count: 38 },
-          { key: "finance", label: "Finance", count: 41 }, { key: "realEstate", label: "Real estate", count: 22 },
-          { key: "supplyChain", label: "Supply chain and logistics", count: 27 }, { key: "health", label: "Healthcare", count: 30 },
-          { key: "energy", label: "Energy and climate", count: 19 }, { key: "media", label: "Media and entertainment", count: 17 }
+          { key: "ai", label: "AI and software", count: 61 }, { key: "hardtech", label: "Aerospace, defense and hard tech", count: 46 },
+          { key: "climate", label: "Energy and climate", count: 21 }, { key: "supplyChain", label: "Supply chain and logistics", count: 15 },
+          { key: "fintech", label: "Fintech and financial services", count: 28 }, { key: "consumer", label: "Consumer and marketplaces", count: 38 },
+          { key: "health", label: "Health", count: 12 }, { key: "realEstate", label: "Real estate and proptech", count: 21 }
         ]
       }
     };
