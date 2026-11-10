@@ -10,6 +10,7 @@
     "scan": "node scripts/run.js",
     "discover": "node scripts/discover.js",
     "check": "node scripts/check-sources.js",
+    "build-starter": "node scripts/build-starter.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

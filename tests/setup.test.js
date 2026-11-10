@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { buildPreferences, readSetup, saveSetup, lookingForText, withLookingFor, ROLE_FAMILIES, CITIES } from "../src/setup.js";
+import { buildPreferences, readSetup, saveSetup, lookingForText, withLookingFor, applySectors, readStarter,
+  ROLE_FAMILIES, CITIES, STARTER_SECTORS } from "../src/setup.js";
 import { prefilter } from "../src/filter.js";
 import { status, ensurePersonalFiles } from "../src/pipeline.js";
 
@@ -129,4 +130,63 @@ test("saving setup leaves the profile alone unless looking-for changed, so saved
   assert.throws(() => saveSetup({ lookingFor: "x".repeat(2001) }, dir), /under 2000 characters/);
   assert.throws(() => saveSetup({ roles: ["astronaut"] }, dir), /Unknown role type/);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+const STARTER = [
+  { company: "Acme AI", ats: "greenhouse", board: "acmeai", sector: "ai" },
+  { company: "Beta Software", ats: "ashby", board: "beta", sector: "ai" },
+  { company: "Casa Realty", ats: "workday", board: "casa/Careers", url: "https://casa.wd1.myworkdayjobs.com/Careers", sector: "realEstate" },
+  { company: "Delta Health", ats: "lever", board: "delta", sector: "health" }
+];
+
+test("choosing sectors adds their companies, unchoosing removes only starter companies", () => {
+  const mine = [{ company: "My Own Co", ats: "lever", board: "myown" }, { company: "Delta Health", ats: "lever", board: "delta" }];
+  const next = applySectors(mine, ["ai", "realEstate"], STARTER);
+  assert.deepEqual(next.map((w) => w.company), ["My Own Co", "Acme AI", "Beta Software", "Casa Realty"]);
+  assert.equal(next[3].url, "https://casa.wd1.myworkdayjobs.com/Careers");
+  assert.equal(next[3].sector, undefined);
+  // Running it again changes nothing, so saving setup twice never duplicates a company.
+  assert.deepEqual(applySectors(next, ["ai", "realEstate"], STARTER), next);
+  assert.deepEqual(applySectors(next, [], STARTER).map((w) => w.company), ["My Own Co"]);
+});
+
+test("saving sectors updates the watchlist, and leaving sectors out of the form leaves it alone", () => {
+  const dir = tmp();
+  const watchlistPath = path.join(dir, "watchlist.json");
+  fs.writeFileSync(watchlistPath, JSON.stringify([{ company: "Acme AI", ats: "greenhouse", board: "acmeai" }]));
+  const s = saveSetup({ roles: ["product"], sectors: ["health"] }, dir, STARTER);
+  assert.deepEqual(readJson(watchlistPath).map((w) => w.company), ["Delta Health"]);
+  assert.deepEqual(s.sectors, ["health"]);
+  assert.equal(s.watchlistCount, 1);
+  assert.deepEqual(s.options.sectors.find((o) => o.key === "ai"), { key: "ai", label: "AI and software", count: 2 });
+
+  saveSetup({ roles: ["finance"] }, dir, STARTER);
+  assert.deepEqual(readJson(watchlistPath).map((w) => w.company), ["Delta Health"]);
+  assert.deepEqual(readSetup(dir, STARTER).sectors, ["health"]);
+  assert.throws(() => saveSetup({ sectors: ["crypto"] }, dir, STARTER), /Unknown sector: crypto/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("before setup saved sectors, a sector counts as chosen when half its companies are on the watchlist", () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, "preferences.json"), JSON.stringify({ locations: ["Remote"] }));
+  fs.writeFileSync(path.join(dir, "profile.md"), "## Resume\n\nMine\n");
+  fs.writeFileSync(path.join(dir, "watchlist.json"), JSON.stringify([
+    { company: "Acme AI", ats: "greenhouse", board: "acmeai" }, { company: "Delta", ats: "lever", board: "delta" }
+  ]));
+  assert.deepEqual(readSetup(dir, STARTER).sectors, ["ai", "health"]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("the starter watchlist is well formed and covers the example watchlist", () => {
+  const starter = readStarter();
+  assert.ok(starter.length > 100, "run npm run build-starter");
+  for (const c of starter) assert.ok(c.company && c.ats && c.board && c.sector in STARTER_SECTORS, JSON.stringify(c));
+  const keys = starter.map((c) => `${c.ats}:${c.board}`.toLowerCase());
+  assert.equal(new Set(keys).size, keys.length, "a board is listed twice");
+  for (const key of Object.keys(STARTER_SECTORS)) assert.ok(starter.some((c) => c.sector === key), `no companies in ${key}`);
+  // A fresh install starts from the example watchlist. Every example company is a starter company,
+  // so sectors the new user does not choose are cleared out of it.
+  const example = readJson(new URL("../config/watchlist.example.json", import.meta.url));
+  for (const w of example) assert.ok(keys.includes(`${w.ats}:${w.board}`.toLowerCase()), `${w.company} is not in the starter list`);
 });

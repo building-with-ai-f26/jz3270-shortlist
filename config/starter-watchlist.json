@@ -1,0 +1,1500 @@
+{
+  "note": "Built by `npm run build-starter` from config/companies.example.txt. Edit that file, not this one.",
+  "builtOn": "2026-11-10",
+  "companies": [
+    {
+      "company": "Anthropic",
+      "ats": "greenhouse",
+      "board": "anthropic",
+      "sector": "ai"
+    },
+    {
+      "company": "OpenAI",
+      "ats": "ashby",
+      "board": "openai",
+      "sector": "ai"
+    },
+    {
+      "company": "Scale AI",
+      "ats": "greenhouse",
+      "board": "scaleai",
+      "sector": "ai"
+    },
+    {
+      "company": "Perplexity",
+      "ats": "ashby",
+      "board": "perplexity",
+      "sector": "ai"
+    },
+    {
+      "company": "Cohere",
+      "ats": "ashby",
+      "board": "cohere",
+      "sector": "ai"
+    },
+    {
+      "company": "Harvey",
+      "ats": "ashby",
+      "board": "harvey",
+      "sector": "ai"
+    },
+    {
+      "company": "Sierra",
+      "ats": "ashby",
+      "board": "sierra",
+      "sector": "ai"
+    },
+    {
+      "company": "Decagon",
+      "ats": "ashby",
+      "board": "decagon",
+      "sector": "ai"
+    },
+    {
+      "company": "Glean",
+      "ats": "smartrecruiters",
+      "board": "glean",
+      "sector": "ai"
+    },
+    {
+      "company": "Runway",
+      "ats": "ashby",
+      "board": "runway",
+      "sector": "ai"
+    },
+    {
+      "company": "ElevenLabs",
+      "ats": "ashby",
+      "board": "elevenlabs",
+      "sector": "ai"
+    },
+    {
+      "company": "Cognition",
+      "ats": "ashby",
+      "board": "cognition",
+      "sector": "ai"
+    },
+    {
+      "company": "Writer",
+      "ats": "ashby",
+      "board": "writer",
+      "sector": "ai"
+    },
+    {
+      "company": "Databricks",
+      "ats": "greenhouse",
+      "board": "databricks",
+      "sector": "ai"
+    },
+    {
+      "company": "Lambda",
+      "ats": "ashby",
+      "board": "lambda",
+      "sector": "ai"
+    },
+    {
+      "company": "CoreWeave",
+      "ats": "greenhouse",
+      "board": "coreweave",
+      "sector": "ai"
+    },
+    {
+      "company": "Crusoe",
+      "ats": "ashby",
+      "board": "crusoe",
+      "sector": "ai"
+    },
+    {
+      "company": "Together AI",
+      "ats": "greenhouse",
+      "board": "togetherai",
+      "sector": "ai"
+    },
+    {
+      "company": "Baseten",
+      "ats": "ashby",
+      "board": "baseten",
+      "sector": "ai"
+    },
+    {
+      "company": "Replit",
+      "ats": "ashby",
+      "board": "replit",
+      "sector": "ai"
+    },
+    {
+      "company": "Vercel",
+      "ats": "greenhouse",
+      "board": "vercel",
+      "sector": "ai"
+    },
+    {
+      "company": "Notion",
+      "ats": "ashby",
+      "board": "notion",
+      "sector": "ai"
+    },
+    {
+      "company": "Figma",
+      "ats": "greenhouse",
+      "board": "figma",
+      "sector": "ai"
+    },
+    {
+      "company": "Linear",
+      "ats": "ashby",
+      "board": "linear",
+      "sector": "ai"
+    },
+    {
+      "company": "Airtable",
+      "ats": "greenhouse",
+      "board": "airtable",
+      "sector": "ai"
+    },
+    {
+      "company": "Gusto",
+      "ats": "greenhouse",
+      "board": "gusto",
+      "sector": "ai"
+    },
+    {
+      "company": "Datadog",
+      "ats": "greenhouse",
+      "board": "datadog",
+      "sector": "ai"
+    },
+    {
+      "company": "ServiceTitan",
+      "ats": "smartrecruiters",
+      "board": "servicetitan",
+      "sector": "ai"
+    },
+    {
+      "company": "ZipRecruiter",
+      "ats": "greenhouse",
+      "board": "ziprecruiter",
+      "sector": "ai"
+    },
+    {
+      "company": "Abridge",
+      "ats": "ashby",
+      "board": "abridge",
+      "sector": "ai"
+    },
+    {
+      "company": "Ambience Healthcare",
+      "ats": "ashby",
+      "board": "ambiencehealthcare",
+      "sector": "ai"
+    },
+    {
+      "company": "OpenEvidence",
+      "ats": "ashby",
+      "board": "openevidence",
+      "sector": "ai"
+    },
+    {
+      "company": "Mercor",
+      "ats": "ashby",
+      "board": "mercor",
+      "sector": "ai"
+    },
+    {
+      "company": "Physical Intelligence",
+      "ats": "ashby",
+      "board": "physicalintelligence",
+      "sector": "ai"
+    },
+    {
+      "company": "Poolside",
+      "ats": "ashby",
+      "board": "poolside",
+      "sector": "ai"
+    },
+    {
+      "company": "Luma AI",
+      "ats": "ashby",
+      "board": "lumaai",
+      "sector": "ai"
+    },
+    {
+      "company": "Suno",
+      "ats": "ashby",
+      "board": "suno",
+      "sector": "ai"
+    },
+    {
+      "company": "Eudia",
+      "ats": "greenhouse",
+      "board": "eudia",
+      "sector": "ai"
+    },
+    {
+      "company": "Vanta",
+      "ats": "ashby",
+      "board": "vanta",
+      "sector": "ai"
+    },
+    {
+      "company": "Drata",
+      "ats": "ashby",
+      "board": "drata",
+      "sector": "ai"
+    },
+    {
+      "company": "Ironclad",
+      "ats": "ashby",
+      "board": "ironcladhq",
+      "sector": "ai"
+    },
+    {
+      "company": "Checkr",
+      "ats": "greenhouse",
+      "board": "checkr",
+      "sector": "ai"
+    },
+    {
+      "company": "Gong",
+      "ats": "smartrecruiters",
+      "board": "gong",
+      "sector": "ai"
+    },
+    {
+      "company": "Benchling",
+      "ats": "ashby",
+      "board": "benchling",
+      "sector": "ai"
+    },
+    {
+      "company": "Hex",
+      "ats": "ashby",
+      "board": "hex",
+      "sector": "ai"
+    },
+    {
+      "company": "Attentive",
+      "ats": "greenhouse",
+      "board": "attentive",
+      "sector": "ai"
+    },
+    {
+      "company": "Yext",
+      "ats": "greenhouse",
+      "board": "yext",
+      "sector": "ai"
+    },
+    {
+      "company": "Justworks",
+      "ats": "greenhouse",
+      "board": "justworks",
+      "sector": "ai"
+    },
+    {
+      "company": "Sigma Computing",
+      "ats": "greenhouse",
+      "board": "sigmacomputing",
+      "sector": "ai"
+    },
+    {
+      "company": "NVIDIA",
+      "ats": "workday",
+      "board": "nvidia/NVIDIAExternalCareerSite",
+      "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
+      "sector": "ai"
+    },
+    {
+      "company": "Salesforce",
+      "ats": "workday",
+      "board": "salesforce/External_Career_Site",
+      "url": "https://salesforce.wd12.myworkdayjobs.com/External_Career_Site",
+      "sector": "ai"
+    },
+    {
+      "company": "Adobe",
+      "ats": "workday",
+      "board": "adobe/external_experienced",
+      "url": "https://adobe.wd5.myworkdayjobs.com/external_experienced",
+      "sector": "ai"
+    },
+    {
+      "company": "Adobe University",
+      "ats": "workday",
+      "board": "adobe/external_university",
+      "url": "https://adobe.wd5.myworkdayjobs.com/external_university",
+      "sector": "ai"
+    },
+    {
+      "company": "Intel",
+      "ats": "workday",
+      "board": "intel/External",
+      "url": "https://intel.wd1.myworkdayjobs.com/External",
+      "sector": "ai"
+    },
+    {
+      "company": "KLA",
+      "ats": "workday",
+      "board": "kla/Search",
+      "url": "https://kla.wd1.myworkdayjobs.com/Search",
+      "sector": "ai"
+    },
+    {
+      "company": "Cisco",
+      "ats": "workday",
+      "board": "cisco/Cisco_Careers",
+      "url": "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers",
+      "sector": "ai"
+    },
+    {
+      "company": "HP Inc",
+      "ats": "workday",
+      "board": "hp/ExternalCareerSite",
+      "url": "https://hp.wd5.myworkdayjobs.com/ExternalCareerSite",
+      "sector": "ai"
+    },
+    {
+      "company": "Hewlett Packard Enterprise",
+      "ats": "workday",
+      "board": "hpe/Jobsathpe",
+      "url": "https://hpe.wd5.myworkdayjobs.com/Jobsathpe",
+      "sector": "ai"
+    },
+    {
+      "company": "ServiceNow",
+      "ats": "smartrecruiters",
+      "board": "ServiceNow",
+      "sector": "ai"
+    },
+    {
+      "company": "Workday",
+      "ats": "workday",
+      "board": "workday/Workday",
+      "url": "https://workday.wd5.myworkdayjobs.com/Workday",
+      "sector": "ai"
+    },
+    {
+      "company": "Workday Early Career",
+      "ats": "workday",
+      "board": "workday/Workday_Early_Career",
+      "url": "https://workday.wd5.myworkdayjobs.com/Workday_Early_Career",
+      "sector": "ai"
+    },
+    {
+      "company": "Anduril Industries",
+      "ats": "greenhouse",
+      "board": "andurilindustries",
+      "sector": "hardtech"
+    },
+    {
+      "company": "SpaceX",
+      "ats": "greenhouse",
+      "board": "spacex",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Palantir",
+      "ats": "lever",
+      "board": "palantir",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Shield AI",
+      "ats": "lever",
+      "board": "shieldai",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Saronic",
+      "ats": "ashby",
+      "board": "saronic",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Skydio",
+      "ats": "ashby",
+      "board": "skydio",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Relativity Space",
+      "ats": "greenhouse",
+      "board": "relativity",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Astranis",
+      "ats": "greenhouse",
+      "board": "astranis",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Impulse Space",
+      "ats": "ashby",
+      "board": "impulse",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Hermeus",
+      "ats": "lever",
+      "board": "hermeus",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Epirus",
+      "ats": "greenhouse",
+      "board": "epirus",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Vannevar Labs",
+      "ats": "greenhouse",
+      "board": "vannevarlabs",
+      "sector": "hardtech"
+    },
+    {
+      "company": "True Anomaly",
+      "ats": "greenhouse",
+      "board": "trueanomalyinc",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Radiant Industries",
+      "ats": "ashby",
+      "board": "radiant",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Neuralink",
+      "ats": "greenhouse",
+      "board": "neuralink",
+      "sector": "hardtech"
+    },
+    {
+      "company": "xAI",
+      "ats": "greenhouse",
+      "board": "xai",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Nuro",
+      "ats": "greenhouse",
+      "board": "nuro",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Figure AI",
+      "ats": "greenhouse",
+      "board": "figureai",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Agility Robotics",
+      "ats": "greenhouse",
+      "board": "agilityrobotics",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Dexterity",
+      "ats": "lever",
+      "board": "dexterity",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Formic",
+      "ats": "greenhouse",
+      "board": "formic",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Machina Labs",
+      "ats": "ashby",
+      "board": "machina-labs",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Divergent",
+      "ats": "greenhouse",
+      "board": "divergent",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Formlabs",
+      "ats": "greenhouse",
+      "board": "formlabs",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Bright Machines",
+      "ats": "lever",
+      "board": "brightmachines",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Path Robotics",
+      "ats": "greenhouse",
+      "board": "pathrobotics",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Gecko Robotics",
+      "ats": "ashby",
+      "board": "gecko-robotics",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Fictiv",
+      "ats": "greenhouse",
+      "board": "fictiv",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Augury",
+      "ats": "greenhouse",
+      "board": "augury",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Tulip",
+      "ats": "greenhouse",
+      "board": "tulip",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Saildrone",
+      "ats": "greenhouse",
+      "board": "saildroneinc",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Ursa Major",
+      "ats": "greenhouse",
+      "board": "ursamajor",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Muon Space",
+      "ats": "greenhouse",
+      "board": "muonspace",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Northwood Space",
+      "ats": "ashby",
+      "board": "northwoodspace",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Albedo",
+      "ats": "greenhouse",
+      "board": "albedo",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Slingshot Aerospace",
+      "ats": "ashby",
+      "board": "slingshot-aerospace",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Boeing",
+      "ats": "workday",
+      "board": "boeing/EXTERNAL_CAREERS",
+      "url": "https://boeing.wd1.myworkdayjobs.com/EXTERNAL_CAREERS",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Northrop Grumman",
+      "ats": "workday",
+      "board": "ngc/Northrop_Grumman_External_Site",
+      "url": "https://ngc.wd1.myworkdayjobs.com/Northrop_Grumman_External_Site",
+      "sector": "hardtech"
+    },
+    {
+      "company": "RTX",
+      "ats": "workday",
+      "board": "globalhr/REC_RTX_Ext_Gateway",
+      "url": "https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Blue Origin",
+      "ats": "workday",
+      "board": "blueorigin/BlueOrigin",
+      "url": "https://blueorigin.wd5.myworkdayjobs.com/BlueOrigin",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Rocket Lab",
+      "ats": "greenhouse",
+      "board": "rocketlab",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Lucid Motors",
+      "ats": "greenhouse",
+      "board": "lucidmotors",
+      "sector": "hardtech"
+    },
+    {
+      "company": "General Motors",
+      "ats": "workday",
+      "board": "generalmotors/Careers_GM",
+      "url": "https://generalmotors.wd5.myworkdayjobs.com/Careers_GM",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Toyota North America",
+      "ats": "workday",
+      "board": "toyota/TMNA",
+      "url": "https://toyota.wd503.myworkdayjobs.com/TMNA",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Toyota College",
+      "ats": "workday",
+      "board": "toyota/TMNA_College",
+      "url": "https://toyota.wd503.myworkdayjobs.com/TMNA_College",
+      "sector": "hardtech"
+    },
+    {
+      "company": "GE Aerospace",
+      "ats": "workday",
+      "board": "geaerospace/GE_ExternalSite",
+      "url": "https://geaerospace.wd5.myworkdayjobs.com/GE_ExternalSite",
+      "sector": "hardtech"
+    },
+    {
+      "company": "Helion Energy",
+      "ats": "ashby",
+      "board": "helion",
+      "sector": "climate"
+    },
+    {
+      "company": "Fervo Energy",
+      "ats": "greenhouse",
+      "board": "fervoenergy",
+      "sector": "climate"
+    },
+    {
+      "company": "Form Energy",
+      "ats": "ashby",
+      "board": "formenergy",
+      "sector": "climate"
+    },
+    {
+      "company": "Redwood Materials",
+      "ats": "greenhouse",
+      "board": "redwoodmaterials",
+      "sector": "climate"
+    },
+    {
+      "company": "Sila Nanotechnologies",
+      "ats": "greenhouse",
+      "board": "silananotechnologies",
+      "sector": "climate"
+    },
+    {
+      "company": "Base Power",
+      "ats": "ashby",
+      "board": "base-power",
+      "sector": "climate"
+    },
+    {
+      "company": "Arcadia",
+      "ats": "lever",
+      "board": "arcadia",
+      "sector": "climate"
+    },
+    {
+      "company": "Watershed",
+      "ats": "ashby",
+      "board": "watershed",
+      "sector": "climate"
+    },
+    {
+      "company": "Antora Energy",
+      "ats": "greenhouse",
+      "board": "antora",
+      "sector": "climate"
+    },
+    {
+      "company": "Rondo Energy",
+      "ats": "greenhouse",
+      "board": "rondoenergy",
+      "sector": "climate"
+    },
+    {
+      "company": "Twelve",
+      "ats": "ashby",
+      "board": "twelve",
+      "sector": "climate"
+    },
+    {
+      "company": "Charm Industrial",
+      "ats": "lever",
+      "board": "charmindustrial",
+      "sector": "climate"
+    },
+    {
+      "company": "Span",
+      "ats": "ashby",
+      "board": "span",
+      "sector": "climate"
+    },
+    {
+      "company": "Aurora Solar",
+      "ats": "ashby",
+      "board": "aurorasolar",
+      "sector": "climate"
+    },
+    {
+      "company": "Lunar Energy",
+      "ats": "greenhouse",
+      "board": "lunarenergy",
+      "sector": "climate"
+    },
+    {
+      "company": "Exowatt",
+      "ats": "lever",
+      "board": "exowatt",
+      "sector": "climate"
+    },
+    {
+      "company": "Oklo",
+      "ats": "greenhouse",
+      "board": "oklo",
+      "sector": "climate"
+    },
+    {
+      "company": "Kairos Power",
+      "ats": "greenhouse",
+      "board": "kairospower",
+      "sector": "climate"
+    },
+    {
+      "company": "Last Energy",
+      "ats": "lever",
+      "board": "last-energy",
+      "sector": "climate"
+    },
+    {
+      "company": "GE Vernova",
+      "ats": "workday",
+      "board": "gevernova/Vernova_ExternalSite",
+      "url": "https://gevernova.wd5.myworkdayjobs.com/Vernova_ExternalSite",
+      "sector": "climate"
+    },
+    {
+      "company": "Equinix",
+      "ats": "workday",
+      "board": "equinix/External",
+      "url": "https://equinix.wd1.myworkdayjobs.com/External",
+      "sector": "climate"
+    },
+    {
+      "company": "Flexport",
+      "ats": "greenhouse",
+      "board": "flexport",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Samsara",
+      "ats": "greenhouse",
+      "board": "samsara",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Project44",
+      "ats": "greenhouse",
+      "board": "project44",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "FourKites",
+      "ats": "greenhouse",
+      "board": "fourkites",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "ShipBob",
+      "ats": "greenhouse",
+      "board": "shipbobinc",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Loadsmart",
+      "ats": "lever",
+      "board": "loadsmart",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Motive",
+      "ats": "greenhouse",
+      "board": "motive",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Verkada",
+      "ats": "greenhouse",
+      "board": "verkada",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Pallet",
+      "ats": "greenhouse",
+      "board": "pallet",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Turvo",
+      "ats": "lever",
+      "board": "turvo",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Cargomatic",
+      "ats": "greenhouse",
+      "board": "cargomatic",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Choco",
+      "ats": "ashby",
+      "board": "choco",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "C.H. Robinson",
+      "ats": "workday",
+      "board": "chrobinson/CHRobinson",
+      "url": "https://chrobinson.wd5.myworkdayjobs.com/CHRobinson",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Ryder",
+      "ats": "workday",
+      "board": "ryder/RyderCareers",
+      "url": "https://ryder.wd5.myworkdayjobs.com/RyderCareers",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Maersk",
+      "ats": "workday",
+      "board": "maersk/Maersk_Careers",
+      "url": "https://maersk.wd3.myworkdayjobs.com/Maersk_Careers",
+      "sector": "supplyChain"
+    },
+    {
+      "company": "Stripe",
+      "ats": "greenhouse",
+      "board": "stripe",
+      "sector": "fintech"
+    },
+    {
+      "company": "Ramp",
+      "ats": "ashby",
+      "board": "ramp",
+      "sector": "fintech"
+    },
+    {
+      "company": "Brex",
+      "ats": "greenhouse",
+      "board": "brex",
+      "sector": "fintech"
+    },
+    {
+      "company": "Plaid",
+      "ats": "ashby",
+      "board": "plaid",
+      "sector": "fintech"
+    },
+    {
+      "company": "Mercury",
+      "ats": "greenhouse",
+      "board": "mercury",
+      "sector": "fintech"
+    },
+    {
+      "company": "Chime",
+      "ats": "greenhouse",
+      "board": "chime",
+      "sector": "fintech"
+    },
+    {
+      "company": "Affirm",
+      "ats": "greenhouse",
+      "board": "affirm",
+      "sector": "fintech"
+    },
+    {
+      "company": "Robinhood",
+      "ats": "greenhouse",
+      "board": "robinhood",
+      "sector": "fintech"
+    },
+    {
+      "company": "Coinbase",
+      "ats": "greenhouse",
+      "board": "coinbase",
+      "sector": "fintech"
+    },
+    {
+      "company": "Carta",
+      "ats": "greenhouse",
+      "board": "carta",
+      "sector": "fintech"
+    },
+    {
+      "company": "Betterment",
+      "ats": "greenhouse",
+      "board": "betterment",
+      "sector": "fintech"
+    },
+    {
+      "company": "Wealthfront",
+      "ats": "lever",
+      "board": "wealthfront",
+      "sector": "fintech"
+    },
+    {
+      "company": "Modern Treasury",
+      "ats": "ashby",
+      "board": "moderntreasury",
+      "sector": "fintech"
+    },
+    {
+      "company": "Paxos",
+      "ats": "ashby",
+      "board": "paxos",
+      "sector": "fintech"
+    },
+    {
+      "company": "Dave",
+      "ats": "ashby",
+      "board": "dave",
+      "sector": "fintech"
+    },
+    {
+      "company": "Toast",
+      "ats": "greenhouse",
+      "board": "toast",
+      "sector": "fintech"
+    },
+    {
+      "company": "Upgrade",
+      "ats": "greenhouse",
+      "board": "upgrade",
+      "sector": "fintech"
+    },
+    {
+      "company": "Column",
+      "ats": "ashby",
+      "board": "column",
+      "sector": "fintech"
+    },
+    {
+      "company": "Unit",
+      "ats": "ashby",
+      "board": "unit",
+      "sector": "fintech"
+    },
+    {
+      "company": "Alloy",
+      "ats": "greenhouse",
+      "board": "alloy",
+      "sector": "fintech"
+    },
+    {
+      "company": "Persona",
+      "ats": "ashby",
+      "board": "persona",
+      "sector": "fintech"
+    },
+    {
+      "company": "Lemonade",
+      "ats": "ashby",
+      "board": "lemonade",
+      "sector": "fintech"
+    },
+    {
+      "company": "Current",
+      "ats": "greenhouse",
+      "board": "current",
+      "sector": "fintech"
+    },
+    {
+      "company": "Tala",
+      "ats": "lever",
+      "board": "tala",
+      "sector": "fintech"
+    },
+    {
+      "company": "Visa",
+      "ats": "workday",
+      "board": "visa/Visa",
+      "url": "https://visa.wd5.myworkdayjobs.com/Visa",
+      "sector": "fintech"
+    },
+    {
+      "company": "Mastercard",
+      "ats": "workday",
+      "board": "mastercard/CorporateCareers",
+      "url": "https://mastercard.wd1.myworkdayjobs.com/CorporateCareers",
+      "sector": "fintech"
+    },
+    {
+      "company": "Capital One",
+      "ats": "workday",
+      "board": "capitalone/Capital_One",
+      "url": "https://capitalone.wd12.myworkdayjobs.com/Capital_One",
+      "sector": "fintech"
+    },
+    {
+      "company": "Pacific Life",
+      "ats": "workday",
+      "board": "pacificlife/PacificLifeCareers",
+      "url": "https://pacificlife.wd1.myworkdayjobs.com/PacificLifeCareers",
+      "sector": "fintech"
+    },
+    {
+      "company": "Airbnb",
+      "ats": "greenhouse",
+      "board": "airbnb",
+      "sector": "consumer"
+    },
+    {
+      "company": "DoorDash",
+      "ats": "greenhouse",
+      "board": "doordashusa",
+      "sector": "consumer"
+    },
+    {
+      "company": "Instacart",
+      "ats": "greenhouse",
+      "board": "instacart",
+      "sector": "consumer"
+    },
+    {
+      "company": "Lyft",
+      "ats": "greenhouse",
+      "board": "lyft",
+      "sector": "consumer"
+    },
+    {
+      "company": "Faire",
+      "ats": "greenhouse",
+      "board": "faire",
+      "sector": "consumer"
+    },
+    {
+      "company": "Pinterest",
+      "ats": "greenhouse",
+      "board": "pinterest",
+      "sector": "consumer"
+    },
+    {
+      "company": "Reddit",
+      "ats": "greenhouse",
+      "board": "reddit",
+      "sector": "consumer"
+    },
+    {
+      "company": "Discord",
+      "ats": "greenhouse",
+      "board": "discord",
+      "sector": "consumer"
+    },
+    {
+      "company": "Duolingo",
+      "ats": "greenhouse",
+      "board": "duolingo",
+      "sector": "consumer"
+    },
+    {
+      "company": "Squarespace",
+      "ats": "greenhouse",
+      "board": "squarespace",
+      "sector": "consumer"
+    },
+    {
+      "company": "Peloton",
+      "ats": "greenhouse",
+      "board": "peloton",
+      "sector": "consumer"
+    },
+    {
+      "company": "Glossier",
+      "ats": "greenhouse",
+      "board": "glossier",
+      "sector": "consumer"
+    },
+    {
+      "company": "Spotify",
+      "ats": "lever",
+      "board": "spotify",
+      "sector": "consumer"
+    },
+    {
+      "company": "Riot Games",
+      "ats": "greenhouse",
+      "board": "riotgames",
+      "sector": "consumer"
+    },
+    {
+      "company": "Roblox",
+      "ats": "greenhouse",
+      "board": "roblox",
+      "sector": "consumer"
+    },
+    {
+      "company": "Clear",
+      "ats": "greenhouse",
+      "board": "clear",
+      "sector": "consumer"
+    },
+    {
+      "company": "ChowNow",
+      "ats": "lever",
+      "board": "chownow",
+      "sector": "consumer"
+    },
+    {
+      "company": "Gopuff",
+      "ats": "lever",
+      "board": "gopuff",
+      "sector": "consumer"
+    },
+    {
+      "company": "Fanatics",
+      "ats": "greenhouse",
+      "board": "fanaticsinc",
+      "sector": "consumer"
+    },
+    {
+      "company": "StockX",
+      "ats": "greenhouse",
+      "board": "stockx",
+      "sector": "consumer"
+    },
+    {
+      "company": "Rent the Runway",
+      "ats": "greenhouse",
+      "board": "renttherunway",
+      "sector": "consumer"
+    },
+    {
+      "company": "Oura",
+      "ats": "greenhouse",
+      "board": "oura",
+      "sector": "consumer"
+    },
+    {
+      "company": "Whoop",
+      "ats": "ashby",
+      "board": "whoop",
+      "sector": "consumer"
+    },
+    {
+      "company": "Eight Sleep",
+      "ats": "ashby",
+      "board": "eightsleep",
+      "sector": "consumer"
+    },
+    {
+      "company": "Liquid Death",
+      "ats": "greenhouse",
+      "board": "liquiddeath",
+      "sector": "consumer"
+    },
+    {
+      "company": "Olipop",
+      "ats": "greenhouse",
+      "board": "olipop",
+      "sector": "consumer"
+    },
+    {
+      "company": "Sweetgreen",
+      "ats": "greenhouse",
+      "board": "sweetgreen",
+      "sector": "consumer"
+    },
+    {
+      "company": "SeatGeek",
+      "ats": "greenhouse",
+      "board": "seatgeek",
+      "sector": "consumer"
+    },
+    {
+      "company": "Scopely",
+      "ats": "greenhouse",
+      "board": "scopely",
+      "sector": "consumer"
+    },
+    {
+      "company": "Jam City",
+      "ats": "lever",
+      "board": "jamcity",
+      "sector": "consumer"
+    },
+    {
+      "company": "Dollar Shave Club",
+      "ats": "greenhouse",
+      "board": "dollarshaveclub",
+      "sector": "consumer"
+    },
+    {
+      "company": "Fender",
+      "ats": "greenhouse",
+      "board": "fender",
+      "sector": "consumer"
+    },
+    {
+      "company": "Thrive Market",
+      "ats": "greenhouse",
+      "board": "thrivemarket",
+      "sector": "consumer"
+    },
+    {
+      "company": "eBay",
+      "ats": "workday",
+      "board": "ebay/apply",
+      "url": "https://ebay.wd5.myworkdayjobs.com/apply",
+      "sector": "consumer"
+    },
+    {
+      "company": "Snap",
+      "ats": "workday",
+      "board": "snapchat/snap",
+      "url": "https://snapchat.wd1.myworkdayjobs.com/snap",
+      "sector": "consumer"
+    },
+    {
+      "company": "Disney",
+      "ats": "workday",
+      "board": "disney/disneycareer",
+      "url": "https://disney.wd5.myworkdayjobs.com/disneycareer",
+      "sector": "consumer"
+    },
+    {
+      "company": "Walmart",
+      "ats": "workday",
+      "board": "walmart/WalmartExternal",
+      "url": "https://walmart.wd5.myworkdayjobs.com/WalmartExternal",
+      "sector": "consumer"
+    },
+    {
+      "company": "Target",
+      "ats": "workday",
+      "board": "target/targetcareers",
+      "url": "https://target.wd5.myworkdayjobs.com/targetcareers",
+      "sector": "consumer"
+    },
+    {
+      "company": "Oscar Health",
+      "ats": "greenhouse",
+      "board": "oscar",
+      "sector": "health"
+    },
+    {
+      "company": "Hinge Health",
+      "ats": "ashby",
+      "board": "hinge-health",
+      "sector": "health"
+    },
+    {
+      "company": "GoodRx",
+      "ats": "ashby",
+      "board": "goodrx",
+      "sector": "health"
+    },
+    {
+      "company": "Hims & Hers",
+      "ats": "ashby",
+      "board": "hims-and-hers",
+      "sector": "health"
+    },
+    {
+      "company": "Flatiron Health",
+      "ats": "greenhouse",
+      "board": "flatironhealth",
+      "sector": "health"
+    },
+    {
+      "company": "Lyra Health",
+      "ats": "lever",
+      "board": "lyrahealth",
+      "sector": "health"
+    },
+    {
+      "company": "Headway",
+      "ats": "ashby",
+      "board": "headway",
+      "sector": "health"
+    },
+    {
+      "company": "Zocdoc",
+      "ats": "greenhouse",
+      "board": "zocdoc",
+      "sector": "health"
+    },
+    {
+      "company": "Capsule",
+      "ats": "ashby",
+      "board": "capsule",
+      "sector": "health"
+    },
+    {
+      "company": "Devoted Health",
+      "ats": "smartrecruiters",
+      "board": "devotedhealth",
+      "sector": "health"
+    },
+    {
+      "company": "Included Health",
+      "ats": "lever",
+      "board": "includedhealth",
+      "sector": "health"
+    },
+    {
+      "company": "Cedar",
+      "ats": "ashby",
+      "board": "cedar",
+      "sector": "health"
+    },
+    {
+      "company": "VTS",
+      "ats": "greenhouse",
+      "board": "vts",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Juniper Square",
+      "ats": "ashby",
+      "board": "junipersquare",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Fundrise",
+      "ats": "lever",
+      "board": "fundrise",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Pacaso",
+      "ats": "greenhouse",
+      "board": "pacaso",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Roofstock",
+      "ats": "greenhouse",
+      "board": "roofstock",
+      "sector": "realEstate"
+    },
+    {
+      "company": "EliseAI",
+      "ats": "ashby",
+      "board": "eliseai",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Cherre",
+      "ats": "lever",
+      "board": "cherre",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Crexi",
+      "ats": "greenhouse",
+      "board": "crexi",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Flex",
+      "ats": "greenhouse",
+      "board": "flex",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Baselane",
+      "ats": "lever",
+      "board": "baselane",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Slate Technologies",
+      "ats": "lever",
+      "board": "slate",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Higharc",
+      "ats": "ashby",
+      "board": "higharc",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Prologis",
+      "ats": "workday",
+      "board": "prologis/Prologis_External_Careers",
+      "url": "https://prologis.wd5.myworkdayjobs.com/Prologis_External_Careers",
+      "sector": "realEstate"
+    },
+    {
+      "company": "JLL",
+      "ats": "workday",
+      "board": "jll/jllcareers",
+      "url": "https://jll.wd1.myworkdayjobs.com/jllcareers",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Cushman & Wakefield",
+      "ats": "workday",
+      "board": "cw/External",
+      "url": "https://cw.wd1.myworkdayjobs.com/External",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Brookfield",
+      "ats": "workday",
+      "board": "brookfield/brookfield",
+      "url": "https://brookfield.wd5.myworkdayjobs.com/brookfield",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Blackstone",
+      "ats": "workday",
+      "board": "blackstone/Blackstone_Careers",
+      "url": "https://blackstone.wd1.myworkdayjobs.com/Blackstone_Careers",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Blackstone Campus",
+      "ats": "workday",
+      "board": "blackstone/Blackstone_Campus_Careers",
+      "url": "https://blackstone.wd1.myworkdayjobs.com/Blackstone_Campus_Careers",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Tishman Speyer",
+      "ats": "workday",
+      "board": "ts/tishmanspeyer",
+      "url": "https://ts.wd5.myworkdayjobs.com/tishmanspeyer",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Essex Property Trust",
+      "ats": "workday",
+      "board": "essex/essexcareers",
+      "url": "https://essex.wd5.myworkdayjobs.com/essexcareers",
+      "sector": "realEstate"
+    },
+    {
+      "company": "Simon Property Group",
+      "ats": "workday",
+      "board": "simon/Simon",
+      "url": "https://simon.wd1.myworkdayjobs.com/Simon",
+      "sector": "realEstate"
+    }
+  ]
+}

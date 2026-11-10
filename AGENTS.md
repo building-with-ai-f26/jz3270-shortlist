@@ -14,6 +14,7 @@
 - **Run one check in the terminal:** `npm run scan` (add `-- --demo` for demo data)
 - **Find job boards for a list of company names:** `npm run discover` (reads `data/companies.txt`; a line can be a name, or a name plus a pasted careers link: `NVIDIA | https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite`). Add `-- --merge-starter` to pull in starter-list names you don't have yet.
 - **Check that every watchlist board works:** `npm run check` (add `-- --prune` to remove failing boards)
+- **Rebuild the starter companies for setup:** `npm run build-starter` after editing `config/companies.example.txt` (about 4 minutes; review the "Double-check these" list for boards that belong to a different company)
 - **Run deterministic tests:** `npm test`
 - **Run model evals:** not built yet (Build 4, see `tests/README.md`)
 
@@ -32,7 +33,8 @@
 | `src/setup.js` | Turns setup choices (kinds of roles, cities, schools) into `preferences.json`: title words, locations, Workday searches and `networkSchools` |
 | `src/env.js` | Loads `.env` without a dependency |
 | `public/index.html` | The whole front end |
-| `config/*.example.*` | Example watchlist, preferences, profile and starter company list, copied into `data/` on first use |
+| `config/*.example.*` | Example watchlist, preferences, profile and starter company list, copied into `data/` on first use. Each heading in `companies.example.txt` is a sector |
+| `config/starter-watchlist.json` | Built by `npm run build-starter`: every starter company with a working board, tagged by sector, so setup can add a sector at once |
 | `fixtures/sample-postings.json` | Fictional postings in real ATS response shapes, for demo mode and tests |
 | `fixtures/resume-sample.pdf`, `.docx` | A fictional resume (Sam Rivera) for the upload tests |
 | `docs/index.html` | Public Product Page, living PRD and build log (GitHub Pages) |
