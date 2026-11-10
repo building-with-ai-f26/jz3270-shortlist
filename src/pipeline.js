@@ -35,7 +35,9 @@ export function paths(demo) {
     profile: configFrom(...PERSONAL_FILES[2]),
     state: path.join(dataDir, "state.json"),
     latest: path.join(dataDir, "latest.json"),
-    scores: path.join(dataDir, "scores.json")
+    scores: path.join(dataDir, "scores.json"),
+    // Keyword scores are kept apart, so switching to keyword-only and back never throws away paid AI scores.
+    keywordScores: path.join(dataDir, "scores.keywords.json")
   };
 }
 
@@ -114,12 +116,13 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
 
   // 3. Score (paid when AI is on). Scores are saved by posting ID, so a posting is only paid for once.
   // If the profile or the model changes, the saved scores no longer apply and I start over.
-  const useAI = !demo && hasRealKey();
+  const useAI = !demo && hasRealKey() && prefs.scoring !== "keywords";
+  const scoresFile = useAI ? p.scores : p.keywordScores;
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
   // SCORE_VERSION goes up whenever the scoring prompt changes what it returns, so old scores are redone once.
   const SCORE_VERSION = 2;
   const cacheKey = `v${SCORE_VERSION}:${useAI ? `ai:${model}` : "keywords"}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
-  const saved = demo ? { key: cacheKey, scores: {} } : readJson(p.scores, { key: cacheKey, scores: {} });
+  const saved = demo ? { key: cacheKey, scores: {} } : readJson(scoresFile, { key: cacheKey, scores: {} });
   const cache = saved.key === cacheKey ? saved : { key: cacheKey, scores: {} };
   const cacheReset = !demo && saved.key !== cacheKey && Object.keys(saved.scores || {}).length > 0;
 
@@ -213,7 +216,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   state.runs.push(summary);
   fs.writeFileSync(p.state, JSON.stringify(state, null, 2));
   fs.writeFileSync(p.latest, JSON.stringify(latest, null, 2));
-  if (!demo) fs.writeFileSync(p.scores, JSON.stringify(cache));
+  if (!demo) fs.writeFileSync(scoresFile, JSON.stringify(cache));
   return latest;
 }
 
@@ -224,14 +227,16 @@ export function readLatest(demo) {
 export function status(demo) {
   const p = paths(demo);
   const runs = readJson(p.state, { runs: [] }).runs.length;
+  const prefs = readJson(p.preferences, {});
   return {
     demo,
-    aiOn: !demo && hasRealKey(),
+    aiOn: !demo && hasRealKey() && prefs.scoring !== "keywords",
+    keywordsChosen: prefs.scoring === "keywords",
     model: process.env.OPENROUTER_MODEL || DEFAULT_MODEL,
     watchlistCount: readJson(p.watchlist, []).length,
     runs,
     // A fresh install: setup has never been saved and nothing has been checked yet.
     // Anyone who already ran checks before setup existed is not sent through it.
-    needsSetup: !demo && !readJson(p.preferences, {}).setup && runs === 0
+    needsSetup: !demo && !prefs.setup && runs === 0
   };
 }

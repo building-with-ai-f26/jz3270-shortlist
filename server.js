@@ -3,7 +3,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { loadEnv } from "./src/env.js";
+import { loadEnv, saveApiKey } from "./src/env.js";
 import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths } from "./src/pipeline.js";
 import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
 import { readSetup, saveSetup } from "./src/setup.js";
@@ -69,6 +69,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req, 64 * 1024, "That form is too large.");
       let input;
       try { input = JSON.parse(body.toString("utf8")); } catch { throw new Error("The form did not arrive as JSON."); }
+      // A new key is checked and saved first, so a rejected key stops the save before anything else changes.
+      // An empty field means "keep the key I already have".
+      if (input.apiKey) await saveApiKey(input.apiKey, ROOT);
       return send(res, 200, saveSetup(input, dataDir));
     } catch (err) {
       return send(res, 400, { error: err.message });
@@ -102,5 +105,5 @@ server.listen(PORT, () => {
   console.log(`Shortlist running at http://localhost:${PORT}`);
   console.log(DEMO
     ? "Mode: DEMO (fictional sample postings, keyword scoring, no API calls)"
-    : `Mode: LIVE (${s.watchlistCount} companies, scoring with ${s.aiOn ? s.model + " via OpenRouter" : "keywords (no OPENROUTER_API_KEY in .env)"})`);
+    : `Mode: LIVE (${s.watchlistCount} companies, scoring with ${s.aiOn ? s.model + " via OpenRouter" : s.keywordsChosen ? "keywords (chosen in setup)" : "keywords (no OPENROUTER_API_KEY in .env)"})`);
 });

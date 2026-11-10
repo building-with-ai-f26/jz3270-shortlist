@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { LOOKING_FOR } from "./resume.js";
+import { hasRealKey } from "./env.js";
 
 const CONFIG = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config");
 const SAMPLE_PROFILE = path.join(CONFIG, "profile.example.md");
@@ -81,10 +82,13 @@ function pick(keys, table, what) {
 
 // answers = { roles: ["strategy", ...], cities: ["newYork", ...], schools: ["NYU Stern", ...] }
 // No cities means no location filter. No roles means only the 2027 and MBA title words.
-// Setup owns titleInclude, locations, workdaySearch and networkSchools; everything else in `existing` is kept.
+// Setup owns titleInclude, locations, workdaySearch, networkSchools and scoring; everything else in `existing` is kept.
 export function buildPreferences(answers = {}, existing = {}) {
   const roles = pick(answers.roles, ROLE_FAMILIES, "role type");
   const cities = pick(answers.cities, CITIES, "city");
+  // "ai" scores with a model through OpenRouter (needs a key); "keywords" is free and needs nothing.
+  const scoring = answers.scoring === undefined ? (existing.scoring || "ai") : answers.scoring;
+  if (!["ai", "keywords"].includes(scoring)) throw new Error(`Unknown scoring: ${scoring}`);
   const schools = unique((Array.isArray(answers.schools) ? answers.schools : [])
     .map((s) => String(s).trim().slice(0, 80))
     .filter(Boolean));
@@ -96,6 +100,7 @@ export function buildPreferences(answers = {}, existing = {}) {
     locations: unique(cities.flatMap((c) => CITIES[c].locations)),
     workdaySearch: unique([...BASE_SEARCHES, ...roles.flatMap((r) => ROLE_FAMILIES[r].searches)]),
     networkSchools: schools,
+    scoring,
     // The choices themselves, so the setup screen can show them again later.
     setup: { roles, cities }
   };
@@ -187,6 +192,9 @@ export function readSetup(dataDir, starter = readStarter()) {
     lookingFor: lookingFor === lookingForText(sample) ? "" : lookingFor,
     sampleResume,
     watchlistCount: watchlist.length,
+    // Whether a key is saved, never the key itself.
+    scoring: prefs.scoring || "ai",
+    hasKey: hasRealKey(),
     options: {
       roles: Object.entries(ROLE_FAMILIES).map(([key, r]) => ({ key, label: r.label })),
       cities: Object.entries(CITIES).map(([key, c]) => ({ key, label: c.label })),

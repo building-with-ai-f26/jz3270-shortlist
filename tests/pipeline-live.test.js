@@ -114,3 +114,25 @@ test("the filtered-out list is summarized by reason", async () => {
   assert.equal(reasons["Location not on your list"], 1);
   assert.equal(reasons["Older than your max age"], 1);
 });
+
+test("switching to keyword-only and back keeps the AI scores already paid for", async () => {
+  const prefsPath = path.join(dir, "preferences.json");
+  const prefs = JSON.parse(fs.readFileSync(prefsPath, "utf8"));
+  const paid = fs.readFileSync(path.join(dir, "scores.json"), "utf8");
+
+  fs.writeFileSync(prefsPath, JSON.stringify({ ...prefs, scoring: "keywords" }));
+  scoredTitles = [];
+  const kw = await runPipeline({ fetchImpl: fakeInternet(), now: NOW + 18000000 });
+  assert.equal(scoredTitles.length, 0, "keyword-only never calls OpenRouter, even with a key saved");
+  assert.equal(kw.summary.costUsd, 0);
+  assert.equal(kw.summary.cacheReset, false);
+  assert.equal(fs.readFileSync(path.join(dir, "scores.json"), "utf8"), paid, "the AI scores file is untouched");
+  assert.ok(fs.existsSync(path.join(dir, "scores.keywords.json")));
+
+  fs.writeFileSync(prefsPath, JSON.stringify({ ...prefs, scoring: "ai" }));
+  scoredTitles = [];
+  const back = await runPipeline({ fetchImpl: fakeInternet(), now: NOW + 21600000 });
+  assert.equal(back.summary.cacheReset, false);
+  assert.equal(back.summary.fromCache, 5, "the 5 roles scored before are reused, not paid for again");
+  assert.ok(scoredTitles.length <= 3, "only roles never scored are sent to the model");
+});

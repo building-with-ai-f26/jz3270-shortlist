@@ -190,3 +190,10 @@ test("the starter watchlist is well formed and covers the example watchlist", ()
   const example = readJson(new URL("../config/watchlist.example.json", import.meta.url));
   for (const w of example) assert.ok(keys.includes(`${w.ats}:${w.board}`.toLowerCase()), `${w.company} is not in the starter list`);
 });
+
+test("scoring defaults to AI, keeps the user's choice, and refuses anything else", () => {
+  assert.equal(buildPreferences({}).scoring, "ai");
+  assert.equal(buildPreferences({ scoring: "keywords" }).scoring, "keywords");
+  assert.equal(buildPreferences({}, { scoring: "keywords" }).scoring, "keywords");
+  assert.throws(() => buildPreferences({ scoring: "magic" }), /Unknown scoring: magic/);
+});
