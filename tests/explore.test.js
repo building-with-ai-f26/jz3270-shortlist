@@ -127,3 +127,19 @@ test("adding an explored company to the watchlist does not pay for its roles aga
   for (const t of explorePaid) assert.ok(!scoredHere.includes(t), `${t} was already paid for by explore`);
   assert.ok(r.summary.fromCache >= explorePaid.length);
 });
+
+test("the free rank favors titles that name your kinds of role and pushes other functions down", async () => {
+  const { matchScore } = await import("../src/explore.js");
+  const { rankSignals } = await import("../src/setup.js");
+  const signals = rankSignals({ setup: { roles: ["strategy", "supplyChain"] } });
+  assert.ok(signals.includes("Supply Chain") && signals.includes("MBA") && !signals.includes("Business"));
+  const strong = matchScore({ title: "MBA Associate, Supply Chain Strategy", fit: 50 }, signals);
+  const plain = matchScore({ title: "Associate, Global Events", fit: 50 }, signals);
+  const sales = matchScore({ title: "Business Development Representative, Strategic Accounts", fit: 100 }, signals);
+  const barred = matchScore({ title: "Strategy Associate", fit: 90, dealbreaker: "Asks for 5+ years" }, signals);
+  assert.equal(strong.fit, 70, "30 from overlap plus two role phrases (three match, two count)");
+  assert.match(strong.why, /Title matches your roles: MBA, Strategy, Supply Chain\./);
+  assert.equal(plain.fit, 30);
+  assert.ok(sales.fit < strong.fit, "a sales title ranks below a supply chain title even with more shared words");
+  assert.ok(barred.fit <= 20);
+});

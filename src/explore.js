@@ -6,7 +6,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { pool } from "./pool.js";
 import { fetchBoard, fillDetails } from "./sources.js";
-import { runFilter, prefilter, classifyCohort, COHORTS } from "./filter.js";
+import { runFilter, prefilter, classifyCohort, matchesAny, COHORTS } from "./filter.js";
+import { rankSignals } from "./setup.js";
 import { scoreAll, DEFAULT_MODEL } from "./score.js";
 import { hasRealKey } from "./env.js";
 import { peopleLinks } from "./people.js";
@@ -34,6 +35,23 @@ export function explorePool(directory, watchlist, dead = {}, now = Date.now()) {
   const names = new Set(watchlist.map((w) => normalizeName(w.company)));
   const stillDead = (d) => dead[boardKey(d)] && now - new Date(dead[boardKey(d)]).getTime() < DEAD_RETRY_DAYS * DAY;
   return directory.filter((d) => !boards.has(boardKey(d)) && !names.has(normalizeName(d.company)) && !stillDead(d));
+}
+
+// Title words that name a different job from the ones setup offers, whatever words the description
+// shares with the resume. They lower a role's rank; nothing is filtered out for them.
+const OTHER_FUNCTIONS = /\b(sales development|account executive|account manager|representative|administrator|recruiter|engineer|developer|designer|technician|customer support|technical support|customer success|paralegal|nurse|accountant|bookkeeper|copywriter)\b/i;
+
+// The free rank explore sorts by, 0 to 100. Resume overlap counts for up to 60, each title phrase that names
+// a chosen kind of role adds 20 (two at most), and a title from another function takes 40 off.
+// A dealbreaker (undergrads only, PhD required, 5+ years) keeps a role near the bottom.
+export function matchScore(posting, signals) {
+  const hits = signals.filter((s) => matchesAny(posting.title, [s]));
+  const other = OTHER_FUNCTIONS.test(posting.title);
+  let fit = Math.round((posting.fit ?? 0) * 0.6) + Math.min(2, hits.length) * 20 - (other ? 40 : 0);
+  if (posting.dealbreaker) fit = Math.min(fit, 20);
+  fit = Math.max(0, Math.min(100, fit));
+  const why = [hits.length ? `Title matches your roles: ${hits.join(", ")}.` : "Title names none of your kinds of role.", posting.why].filter(Boolean).join(" ");
+  return { fit, why };
 }
 
 export async function runExplore({ fetchImpl = fetch, now = Date.now(), directory, concurrency = 16, limit, topN, keywordsOnly = false, onProgress } = {}) {
@@ -90,9 +108,11 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
     else countDrop({ ...again.posting, reason: again.reason });
   }
 
-  // 3. Rank every passing role against the resume with free keyword scoring.
+  // 3. Rank every passing role for free: resume overlap plus whether the title names a kind of role the user chose.
   const textById = new Map(ready.map((r) => [r.id, r.text]));
-  const { scored: ranked } = await scoreAll(profile, ready, { useAI: false, maxToScore: ready.length });
+  const { scored: overlap } = await scoreAll(profile, ready, { useAI: false, maxToScore: ready.length });
+  const signals = rankSignals(prefs);
+  const ranked = overlap.map((r) => ({ ...r, ...matchScore(r, signals) }));
   ranked.sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1) || (a.ageDays ?? 999) - (b.ageDays ?? 999));
   const cap = topN || prefs.maxToScore || 40;
   let results = ranked.slice(0, cap);

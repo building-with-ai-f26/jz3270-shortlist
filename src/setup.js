@@ -18,14 +18,16 @@ const BASE_SEARCHES = ["MBA", "2027", "new grad", "university", "rotational", "e
 
 // Each kind of role adds title words (a title needs at least one to pass the filter) and searches to run
 // on Workday and SmartRecruiters boards. Each search is one more request per Workday company, so I keep them short.
+// Signals are the narrower title phrases that mark a strong match when explore ranks roles; broad filter words
+// like "Business", "Development" or "Program" are left out because they also fit sales and IT titles.
 export const ROLE_FAMILIES = {
-  strategy: { label: "Strategy and operations", titles: ["Strategy", "Strategist", "Operations", "Business", "Chief of Staff", "Deployment"], searches: ["strategy", "operations"] },
-  product: { label: "Product management", titles: ["Product Manager", "Product Management"], searches: ["product manager"] },
-  finance: { label: "Finance and corporate development", titles: ["Finance", "Corporate Development", "Corp Dev", "FP&A", "Investment"], searches: ["finance", "corporate development"] },
-  supplyChain: { label: "Supply chain", titles: ["Supply Chain", "Sourcing", "Procurement", "Logistics"], searches: ["supply chain"] },
-  realEstate: { label: "Real estate", titles: ["Real Estate", "Acquisitions", "Development"], searches: ["real estate"] },
-  marketing: { label: "Marketing", titles: ["Marketing", "Brand", "Growth"], searches: ["marketing"] },
-  programs: { label: "Rotational and leadership programs", titles: ["Rotational", "Leadership", "Program"], searches: ["leadership program"] }
+  strategy: { label: "Strategy and operations", titles: ["Strategy", "Strategist", "Operations", "Business", "Chief of Staff", "Deployment"], searches: ["strategy", "operations"], signals: ["Strategy", "Strategist", "Strategic", "Operations", "BizOps", "Chief of Staff"] },
+  product: { label: "Product management", titles: ["Product Manager", "Product Management"], searches: ["product manager"], signals: ["Product Manager", "Product Management", "Product Lead"] },
+  finance: { label: "Finance and corporate development", titles: ["Finance", "Corporate Development", "Corp Dev", "FP&A", "Investment"], searches: ["finance", "corporate development"], signals: ["Finance", "Financial", "Corporate Development", "Corp Dev", "FP&A", "Investment"] },
+  supplyChain: { label: "Supply chain", titles: ["Supply Chain", "Sourcing", "Procurement", "Logistics"], searches: ["supply chain"], signals: ["Supply Chain", "Sourcing", "Procurement", "Logistics", "Fulfillment"] },
+  realEstate: { label: "Real estate", titles: ["Real Estate", "Acquisitions", "Development"], searches: ["real estate"], signals: ["Real Estate", "Acquisitions", "Development Manager", "Asset Management", "Site Selection"] },
+  marketing: { label: "Marketing", titles: ["Marketing", "Brand", "Growth"], searches: ["marketing"], signals: ["Marketing", "Brand Manager", "Growth Marketing"] },
+  programs: { label: "Rotational and leadership programs", titles: ["Rotational", "Leadership", "Program"], searches: ["leadership program"], signals: ["Rotational", "Rotation", "Leadership Development", "Leadership Program"] }
 };
 
 // Each city lists the place names job boards use for it. A posting passes if its location has any of them.
@@ -113,6 +115,13 @@ function readJson(file, fallback) {
 // Preferences written before setup existed have no `setup` record, so I work out which choices
 // they already match: a role counts if one of its searches is there or all of its title words are,
 // and a city counts if its main name is listed.
+// Title phrases explore ranks by: the MBA basics plus the signals of every chosen kind of role.
+const BASE_SIGNALS = ["MBA", "2027", "New Grad", "Early Career", "Associate Program"];
+export function rankSignals(prefs = {}) {
+  const roles = prefs.setup?.roles || inferChoices(prefs).roles;
+  return [...new Set([...BASE_SIGNALS, ...roles.flatMap((r) => ROLE_FAMILIES[r]?.signals || [])])];
+}
+
 function inferChoices(prefs) {
   const searches = new Set((prefs.workdaySearch || []).map((s) => s.toLowerCase()));
   const titles = new Set((prefs.titleInclude || []).map((s) => s.toLowerCase()));

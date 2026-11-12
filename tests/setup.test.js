@@ -55,7 +55,7 @@ test("settings setup does not ask about are kept, and unknown choices are refuse
 });
 
 test("every role and city has a label and something to match", () => {
-  for (const r of Object.values(ROLE_FAMILIES)) assert.ok(r.label && r.titles.length && r.searches.length);
+  for (const r of Object.values(ROLE_FAMILIES)) assert.ok(r.label && r.titles.length && r.searches.length && r.signals.length);
   for (const c of Object.values(CITIES)) assert.ok(c.label && c.locations.length);
 });
 

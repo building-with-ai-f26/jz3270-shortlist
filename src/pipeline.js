@@ -70,6 +70,7 @@ export function scoreCacheKey(profile, useAI, model) {
 // Groups each filter drop under a short reason, for the "Filtered out" counts.
 export function reasonType(r = "") {
   if (r.startsWith("Title has")) return "Excluded word in title";
+  if (r.endsWith("(remote outside the US)")) return "Remote outside the US";
   if (r.startsWith("Location")) return "Location not on your list";
   if (r.startsWith("Posted")) return "Older than your max age";
   if (r.startsWith("No target keyword")) return "No target keyword in title";

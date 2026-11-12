@@ -51,6 +51,14 @@ export function matchesAny(value, words) {
   return words.find((w) => wordPattern(w)?.test(text)) || null;
 }
 
+// Places that mark a remote role as outside the US, and markers that keep it in ("US", "Remote, TX").
+const ABROAD = /\b(canada|toronto|vancouver|montreal|mexico|united kingdom|uk|england|london|ireland|dublin|germany|berlin|france|paris|spain|madrid|portugal|lisbon|netherlands|amsterdam|belgium|switzerland|austria|italy|poland|romania|czech|hungary|bulgaria|croatia|serbia|ukraine|greece|turkey|sweden|norway|denmark|finland|estonia|latvia|lithuania|israel|tel aviv|egypt|south africa|nigeria|kenya|india|bangalore|bengaluru|pakistan|philippines|vietnam|indonesia|malaysia|thailand|singapore|china|hong kong|taiwan|korea|japan|tokyo|australia|sydney|new zealand|brazil|argentina|chile|colombia|peru|uruguay|costa rica|europe|emea|latam|latin america|apac|asia)\b/i;
+const US_NAMES = /\b(united states|america|americas)\b/i;
+const US_CODES = /\b(US|USA|U\.S\.A?\.?|NYC)\b|,\s*(A[LKZR]|C[AOT]|D[EC]|FL|GA|HI|I[DLNA]|K[SY]|LA|M[EDAINSOT]|N[EVHJMYCD]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[TA]|W[AVIY])\b/;
+export function abroadOnly(location = "") {
+  return ABROAD.test(location) && !US_NAMES.test(location) && !US_CODES.test(location);
+}
+
 function daysSince(iso, now) {
   if (!iso) return null;
   const t = new Date(iso).getTime();
@@ -75,6 +83,12 @@ export function prefilter(posting, prefs, now = Date.now()) {
   if (locations.length && posting.location) {
     const hit = matchesAny(posting.location, locations);
     if (!hit) return { keep: false, posting: base, reason: `Location: ${posting.location}` };
+    // "Remote" means remote in the US unless preferences set remoteAnywhere: a remote role that lists
+    // only places abroad ("Remote - Canada", "EMEA") is cut, and one that also names a chosen city is kept.
+    const cityHit = matchesAny(posting.location, locations.filter((l) => !/^\s*remote\s*$/i.test(l)));
+    if (!cityHit && !prefs.remoteAnywhere && abroadOnly(posting.location)) {
+      return { keep: false, posting: base, reason: `Location: ${posting.location} (remote outside the US)` };
+    }
   }
 
   if (prefs.maxAgeDays && ageDays !== null && ageDays > prefs.maxAgeDays) {

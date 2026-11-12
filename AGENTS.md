@@ -70,7 +70,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Build 2 (due Mon Nov 16, noon):** PRD v2 and the Build 2 log on `docs/index.html`, the smallest local version, PostHog installed on the Product Page and the local app with events verified, and local setup documented here.
 
-**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 97 tests.
+**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 99 tests.
 
 **Done Nov 10: anyone can set it up.** A classmate can clone, `npm install`, `npm start`, and finish setup in the browser. A fresh install opens setup by itself; Settings reopens it. Setup covers the resume, kinds of roles, cities, sectors of starter companies (242 companies with working boards, from `config/starter-watchlist.json`), schools, "What I'm looking for", and AI scoring with an OpenRouter key or free keyword scoring. Jordan's own defaults (real estate and supply chain searches, NYU Stern) are now choices, not code. Testing on Nov 10 spent $0.0175 on OpenRouter (37 test roles scored by mistake while checking the setup screen).
 
@@ -80,10 +80,12 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Done Nov 11: explore, step 1 (terminal only).** `npm run explore` looks past the watchlist. The first full free sweep checked 9,730 companies in 166 seconds: 8,861 boards answered, 865 no longer exist (now skipped for 30 days), 243,426 open roles, 3,996 passed Jordan's filters. AI scoring there is capped by `maxToScore`, which is 200 in Jordan's preferences (about $0.10 per sweep), so use `-- --top 40` until the ranking improves. Not in the app yet.
 
-**Known limits of explore:** the free keyword ranking that picks which roles get AI-scored is weak; generic shared words lift sales and IT roles. "Remote" in the city list lets in remote roles outside the US (46 of the top 300 in the first sweep). Lever boards sometimes time out at 16 at a time (4 in the first sweep). The directory has no Workday companies and was last updated Aug 2026.
+**Done Nov 11: better explore ranking, and Remote means US remote.** Explore's free rank is resume overlap (up to 60) plus 20 for each title phrase that names a chosen kind of role (two at most, from `signals` in `ROLE_FAMILIES`), minus 40 for titles from other functions (sales reps, account executives, IT, engineering). On the same sweep, the top 40 went from 18 to 39 titles naming Jordan's roles, and from 5 to 0 other-function titles. In `src/filter.js`, "Remote" now means remote in the US for every check: a remote role listing only places abroad is cut with the reason "remote outside the US" (7,472 in the sweep), unless preferences set `remoteAnywhere: true` (no setup option for it yet).
+
+**Known limits of explore:** the rank is still word matching, so a title like "Sales Strategy & Operations Analyst" ranks high; AI scoring of the top roles is what sorts those out. Lever boards sometimes time out at 16 at a time. The directory has no Workday companies and was last updated Aug 2026.
 
 **Next, in order:**
-1. **Explore ranking:** rank with the title words of the chosen roles as well as resume overlap, and treat "Remote" as US remote unless the user picks otherwise. Then explore step 2: a "Beyond your list" section in the app with "Add to watchlist".
+1. **Explore step 2:** a "Beyond your list" section in the app with "Add to watchlist", and an Explore button that runs the sweep in the background.
 2. **Product Page fixes.** The live tagline still says "recruiting across several tracks at once". The off-cycle version Jordan wrote is in a stray root `index.html` that Pages does not serve: move that tagline into `docs/index.html`, then delete the root `index.html`. Fill the "[N]" placeholder in the Build 1 entry. `README.md` has the same old tagline, and its setup section needs the new flow (a draft was shown to Jordan on Nov 10).
 
 **Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.

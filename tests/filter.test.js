@@ -100,3 +100,16 @@ test("a passing mention of graduates does not move an experienced role", () => {
   assert.equal(classifyCohort("Director of Strategy", "Mentor recent graduates on our team."), "Open now");
   assert.equal(classifyCohort("Operations Lead", "We train new graduates every year."), "Open now");
 });
+
+test("Remote means remote in the US unless remoteAnywhere is set", () => {
+  const remote = (location, over = {}) => prefilter(posting({ location }), { ...prefs, ...over }, now);
+  for (const kept of ["Remote", "Remote - US", "Remote (United States | Canada)", "Remote, TX", "US, Remote", "New York or Remote (Canada)"]) {
+    assert.equal(remote(kept).keep, true, kept);
+  }
+  for (const cut of ["Costa Rica, Remote", "Remote - Canada", "United Kingdom (Remote)", "Remote, EMEA", "Remote (LATAM)"]) {
+    const r = remote(cut);
+    assert.equal(r.keep, false, cut);
+    assert.equal(r.reason, `Location: ${cut} (remote outside the US)`, "the drop keeps its reason");
+  }
+  assert.equal(remote("Remote - Canada", { remoteAnywhere: true }).keep, true);
+});
