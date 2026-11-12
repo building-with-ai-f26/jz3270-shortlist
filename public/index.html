@@ -217,6 +217,20 @@
     .c-more { padding: 2px 16px 14px 68px; }
     .c-more .open { margin-top: 10px; }
 
+    /* Beyond your list: the same board language, one full width column, with an Add button beside Open. */
+    .explore { padding-top: 34px; }
+    .explore-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 18px; }
+    .explore-bar .btn:disabled { opacity: 0.6; cursor: progress; }
+    .explore-status { margin: 0; font-size: 13px; color: var(--ink-2); }
+    .explore-status.bad { color: var(--stop); font-weight: 600; }
+    .explore .tier + .tier { margin-top: 18px; }
+    .add {
+      flex: none; padding: 4px 9px; margin-top: -2px; border: 1px solid var(--ink); background: transparent;
+      font-size: 12px; font-weight: 700; white-space: nowrap; transition: background 140ms var(--ease), color 140ms var(--ease);
+    }
+    .add:hover { background: var(--ink); color: var(--strip); }
+    .add:disabled { opacity: 0.5; }
+    .on-list { flex: none; padding: 4px 9px; margin-top: -2px; border: 1px dashed var(--rule); font-size: 12px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
     .board-empty { margin-top: 18px; padding: 16px; border: 1px dashed var(--rule); font-size: 14px; color: var(--ink-2); }
     .empty { padding: 56px 0 40px; max-width: 60ch; }
     .empty h2 { margin: 0 0 10px; font-family: var(--display); font-weight: 900; font-size: 48px; line-height: 0.95; text-transform: uppercase; }
@@ -452,6 +466,18 @@
           <div id="boardOpen"></div>
         </section>
       </div>
+
+      <!-- Explore: roles at companies that are not on the watchlist. Live mode only. -->
+      <section class="explore" id="explore" hidden aria-labelledby="exploreHead">
+        <div class="board-head"><h2 id="exploreHead">Beyond your list</h2><span class="n" id="exploreCount"></span></div>
+        <p class="board-sub" id="exploreSub"></p>
+        <div class="explore-bar">
+          <button class="btn solid" id="exploreBtn" type="button">Explore</button>
+          <p class="explore-status" id="exploreStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div id="exploreList"></div>
+        <div id="exploreMore"></div>
+      </section>
 
       <div class="lower">
         <div id="errors"></div>
@@ -706,6 +732,8 @@
       resume_uploaded: ["file_type", "from"],
       posting_opened: ["column", "how"],
       people_link_opened: ["link_type"],
+      explore_clicked: [],
+      company_added: ["from"],
       setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time"]
     };
     function startAnalytics(cfg) {
@@ -743,11 +771,13 @@
     function trackOpen(e) {
       const a = e.target.closest("a[data-kind]");
       if (!a) return;
-      if (a.dataset.kind === "posting") track("posting_opened", { column: a.closest("#boardGrad") ? "grad" : "open", how: "click" });
+      if (a.dataset.kind === "posting") track("posting_opened", { column: a.closest("#explore") ? "explore" : a.closest("#boardGrad") ? "grad" : "open", how: "click" });
       else if (a.dataset.kind === "people") track("people_link_opened", { link_type: linkType(a.textContent) });
     }
     $("boards").addEventListener("click", trackOpen);
     $("boards").addEventListener("auxclick", (e) => { if (e.button === 1) trackOpen(e); });
+    $("explore").addEventListener("click", trackOpen);
+    $("explore").addEventListener("auxclick", (e) => { if (e.button === 1) trackOpen(e); });
 
     // ---------- Actions ----------
     async function runCheck(label) {
@@ -862,6 +892,109 @@
       dragDepth = 0;
       $("drop").hidden = true;
       if ($("setupView").hidden) uploadResume(e.dataTransfer.files[0]); else setupUpload(e.dataTransfer.files[0]);
+    });
+
+    // ---------- Beyond your list (explore) ----------
+    // Explore checks about 10,000 companies that are not on the watchlist. A sweep runs in the background on the
+    // server, so while it runs the page asks for progress every 2 seconds.
+    let explore = null;
+    let explorePoll = null;
+    const EXPLORE_TIERS = {
+      ai: TIERS,
+      keywords: [
+        { key: "strong", name: "Closest match", range: "75 and up, by title and resume words" },
+        { key: "possible", name: "Some overlap", range: "50 to 74" },
+        { key: "long", name: "Little overlap", range: "under 50, dealbreakers and unscored" }
+      ]
+    };
+    const exploreTier = (r) => (r.error || r.fit === null || r.fit === undefined || r.dealbreaker ? "long" : r.fit >= 75 ? "strong" : r.fit >= 50 ? "possible" : "long");
+    const exploreAction = (r) => r.onWatchlist
+      ? `<span class="on-list">On your watchlist</span>`
+      : `<button type="button" class="add" data-ats="${esc(r.ats)}" data-board="${esc(r.board)}">Add ${esc(r.company)}</button>`;
+
+    function exploreStrip(r, ai) {
+      const score = r.fit === null || r.fit === undefined ? "?" : r.fit;
+      const label = `${ai ? "Fit" : "Match"} ${score} out of 100${r.dealbreaker ? ", blocked by a dealbreaker" : ""}`;
+      const band = r.dealbreaker ? "b-blocked" : `b-${exploreTier(r)}`;
+      return `<li class="strip ${band}${r.isNew ? " is-new" : ""}" tabindex="-1" data-url="${esc(r.url)}">
+        <div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : ai ? "fit" : "match"}</span></div>
+        <div class="s-body">
+          <div class="s-head"><h3 class="s-title"><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a></h3>${openLink(r)}${exploreAction(r)}</div>
+          ${metaHtml(r)}
+          ${reportHtml(r)}
+        </div>
+      </li>`;
+    }
+
+    function renderExplore() {
+      const sec = $("explore");
+      sec.hidden = !st || st.demo;
+      if (sec.hidden) return;
+      const latest = explore?.latest;
+      const s = latest?.summary;
+      const running = Boolean(explore?.running);
+      const p = explore?.progress;
+      const ai = s?.method === "ai";
+
+      $("exploreBtn").disabled = running;
+      $("exploreBtn").textContent = running ? "Exploring..." : s ? "Explore again" : "Explore";
+      $("exploreCount").textContent = s ? latest.results.length : "";
+      $("exploreSub").textContent = s
+        ? `Last explored ${ago(s.runAt)}: ${n(s.checked)} companies not on your watchlist, ${n(s.found)} open roles, ${n(s.passedFilter)} passed your filters. ${ai ? `The top ${n(s.shown)} were scored by AI for $${(s.costUsd || 0).toFixed(4)}.` : `The top ${n(s.shown)} were ranked for free.`}`
+        : "Checks the job boards of about 10,000 more companies with your filters and shows the best roles here. Nothing joins your watchlist unless you add it.";
+      const cost = st.aiOn ? `AI scores the top ${explore?.top || 40} roles, about $0.03; roles it scored before are not paid for again.` : "Free keyword ranking, no AI cost.";
+      $("exploreStatus").classList.toggle("bad", !running && Boolean(explore?.error));
+      $("exploreStatus").textContent = running
+        ? (p?.total ? `Checked ${n(p.done)} of ${n(p.total)} companies: ${n(p.found)} open roles, ${n(p.passed)} pass your filters.` : "Starting...")
+        : explore?.error ? `The last explore stopped: ${explore.error}` : `${cost} A sweep takes a few minutes.`;
+
+      const results = latest?.results || [];
+      $("exploreList").innerHTML = (ai ? EXPLORE_TIERS.ai : EXPLORE_TIERS.keywords).map((t) => {
+        const list = results.filter((r) => exploreTier(r) === t.key);
+        if (!list.length) return "";
+        return `<div class="tier t-${t.key}"><h3 class="tier-head"><span class="sw" aria-hidden="true"></span>${t.name} <span class="range">${t.range}</span><span class="n">${list.length}</span></h3>
+          <ol class="strips">${list.map((r) => exploreStrip(r, ai)).join("")}</ol></div>`;
+      }).join("");
+
+      const more = latest?.more || [];
+      $("exploreMore").innerHTML = more.length ? `<details class="cut"><summary><h3>More to look at</h3><span class="sub tnum">The next ${n(more.length)} roles, ranked for free by title and resume words</span>${icon("chev", "chev")}</summary>
+        <div class="cut-body"><table class="dropped"><thead><tr><th>Role</th><th>Company</th><th>Where</th><th>Match</th><th></th></tr></thead>
+        <tbody>${more.map((r) => `<tr><td><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a>${r.isNew ? ` <span class="new-tag">New</span>` : ""}</td><td>${esc(r.company)}</td><td>${esc(r.location || "")}</td><td class="tnum">${esc(r.fit ?? "")}</td><td>${exploreAction(r)}</td></tr>`).join("")}</tbody></table></div></details>` : "";
+    }
+
+    async function loadExplore() {
+      clearTimeout(explorePoll);
+      if (!st || st.demo) return renderExplore();
+      try { explore = await fetch("/api/explore").then((r) => r.json()); } catch { explore = null; }
+      renderExplore();
+      if (explore?.running) explorePoll = setTimeout(loadExplore, 2000);
+    }
+
+    $("exploreBtn").addEventListener("click", async () => {
+      track("explore_clicked");
+      $("exploreBtn").disabled = true;
+      try { explore = await fetch("/api/explore", { method: "POST" }).then((r) => r.json()); } catch { explore = null; }
+      loadExplore();
+    });
+    $("explore").addEventListener("click", async (e) => {
+      const b = e.target.closest("button.add");
+      if (!b) return;
+      b.disabled = true;
+      try {
+        const res = await fetch("/api/watchlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ats: b.dataset.ats, board: b.dataset.board }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("company_added", { from: "explore" });
+        for (const r of [...explore.latest.results, ...explore.latest.more]) if (r.ats === b.dataset.ats && r.board === b.dataset.board) r.onWatchlist = true;
+        await refreshStatus();
+        renderTop();
+        renderExplore();
+        $("exploreStatus").textContent = `Added ${json.company} to your watchlist. Your next check includes it, and roles explore already scored are not paid for again.`;
+      } catch (err) {
+        b.disabled = false;
+        $("exploreStatus").classList.add("bad");
+        $("exploreStatus").textContent = `Could not add it: ${err.message}`;
+      }
     });
 
     // ---------- Setup ----------
@@ -1102,6 +1235,7 @@
       [st, data] = await Promise.all([fetch("/api/status").then((r) => r.json()), fetch("/api/latest").then((r) => r.json())]);
       startAnalytics(st.analytics);
       renderAll(false);
+      loadExplore();
       // A fresh install goes straight to setup. Changing the hash runs route() through hashchange.
       if (st.needsSetup && location.hash !== "#setup") location.hash = "#setup";
       else route();

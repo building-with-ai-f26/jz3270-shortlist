@@ -192,3 +192,33 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
   fs.writeFileSync(p.explore, JSON.stringify(out, null, 2));
   return out;
 }
+
+// For the page: the latest explore results, each marked with its board and whether it is already on the watchlist.
+export function readExplore() {
+  const p = paths(false);
+  const latest = readJson(p.explore, null);
+  if (!latest) return null;
+  const have = new Set(readJson(p.watchlist, []).map(boardKey));
+  const mark = (r) => {
+    const [ats, board] = r.id.split(":");
+    return { ...r, ats, board, onWatchlist: have.has(boardKey({ ats, board })) };
+  };
+  return { ...latest, results: (latest.results || []).map(mark), more: (latest.more || []).map(mark) };
+}
+
+// Adds a company that explore found to the watchlist. Only boards in the latest explore results are accepted,
+// so the page cannot add an arbitrary board.
+export function addFromExplore(ats, board) {
+  const p = paths(false);
+  if (typeof ats !== "string" || typeof board !== "string") throw new Error("Pick a company from your explore results.");
+  const latest = readJson(p.explore, { results: [], more: [] });
+  const found = [...(latest.results || []), ...(latest.more || [])].find((r) => r.id.startsWith(`${ats}:${board}:`));
+  if (!found) throw new Error("That company is not in your latest explore results.");
+  const watchlist = readJson(p.watchlist, []);
+  const already = watchlist.some((w) => boardKey(w) === boardKey({ ats, board }));
+  if (!already) {
+    watchlist.push({ company: found.company, ats, board });
+    fs.writeFileSync(p.watchlist, JSON.stringify(watchlist, null, 2) + "\n");
+  }
+  return { company: found.company, added: !already, watchlistCount: watchlist.length };
+}

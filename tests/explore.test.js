@@ -143,3 +143,24 @@ test("the free rank favors titles that name your kinds of role and pushes other 
   assert.ok(sales.fit < strong.fit, "a sales title ranks below a supply chain title even with more shared words");
   assert.ok(barred.fit <= 20);
 });
+
+test("the page sees which explored companies are on the watchlist, and can only add ones explore found", async () => {
+  const { readExplore, addFromExplore } = await import("../src/explore.js");
+  const watchlistPath = path.join(dir, "watchlist.json");
+  const onList = JSON.parse(fs.readFileSync(watchlistPath, "utf8"))[0];
+  const page = readExplore();
+  const all = [...page.results, ...page.more];
+  assert.ok(all.every((r) => r.ats && r.board), "every result says which board it came from");
+  assert.ok(all.filter((r) => r.company === onList.company).every((r) => r.onWatchlist));
+  const other = all.find((r) => !r.onWatchlist);
+  assert.ok(other, "at least one explored company is not on the watchlist yet");
+
+  assert.throws(() => addFromExplore("greenhouse", "somebodyelse"), /not in your latest explore results/);
+  assert.throws(() => addFromExplore(["greenhouse"], other.board), /Pick a company/);
+  const first = addFromExplore(other.ats, other.board);
+  assert.deepEqual([first.company, first.added, first.watchlistCount], [other.company, true, 2]);
+  const again = addFromExplore(other.ats, other.board);
+  assert.equal(again.added, false, "adding twice does not duplicate it");
+  assert.equal(JSON.parse(fs.readFileSync(watchlistPath, "utf8")).length, 2);
+  assert.ok(readExplore().results.filter((r) => r.company === other.company).every((r) => r.onWatchlist));
+});

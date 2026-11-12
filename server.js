@@ -7,6 +7,7 @@ import { loadEnv, saveApiKey } from "./src/env.js";
 import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths } from "./src/pipeline.js";
 import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
 import { readSetup, saveSetup } from "./src/setup.js";
+import { runExplore, readExplore, addFromExplore } from "./src/explore.js";
 
 loadEnv(ROOT);
 const DEMO = process.argv.includes("--demo") || process.env.SHORTLIST_DEMO === "1";
@@ -23,6 +24,10 @@ function send(res, code, body, type = "application/json") {
 }
 
 let running = null;
+const EXPLORE_TOP = 40;
+let exploring = null;
+let exploreProgress = null;
+let exploreError = null;
 
 // Reads the raw request body, refusing anything over the size limit. Past the limit I stop keeping
 // chunks but let the upload finish, so the browser gets the error message instead of a dropped connection.
@@ -75,6 +80,28 @@ const server = http.createServer(async (req, res) => {
       // An empty field means "keep the key I already have".
       if (input.apiKey) await saveApiKey(input.apiKey, ROOT);
       return send(res, 200, saveSetup(input, dataDir));
+    } catch (err) {
+      return send(res, 400, { error: err.message });
+    }
+  }
+  // Explore: a sweep takes a few minutes, so it runs in the background and the page asks how far it has got.
+  // From the page it AI-scores the top EXPLORE_TOP roles, about $0.03, whatever maxToScore says.
+  if (url.pathname === "/api/explore" && (req.method === "GET" || req.method === "POST")) {
+    if (DEMO) return send(res, 400, { error: "Explore works in live mode. Stop the demo and run npm start." });
+    if (req.method === "POST" && !exploring) {
+      exploreProgress = { done: 0, total: 0, found: 0, passed: 0 };
+      exploreError = null;
+      exploring = runExplore({ topN: EXPLORE_TOP, onProgress: (p) => { exploreProgress = p; } })
+        .catch((err) => { console.error(err); exploreError = err.message; })
+        .finally(() => { exploring = null; });
+    }
+    return send(res, 200, { running: Boolean(exploring), progress: exploring ? exploreProgress : null, error: exploreError, top: EXPLORE_TOP, latest: readExplore() });
+  }
+  if (req.method === "POST" && url.pathname === "/api/watchlist") {
+    if (DEMO) return send(res, 400, { error: "The watchlist is in live mode. Stop the demo and run npm start." });
+    try {
+      const body = JSON.parse((await readBody(req, 4096, "That request is too large.")).toString("utf8"));
+      return send(res, 200, addFromExplore(body.ats, body.board));
     } catch (err) {
       return send(res, 400, { error: err.message });
     }
