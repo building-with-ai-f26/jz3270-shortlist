@@ -37,7 +37,12 @@ export function paths(demo) {
     latest: path.join(dataDir, "latest.json"),
     scores: path.join(dataDir, "scores.json"),
     // Keyword scores are kept apart, so switching to keyword-only and back never throws away paid AI scores.
-    keywordScores: path.join(dataDir, "scores.keywords.json")
+    keywordScores: path.join(dataDir, "scores.keywords.json"),
+    // npm run explore: its results, its own saved scores, what it has seen, and boards that no longer exist.
+    explore: path.join(dataDir, "explore.json"),
+    exploreScores: path.join(dataDir, "scores.explore.json"),
+    exploreSeen: path.join(dataDir, "explore-seen.json"),
+    exploreDead: path.join(dataDir, "explore-dead.json")
   };
 }
 
@@ -55,7 +60,23 @@ export function ensurePersonalFiles() {
   return created;
 }
 
-function readJson(file, fallback) {
+// SCORE_VERSION goes up whenever the scoring prompt changes what it returns, so old scores are redone once.
+// Saved scores only apply to the same profile, scoring method and model.
+const SCORE_VERSION = 2;
+export function scoreCacheKey(profile, useAI, model) {
+  return `v${SCORE_VERSION}:${useAI ? `ai:${model}` : "keywords"}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
+}
+
+// Groups each filter drop under a short reason, for the "Filtered out" counts.
+export function reasonType(r = "") {
+  if (r.startsWith("Title has")) return "Excluded word in title";
+  if (r.startsWith("Location")) return "Location not on your list";
+  if (r.startsWith("Posted")) return "Older than your max age";
+  if (r.startsWith("No target keyword")) return "No target keyword in title";
+  return r;
+}
+
+export function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; }
 }
 
@@ -119,17 +140,20 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   const useAI = !demo && hasRealKey() && prefs.scoring !== "keywords";
   const scoresFile = useAI ? p.scores : p.keywordScores;
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
-  // SCORE_VERSION goes up whenever the scoring prompt changes what it returns, so old scores are redone once.
-  const SCORE_VERSION = 2;
-  const cacheKey = `v${SCORE_VERSION}:${useAI ? `ai:${model}` : "keywords"}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
+  const cacheKey = scoreCacheKey(profile, useAI, model);
   const saved = demo ? { key: cacheKey, scores: {} } : readJson(scoresFile, { key: cacheKey, scores: {} });
   const cache = saved.key === cacheKey ? saved : { key: cacheKey, scores: {} };
   const cacheReset = !demo && saved.key !== cacheKey && Object.keys(saved.scores || {}).length > 0;
 
+  // A role that npm run explore already scored is not paid for again once its company joins the watchlist.
+  const explored = demo ? null : readJson(p.exploreScores, null);
+  const exploreScores = explored?.key === cacheKey ? explored.scores || {} : {};
+
   const fromCache = [];
   const unscored = [];
   for (const k of kept) {
-    const c = cache.scores[k.id];
+    const c = cache.scores[k.id] || exploreScores[k.id];
+    if (c && !cache.scores[k.id]) cache.scores[k.id] = c;
     if (c) fromCache.push({ ...k, ...c, text: undefined, error: null, fromCache: true });
     else unscored.push(k);
   }
@@ -177,13 +201,6 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
 
   // With 100+ companies the filtered-out list can run to tens of thousands, so I send counts by
   // reason plus the first 300 examples instead of the whole list.
-  const reasonType = (r = "") => {
-    if (r.startsWith("Title has")) return "Excluded word in title";
-    if (r.startsWith("Location")) return "Location not on your list";
-    if (r.startsWith("Posted")) return "Older than your max age";
-    if (r.startsWith("No target keyword")) return "No target keyword in title";
-    return r;
-  };
   const droppedByReason = Object.entries(dropped.reduce((acc, d) => {
     const t = reasonType(d.reason);
     acc[t] = (acc[t] || 0) + 1;

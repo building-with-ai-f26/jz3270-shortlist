@@ -11,6 +11,7 @@
     "discover": "node scripts/discover.js",
     "check": "node scripts/check-sources.js",
     "build-starter": "node scripts/build-starter.js",
+    "explore": "node scripts/explore.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

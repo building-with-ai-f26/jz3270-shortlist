@@ -15,6 +15,7 @@
 - **Find job boards for a list of company names:** `npm run discover` (reads `data/companies.txt`; a line can be a name, or a name plus a pasted careers link: `NVIDIA | https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite`). Add `-- --merge-starter` to pull in starter-list names you don't have yet.
 - **Check that every watchlist board works:** `npm run check` (add `-- --prune` to remove failing boards)
 - **Rebuild the starter companies for setup:** `npm run build-starter` after editing `config/companies.example.txt` (about 4 minutes; review the "Double-check these" list for boards that belong to a different company)
+- **Look for roles beyond the watchlist:** `npm run explore` (checks about 10,000 companies from `config/ats-directory.csv`, a few minutes; results in `data/explore.json`). Add `-- --keywords` for free scoring only, `-- --limit 500` for a quick partial sweep, `-- --top 20` to AI-score fewer roles
 - **Run deterministic tests:** `npm test`
 - **Run model evals:** not built yet (Build 4, see `tests/README.md`)
 
@@ -31,10 +32,12 @@
 | `src/resume.js` | Reads an uploaded PDF, Word or text resume, removes contact details, and swaps it into `data/profile.md` (keeping "What I'm looking for" and a backup in `profile.previous.md`) |
 | `src/people.js` | Builds the "Reach out" LinkedIn people-search links for each role from the company, the team and `networkSchools` |
 | `src/setup.js` | The setup screen's server side. Turns choices (kinds of roles, cities, schools, scoring) into `preferences.json`, adds or removes starter companies by sector in `watchlist.json`, and rewrites "What I'm looking for" only when it changed |
+| `src/explore.js` | Explore: sweeps the open company directory (skipping watchlist companies and boards that recently closed), filters each board as it arrives, ranks survivors with free keyword scoring, AI-scores only the top `maxToScore`, saves its own scores in `data/scores.explore.json` so nothing is paid twice |
 | `src/env.js` | Loads `.env` without a dependency. Saves a key pasted in setup to `.env` after a free check with OpenRouter; the key is never sent back to the page |
 | `public/index.html` | The whole front end: the board and the setup screen at `/#setup`. Keyword-scored roles are tiered by rank, AI-scored roles by fit |
 | `PRODUCT.md`, `DESIGN.md`, `.impeccable/` | Product principles and the design system from the Big Board redesign. Read `DESIGN.md` before changing the look |
 | `config/*.example.*` | Example watchlist, preferences, profile and starter company list, copied into `data/` on first use. Each heading in `companies.example.txt` is a sector |
+| `config/ats-directory.csv` | Open directory of 9,935 companies on Greenhouse, Lever and Ashby (LastRound AI, Aug 2026, CC BY 4.0; credit in `ats-directory.CREDIT.md`), used by explore |
 | `config/starter-watchlist.json` | Built by `npm run build-starter`: every starter company with a working board, tagged by sector, so setup can add a sector at once |
 | `fixtures/sample-postings.json` | Fictional postings in real ATS response shapes, for demo mode and tests |
 | `fixtures/resume-sample.pdf`, `.docx` | A fictional resume (Sam Rivera) for the upload tests |
@@ -67,7 +70,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Build 2 (due Mon Nov 16, noon):** PRD v2 and the Build 2 log on `docs/index.html`, the smallest local version, PostHog installed on the Product Page and the local app with events verified, and local setup documented here.
 
-**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 92 tests.
+**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 97 tests.
 
 **Done Nov 10: anyone can set it up.** A classmate can clone, `npm install`, `npm start`, and finish setup in the browser. A fresh install opens setup by itself; Settings reopens it. Setup covers the resume, kinds of roles, cities, sectors of starter companies (242 companies with working boards, from `config/starter-watchlist.json`), schools, "What I'm looking for", and AI scoring with an OpenRouter key or free keyword scoring. Jordan's own defaults (real estate and supply chain searches, NYU Stern) are now choices, not code. Testing on Nov 10 spent $0.0175 on OpenRouter (37 test roles scored by mistake while checking the setup screen).
 
@@ -75,7 +78,12 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Done Nov 10: PostHog (US cloud).** The local app sends `run_clicked`, `resume_uploaded`, `posting_opened`, `people_link_opened` and `setup_saved` only when `POSTHOG_KEY` is in `.env`, through `track()` in `public/index.html`, which allows a short list of safe properties per event (kinds and counts, never resume text, scores, titles, companies or choices). Click capture, session recording and the other capture PostHog project settings can switch on are off in code, and `before_send` drops anything else; `tests/analytics.test.js` guards this. The Product Page has the standard snippet, and its "See the Product" button sends `clicked_try_product`. All five app events were seen reaching PostHog; Jordan still confirms them in PostHog's Activity view for the Build 2 evidence. The Product Page snippet goes live after the push.
 
+**Done Nov 11: explore, step 1 (terminal only).** `npm run explore` looks past the watchlist. The first full free sweep checked 9,730 companies in 166 seconds: 8,861 boards answered, 865 no longer exist (now skipped for 30 days), 243,426 open roles, 3,996 passed Jordan's filters. AI scoring there is capped by `maxToScore`, which is 200 in Jordan's preferences (about $0.10 per sweep), so use `-- --top 40` until the ranking improves. Not in the app yet.
+
+**Known limits of explore:** the free keyword ranking that picks which roles get AI-scored is weak; generic shared words lift sales and IT roles. "Remote" in the city list lets in remote roles outside the US (46 of the top 300 in the first sweep). Lever boards sometimes time out at 16 at a time (4 in the first sweep). The directory has no Workday companies and was last updated Aug 2026.
+
 **Next, in order:**
-1. **Product Page fixes.** The live tagline still says "recruiting across several tracks at once". The off-cycle version Jordan wrote is in a stray root `index.html` that Pages does not serve: move that tagline into `docs/index.html`, then delete the root `index.html`. Fill the "[N]" placeholder in the Build 1 entry. `README.md` has the same old tagline, and its setup section needs the new flow (a draft was shown to Jordan on Nov 10).
+1. **Explore ranking:** rank with the title words of the chosen roles as well as resume overlap, and treat "Remote" as US remote unless the user picks otherwise. Then explore step 2: a "Beyond your list" section in the app with "Add to watchlist".
+2. **Product Page fixes.** The live tagline still says "recruiting across several tracks at once". The off-cycle version Jordan wrote is in a stray root `index.html` that Pages does not serve: move that tagline into `docs/index.html`, then delete the root `index.html`. Fill the "[N]" placeholder in the Build 1 entry. `README.md` has the same old tagline, and its setup section needs the new flow (a draft was shown to Jordan on Nov 10).
 
 **Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.
