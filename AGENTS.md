@@ -89,7 +89,8 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 **Done Nov 13: Product Page fixes.** The off-cycle tagline from the old root `index.html` is now on `docs/index.html` and in the `README.md` pitch, the Build 1 entry says all 241 boards were reachable on the last check before the deadline (Nov 8), and the stray root `index.html` is deleted (still in Git history). Pushing works through GitHub Desktop; the `gh` command line is signed in as cottonwoodjz, which has no access to this repo.
 
 **Next, in order:**
-1. **Build 2 write-up on `docs/index.html` (due Mon Nov 16, noon):** PRD v2 and the Build 2 log, with PostHog evidence from the Activity view. Two small leftovers there: "Who is this for?" still says "multi-track search", and the Build 1 cost line reads "[3] hours" with placeholder brackets.
-2. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
+1. **Finish the Build 2 write-up (due Mon Nov 16, noon):** PRD v2 and the Build 2 log are drafted on `docs/index.html` (Nov 13). Jordan fills the bracketed spots by hand: PostHog event and session counts and the date checked, Build 2 hours, anything from class exercises, and the brackets in Build 1's "[3] hours". Spend this week is from the app's logs ($0.39); confirm against OpenRouter's activity page.
+2. **Build 3 candidates:** triage on each role (Applied, Saved, Not for me with a reason) that suggests filter rules; a "Your recurring gaps" panel across the top roles; a scheduled morning check with a Mac notification for new strong fits.
+3. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
 
 **Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.

@@ -186,7 +186,7 @@
     <section id="live-demo">
       <h2>Product Showcase (Prototype / Live App / 2-Min Video)</h2>
       <p>
-        <strong>Current Status:</strong> Build 1 local prototype. It runs on my laptop with <code>npm start</code>, and the cloud app comes in Build 5.<br />
+        <strong>Current Status:</strong> Build 2 local version. It runs on my laptop with <code>npm start</code>, a classmate can set it up the same way from the README, and the cloud app comes in Build 5.<br />
         <strong>Demo:</strong> Screenshot below. Cloud URL and two-minute video to follow in Build 5.
       </p>
       <!-- After your first live run, replace this image with a screenshot of live mode (blur anything personal) and update the caption. -->
@@ -202,38 +202,39 @@
       <p class="meta">Updated every week as we test with real users and learn what works.</p>
 
       <h3>1. Target User & The Job to Be Done</h3>
-      <p><strong>Who is this for?</strong> Me first, I'm currently recruiting for full-time roles. After that, hopefully friends and classmates who are running the same multi-track search, all of whom I can reach in class or over text. </p>
+      <p><strong>Who is this for?</strong> Me first, as a Stern MBA Class of 2027 student recruiting off-cycle for full-time roles and programs. After that, friends and classmates who are running the same off-cycle search, all of whom I can reach in class or over text. Since Build 2, a classmate can clone the repository, run two commands and finish setup in the browser, so they no longer need me to edit files for them.</p>
       <p><strong>The painful "Before" workflow:</strong> Since August, I have seen, applied, researched, and interviewed for different roles across different industries. While each company posts its roles in a different place, the check is the same every week: open 12twenty, LinkedIn and each company's career page one by one, then read every description to see whether it wants an MBA, a 2027 start, or five more years of experience than I have. Most of that time goes to roles I could never get, and a program with a short application window can open and close between two of my checks.</p>
-      <p><strong>The "After" workflow with this product:</strong> I keep one watchlist of companies and one profile built from my resume. A single click checks every board on the list, filters out roles that fail my rules on title, location, track and posting age, and scores the rest against my profile. What comes back is a ranked list with one sentence on why each role fits, the biggest gap, any dealbreaker, and a flag on what is new since my last check, which means I only open the postings worth my time.</p>
+      <p><strong>The "After" workflow with this product:</strong> I keep one watchlist of companies and one profile built from my resume. A single click checks every board on the list, filters out roles that fail my rules on title, location, track and posting age, and scores the rest against my profile. What comes back is a ranked list with one sentence on why each role fits, the biggest gap, any dealbreaker, and a flag on what is new since my last check, which means I only open the postings worth my time. The first time, a setup screen asks for my resume, the kinds of roles and cities I want, the sectors of companies to watch, my schools and whether to score with AI or for free. Below the two columns, "Beyond your list" runs the same filters over roughly 9,000 more companies, so a startup I have never heard of can still reach me.</p>
 
       <h3>2. Scope & Explicit Non-Goals</h3>
       <ul>
-       <li><strong>In Scope (Core Workflow):</strong> Check my list. Pull every relevant open role from the Greenhouse, Lever, Ashby, Workday and SmartRecruiters boards of the companies I choose, filter them by my rules, score the survivors against my resume, and show them in two columns: 2027 and new grad roles, and other open full-time roles.</li>
+       <li><strong>In Scope (Core Workflow):</strong> Check my list. Pull every relevant open role from the Greenhouse, Lever, Ashby, Workday and SmartRecruiters boards of the companies I choose, filter them by my rules, score the survivors against my resume, and show them in two columns: 2027 and new grad roles, and other open full-time roles. Setup in the browser and "Beyond your list" support this workflow rather than replace it.</li>
         <li><strong>Out of Scope #1:</strong> Auto-applying or writing cover letters. Shortlist decides where my time goes, but it never submits anything on my behalf.</li>
-        <li><strong>Out of Scope #2:</strong> LinkedIn, Handshake and Stern's 12twenty. They sit behind logins, so this version stays with public job board APIs.</li>
+        <li><strong>Out of Scope #2:</strong> LinkedIn, Handshake and Stern's 12twenty. They sit behind logins, so this version stays with public job board APIs. The "Reach out" links on each role are plain LinkedIn searches that I open myself while logged in, so nothing about anyone is fetched or stored.</li>
         <li><strong>Out of Scope #3:</strong> Companies that run their own careers systems, such as Google, Amazon, Tesla and TikTok, and those on Eightfold, such as Microsoft and Applied Materials. Each would need its own connector, and none of them offer a documented public job feed.</li>
+      </ul>
 
       <h3>3. How It Works Under the Hood & Riskiest Assumption (Week 2+)</h3>
-      <p><strong>Riskiest Assumption:</strong> That a model's fit score lines up with my own judgment closely enough that I trust the ranking instead of opening every posting myself. If the scores feel random, the tool saves no time. Build 1 already showed that keyword matching alone fails this test (see the build log), so the AI scorer is the core of the product rather than an add-on.</p>
+      <p><strong>Riskiest Assumption:</strong> That a model's fit score lines up with my own judgment closely enough that I trust the ranking instead of opening every posting myself. If the scores feel random, the tool saves no time. Build 1 already showed that keyword matching alone fails this test (see the build log), so the AI scorer is the core of the product rather than an add-on. Build 2 gave the first evidence that the model reads the resume rather than matching words. When a test resume was loaded by mistake, every reason cited that person's work history, and with my own resume back, the same kinds of roles were explained through my manufacturing, supplier and real estate experience.</p>
       <p><strong>Simple Architecture:</strong></p>
-      <p class="flow">[Watchlist of about 300 companies + resume profile] → [Local Node.js app] → [Greenhouse, Lever, Ashby, Workday and SmartRecruiters] → [Rule-based filter, free] → [Claude Haiku 5.5 via OpenRouter, one call per new role, up to 200 per check, scores saved] → [Two columns: 2027 and new grad, and open full-time]</p>
+      <p class="flow">[Setup in the browser: resume, roles, cities, sectors, schools] → [Watchlist of 238 companies, plus about 9,000 more to explore] → [Local Node.js app] → [Greenhouse, Lever, Ashby, Workday and SmartRecruiters] → [Rule-based filter, free, with a reason for every drop] → [Claude Haiku 5.5 via OpenRouter, one call per new role, capped per check, scores saved] → [Two columns, plus Beyond your list]</p>
 
       <h3>4. Unit Economics & Analytics Snapshot (Updated Weekly)</h3>
       <div class="grid-2">
         <div class="stat-box">
           <div class="stat-label">Cumulative Build Spend</div>
-          <div class="stat-value">$0.21</div>
-          <p class="meta" style="margin:6px 0 0">OpenRouter scoring calls through Nov 8: 338 calls and 1.23M tokens on Claude Haiku 5.5. My coding agent, Claude, ran on my existing subscription, so it added no new spend.</p>
+          <div class="stat-value">About $0.60</div>
+          <p class="meta" style="margin:6px 0 0">OpenRouter scoring calls: $0.21 through Nov 8, plus about $0.39 in Build 2 across roughly 580 calls on Claude Haiku 5.5 (three full checks for $0.31, two explore runs for $0.06, and one accidental test check for $0.02). My coding agent, Claude, ran on my existing subscription, so it added no new spend.</p>
         </div>
         <div class="stat-box">
           <div class="stat-label">Est. Cost Per User Run</div>
-          <div class="stat-value">About $0.12 per full check</div>
-          <p class="meta" style="margin:6px 0 0">Measured: $0.21 across 338 scoring calls, about $0.0006 per role scored. A first check scores up to 200 roles; later checks only pay for roles they have not seen, so they cost less.</p>
+          <div class="stat-value">About $0.11 per full check, $0.03 per explore</div>
+          <p class="meta" style="margin:6px 0 0">Measured across Build 2: three full checks scored 466 roles for $0.31, about $0.0007 per role. A check scores up to 200 new roles and reuses saved scores for the rest, and an explore run scores only its top 40.</p>
         </div>
         <div class="stat-box">
           <div class="stat-label">User Evidence (Analytics from Build 2)</div>
-          <div class="stat-value">Not yet measured</div>
-          <p class="meta" style="margin:6px 0 0">PostHog goes in during Build 2.</p>
+          <div class="stat-value">[N] events from [N] sessions</div>
+          <p class="meta" style="margin:6px 0 0">PostHog runs on this page and in the local app. The app sends five named events (run_clicked, resume_uploaded, posting_opened, people_link_opened and setup_saved) with kinds and counts only, never resume text, scores or company names. Verified in PostHog's Activity view on Nov [N].</p>
         </div>
         <div class="stat-box">
           <div class="stat-label">Sponsor Call (Week 6)</div>
@@ -260,9 +261,10 @@
       <div class="log-entry">
         <h3>Build 2 · Smallest Local Version & PostHog (Due Nov 16)</h3>
         <ul>
-          <li><strong>What shipped:</strong> [Local working slice, PostHog verified on this page and the local app, PRD v2, and local setup in AGENTS.md]</li>
-          <li><strong>What broke / changed in PRD:</strong> [Fill in]</li>
-          <li><strong>Cost & time this week:</strong> $[0.00] · [0] hours</li>
+          <li><strong>What shipped:</strong> Build 2 turned the Build 1 prototype into something a classmate can run without me. A first-run setup screen asks for a resume, the kinds of roles, cities, sectors of companies, schools, "What I'm looking for" and the scoring choice, then saves everything to a private folder, so nobody edits JSON by hand. Resumes can be dropped in as a PDF, Word or text file, and contact details are removed before anything is saved or sent to the model. Each role now comes with three to five LinkedIn search links for alumni, recruiters and the team. The board was redesigned as "The Big Board," with roles sorted into Strong fit, Possible and Long shot tiers. PostHog now runs on this page and in the local app with five named events, and I kept automatic click capture and session recording off, since the app shows my resume and scores. Lastly, "Beyond your list" looks past my watchlist of 238 companies. It checks the public job boards of roughly 9,000 more companies from an open directory (LastRound AI, CC BY 4.0), keeps what passes my filters, and asks the model to score only the top 40. On my own resume, the first run found 3,151 roles that passed, and the best fits were a real estate development analyst role at Atoms and a strategy and operations associate role at Apptronik, both at 72, for $0.03. All 100 automated tests pass with <code>npm test</code>.</li>
+          <li><strong>Things learned with AI:</strong> Greenhouse, Lever and Ashby publish jobs as public JSON, but none of them offer a directory of the companies that use them, so the open LastRound dataset of 9,935 companies is what made a search beyond my list possible. A full sweep of those boards pulls about 230,000 open roles in three to five minutes, although running several sweeps in a row slowed one to 37 minutes, which suggests the job boards slow down repeated requests. I also learned that analytics tools can switch on extra tracking from their own project settings. PostHog's dead-click capture would have recorded job titles from my screen until I turned it off in code. Lastly, a push failed because my terminal was signed in to GitHub as my work account while GitHub Desktop used my school account, which is a good reminder that one laptop can hold two identities. [Add anything from this week's class exercises.]</li>
+          <li><strong>What broke / changed in PRD:</strong> The PRD changed in three ways this week. First, the user grew from me to any classmate recruiting off-cycle, which meant moving my own defaults, such as real estate and supply chain searches and NYU Stern, out of the code and into choices on the setup screen. Second, the scope grew past a fixed company list. While the watchlist is still the core, the startups I might like most are the ones I do not know to add, so explore now searches beyond it with the same filters. The first free sweep showed how weak keyword ranking is at that scale: only 18 of the top 40 titles named a kind of role I wanted, and "Remote" let in 7,472 roles that were remote only outside the US. After ranking by the role types I chose and treating "Remote" as US remote, 39 of the top 40 matched. Third, the model appears to read the resume rather than keywords, though I found this out by accident. A test resume was left loaded, and every reason cited that person's Microsoft work and flagged an MBA ending in 2028. That supports the riskiest assumption, but it also showed me that a wrong input fails quietly, which is why the board shows the file each check is ranked against. Lastly, one accidental test check on the setup screen spent $0.0175, which is counted below.</li>
+          <li><strong>Cost & time this week:</strong> $0.39 · [N] hours</li>
         </ul>
       </div>
 
