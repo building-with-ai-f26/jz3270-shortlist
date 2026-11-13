@@ -1,6 +1,6 @@
 # Shortlist
 
-> **One-line pitch:** For MBA students recruiting across several tracks at once, Shortlist checks every company on your list in one run, drops the roles you cannot get, and ranks the rest against your resume with a reason for each.
+> **One-line pitch:** For MBA students recruiting off-cycle, Shortlist checks the job boards of every company on your list in one run, drops the roles you cannot get, and ranks the rest against your resume with a reason for each.
 
 - **Builder:** Jordan Zhu (`@jz3270`)
 - **Pod:** [Pod 9]
