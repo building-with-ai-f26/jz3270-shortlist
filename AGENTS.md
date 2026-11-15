@@ -89,7 +89,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 **Done Nov 13: Product Page fixes.** The off-cycle tagline from the old root `index.html` is now on `docs/index.html` and in the `README.md` pitch, the Build 1 entry says all 241 boards were reachable on the last check before the deadline (Nov 8), and the stray root `index.html` is deleted (still in Git history). Pushing works through GitHub Desktop; the `gh` command line is signed in as cottonwoodjz, which has no access to this repo.
 
 **Next, in order:**
-1. **Submit Build 2 (due Mon Nov 16, noon):** the write-up is complete on `docs/index.html` (Nov 15): PostHog evidence (5 users, 5 sessions, Nov 8 to 15, session replay on in the project; the local app keeps replay off on purpose), Build 2 at $0.41 and 3 to 4 hours, about $0.62 in all. Only Build 1's "[3] hours" still has brackets, pending Jordan. Jordan pushes from GitHub Desktop and submits the Product Page link, the repo link and his PostHog screenshot.
+1. **Submit Build 2 (due Mon Nov 16, noon):** the write-up is complete on `docs/index.html` (Nov 15): PostHog evidence (5 users, 5 sessions, Nov 8 to 15, session replay on in the project; the local app keeps replay off on purpose), Build 2 at $0.41 and 3 to 4 hours, about $0.62 in all. Jordan pushes from GitHub Desktop and submits the Product Page link, the repo link and his PostHog screenshot.
 2. **Build 3 candidates:** triage on each role (Applied, Saved, Not for me with a reason) that suggests filter rules; a "Your recurring gaps" panel across the top roles; a scheduled morning check with a Mac notification for new strong fits.
 3. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
 
