@@ -13,6 +13,7 @@
     "build-starter": "node scripts/build-starter.js",
     "explore": "node scripts/explore.js",
     "accuracy": "node scripts/accuracy.js",
+    "build-demo": "node scripts/build-demo.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

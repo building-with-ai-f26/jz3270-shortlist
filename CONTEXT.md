@@ -17,7 +17,8 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - Build 1 shipped Nov 9. Build 2 was submitted for Nov 16 with PostHog evidence, PRD v2 and the Build 2 log. The professor liked the Big Board design, so it stays.
 - Build 3 (due Nov 23) is the data roadmap below, then a move to Vercel and Supabase.
 - 119 tests (one skips on purpose; it only runs on Node older than 22).
-- OpenRouter spend: about $0.62 through Build 2.
+- A static demo for classmates lives at `docs/demo/` on GitHub Pages.
+- OpenRouter spend: about $0.62 through Build 2, plus $0.0673 for the demo snapshot on Nov 17.
 
 ## Key decisions and why
 
@@ -76,6 +77,8 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Found and fixed:** 28 of 38 Workday companies failed because Workday answered "too many requests." Workday now runs 2 at a time with waits, retries and an early stop. Jordan's note: Workday tends to struggle with this, so keep checking.
 - **Asked:** after the data steps, move to Vercel and Supabase as in Jordan's past projects, with security for resumes, separate development and production databases, schema changes saved in Git, pull requests that go live with no dashboard clicks, and rollback. Recorded in `AGENTS.md`; to be planned in detail before any code.
 - **Asked:** this file.
+- **Asked:** a Workday workaround: split searches by facets so each stays under Workday's 2,000-result cap. One request confirmed the cap and the facets (job category, job type such as "New College Graduate", location by country). Enumerating every facet combination would mean thousands of requests and worse throttling, so the plan is facet targeting (only US roles in matching categories and graduate job types) plus a 12-hour Workday cache. The comparison on NVIDIA, Adobe and Boeing could not run because Workday was still refusing requests; rerun it later.
+- **Asked:** a static demo for classmates with a sample MBA resume (4 years as a Microsoft PM) and drag and drop off. Built `docs/demo/` from a real check against a new fictional resume (Taylor Brooks), $0.0673. Decisions in the demo stay in the visitor's browser; PostHog tags its events `app: static_demo`.
 
 ## Open questions
 

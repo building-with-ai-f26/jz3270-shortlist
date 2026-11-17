@@ -592,7 +592,15 @@
 
     // ---------- Top band ----------
     function renderTop() {
-      if (st) {
+      // The static demo (npm run build-demo, docs/demo) runs on a saved snapshot and a fictional resume.
+      const sd = st?.staticDemo;
+      if (sd) {
+        $("mode").textContent = sd.note;
+        $("resumeFile").textContent = sd.resumeName;
+        $("resumeWhen").innerHTML = `A fictional resume, used for every score here. <a href="${esc(sd.resumeLink)}" target="_blank" rel="noopener">View it</a>`;
+        $("pick").hidden = true;
+        document.querySelector(".settings").hidden = true;
+      } else if (st) {
         $("mode").textContent = st.demo
           ? "Demo data: fictional postings, keyword scoring, no API calls."
           : st.aiOn ? `${n(st.watchlistCount)} companies on your watchlist, scored by ${st.model.split("/").pop()}.`
@@ -602,6 +610,7 @@
         $("resumeFile").textContent = r ? r.fileName : st.demo ? "Sample profile (demo)" : "Not uploaded yet";
         $("resumeWhen").textContent = r ? `Updated ${ago(r.uploadedAt)}. Drop a new file anywhere to replace it.` : st.demo ? "Uploads work in live mode." : "Shortlist is using data/profile.md. Drop a resume anywhere.";
         $("pickLabel").textContent = r ? "Replace" : "Upload";
+        $("pick").hidden = Boolean(st.demo);
       }
       const s = data?.summary;
       $("funnel").hidden = !s;
@@ -830,7 +839,7 @@
         person_profiles: "identified_only",
         before_send: (event) => (event && (EVENTS[event.event] || SYSTEM_EVENTS.includes(event.event)) ? event : null)
       });
-      posthog.register({ app: "local", mode: st?.demo ? "demo" : "live" });
+      posthog.register({ app: st?.staticDemo ? "static_demo" : "local", mode: st?.demo ? "demo" : "live" });
     }
     function track(event, props = {}) {
       if (!window.posthog || !EVENTS[event]) return;
@@ -904,6 +913,10 @@
     }
 
     $("run").addEventListener("click", () => {
+      if (st?.staticDemo) {
+        track("run_clicked", { scoring: "demo" });
+        return notice(`This demo is a saved snapshot from ${new Date(st.staticDemo.snapshotAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}. In the full app, Check my list pulls fresh roles from every board.`);
+      }
       track("run_clicked", { scoring: st?.demo ? "demo" : st?.aiOn ? "ai" : "keywords" });
       runCheck();
     });
@@ -1015,9 +1028,9 @@
       }
     });
 
-    // Drag a file anywhere on the page to replace the resume.
+    // Drag a file anywhere on the page to replace the resume. Off in demo modes, where there is nothing to replace.
     let dragDepth = 0;
-    const hasFile = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+    const hasFile = (e) => [...(e.dataTransfer?.types || [])].includes("Files") && !st?.demo;
     window.addEventListener("dragenter", (e) => { if (!hasFile(e)) return; e.preventDefault(); dragDepth++; $("drop").hidden = false; });
     window.addEventListener("dragover", (e) => { if (hasFile(e)) e.preventDefault(); });
     window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").hidden = true; });
@@ -1140,7 +1153,7 @@
       roles: ["strategy", "programs"],
       cities: ["newYork"],
       sectors: ["ai", "supplyChain"],
-      schools: ["NYU Stern"],
+      schools: ["Example Business School"],
       lookingFor: "",
       sampleResume: true,
       watchlistCount: 0,
@@ -1358,6 +1371,7 @@
     $("setupSave").addEventListener("click", saveSetup);
 
     function route() {
+      if (st?.staticDemo && location.hash === "#setup") { location.hash = ""; return; }
       const onSetup = location.hash === "#setup";
       $("app").hidden = onSetup;
       $("setupView").hidden = !onSetup;

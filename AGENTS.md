@@ -17,6 +17,7 @@
 - **Rebuild the starter companies for setup:** `npm run build-starter` after editing `config/companies.example.txt` (about 4 minutes; review the "Double-check these" list for boards that belong to a different company)
 - **Look for roles beyond the watchlist:** `npm run explore` (checks about 10,000 companies from `config/ats-directory.csv`, a few minutes; results in `data/explore.json`). Add `-- --keywords` for free scoring only, `-- --limit 500` for a quick partial sweep, `-- --top 20` to AI-score fewer roles
 - **Check how well the AI fit predicts your decisions:** `npm run accuracy` (free; reads `data/decisions.json`)
+- **Rebuild the static demo for classmates:** run a check in a throwaway folder against `fixtures/resume-mba-pm.md`, then `npm run build-demo -- --from <that folder>` (writes `docs/demo/`; refuses `data/`)
 - **Run deterministic tests:** `npm test`
 - **Run model evals:** not built yet (Build 4, see `tests/README.md`)
 
@@ -45,6 +46,8 @@
 | `fixtures/sample-postings.json` | Fictional postings in real ATS response shapes, for demo mode and tests |
 | `fixtures/resume-sample.pdf`, `.docx` | A fictional resume (Sam Rivera) for the upload tests |
 | `docs/index.html` | Public Product Page, living PRD and build log (GitHub Pages) |
+| `docs/demo/` | Static demo for classmates, built by `scripts/build-demo.js`: the app page plus a small script that answers `/api/*` from a saved snapshot (`data.json`), and the fictional resume (`resume.html`). Upload, Settings, Explore and live checks are off; decisions stay in the visitor's browser; PostHog events are tagged `app: static_demo` |
+| `fixtures/resume-mba-pm.md` | The fictional MBA resume for the demo (Taylor Brooks, 4 years as a Microsoft PM) |
 | `CONTEXT.md` | The running history: what Jordan asked each session, the decisions made and why, and open questions. No personal data |
 
 ## 4. Non-Negotiable Engineering Rules
@@ -97,6 +100,10 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 **Done Nov 17: accuracy check, step 2 (Build 4 Track A evidence).** `npm run accuracy` and a folded "Ranking accuracy" panel next to Filtered out. First result on Jordan's 32 decisions (11 saved, 2 applied, 19 passed, all on roles scored 50 to 72): AUC 0.64, 90% range 0.49 to 0.79, average fit 60 for yes and 57 for no, 5 of the top 10 by fit saved against 41% overall, and all 3 roles at 70 or above saved. The verdict: the fit somewhat separates saves from passes, but a coin flip cannot be ruled out yet. Next data to add: decisions on long shots (under 50), which no decision covers yet.
 
 **Done Nov 17: Workday rate limits.** 28 of 38 Workday companies failed on the Nov 17 check because Workday answered 429 ("too many requests") to 372 of 384 requests: up to 20 requests per company, 8 companies at once, with no waiting. Now Workday runs 2 companies at a time with retries, pauses and a per-check cutoff (see `src/sources.js`). While Workday was still penalizing that day's bursts, the new code gave up in 31 seconds with a clear message instead of crawling for 10+ minutes; the success case still needs a check once Workday cools down. Fewer Workday search terms or one page per search would cut requests further.
+
+**Done Nov 17: static demo for classmates.** At `docs/demo/` on GitHub Pages: 120 real roles from 103 companies (no Workday), checked on Nov 17 against a fictional MBA resume and AI-scored for $0.0673 in two checks. Best fits 72 (DoorDash) and 70 (OpenAI). Drag and drop is off in every demo mode now.
+
+**Workday facet test, not finished:** on Nov 17 Workday still refused 22 of 26 paced requests, so facet targeting could not be compared with keyword searches. Rerun `workday-facets.mjs` (kept in the session scratch folder; rewrite it from the plan in `CONTEXT.md` if lost) on NVIDIA, Adobe and Boeing once Workday has cooled down, and add a 12-hour cache for Workday results either way.
 
 **Next, in order (the data roadmap Jordan approved on Nov 17):**
 1. **More decisions,** especially on long shots under 50, so the accuracy check covers the whole range.

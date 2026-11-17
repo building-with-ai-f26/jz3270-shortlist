@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shortlist</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%271%27 y=%271%27 width=%2714%27 height=%2714%27 fill=%27%23141618%27/%3E%3Crect x=%274%27 y=%274%27 width=%278%27 height=%273%27 fill=%27%230f7a4a%27/%3E%3Crect x=%274%27 y=%279%27 width=%275%27 height=%273%27 fill=%27%23fbfbf9%27/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Public+Sans:wght@400..800&display=swap" rel="stylesheet" />
+  <!-- Build 2: paste the PostHog web snippet here and capture "run_clicked", "resume_uploaded", "posting_opened", "people_link_opened". -->
+  <style>
+    :root {
+      --board: #e3e5e1;
+      --board-deep: #d5d8d3;
+      --strip: #fbfbf9;
+      --ink: #141618;
+      --ink-2: #464b51;
+      --ink-3: #61666c;
+      --rule: #c5c9c3;
+      --rule-soft: #dcdfda;
+      --strong: #0f7a4a;
+      --possible: #a26100;
+      --long: #6b7178;
+      --stop: #c8321e;
+      --stop-tint: #fbe9e6;
+      --new: #ffd60a;
+      --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+      --text: "Public Sans", "Helvetica Neue", system-ui, sans-serif;
+      --lift: 0 1px 0 rgba(20, 22, 24, 0.06), 0 10px 24px -8px rgba(20, 22, 24, 0.28);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { -webkit-text-size-adjust: 100%; scrollbar-color: var(--rule) var(--board); }
+    body {
+      margin: 0;
+      font-family: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--ink);
+      background: var(--board);
+      caret-color: var(--ink);
+    }
+    ::selection { background: var(--ink); color: var(--strip); }
+    a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .icon { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wrap { max-width: 1480px; margin: 0 auto; padding: 0 32px; }
+    .tnum { font-variant-numeric: tabular-nums; }
+
+    /* ---------- Top band ---------- */
+    .top { padding: 22px 0 18px; }
+    .top .wrap { display: grid; grid-template-columns: 1fr minmax(260px, 340px) 260px; gap: 20px; align-items: stretch; }
+    .brand { align-self: center; }
+    .wordmark { margin: 0; font-family: var(--display); font-weight: 900; font-size: 44px; line-height: 0.9; letter-spacing: 0.01em; text-transform: uppercase; }
+    .mode { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); max-width: 46ch; }
+    .settings { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
+
+    .resume {
+      display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-content: center;
+      padding: 12px 14px; background: var(--strip); border: 1px dashed var(--ink-3);
+    }
+    .resume .lbl { grid-column: 1; margin: 0; font-size: 12px; color: var(--ink-3); }
+    .resume .file { grid-column: 1; margin: 0; font-weight: 700; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+    .resume .when { grid-column: 1; margin: 0; font-size: 12px; color: var(--ink-3); }
+    .resume .pick {
+      grid-column: 2; grid-row: 1 / span 3; align-self: center;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 12px; background: transparent; border: 1px solid var(--ink); font-size: 13px; font-weight: 600;
+      transition: background 160ms var(--ease), color 160ms var(--ease);
+    }
+    .resume .pick:hover { background: var(--ink); color: var(--strip); }
+
+    .runbox { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+    .run {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; min-height: 58px; padding: 0 18px; border: 0;
+      background: var(--ink); color: var(--strip);
+      font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: 0.02em; text-transform: uppercase;
+      transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
+    }
+    .run:hover { box-shadow: var(--lift); transform: translateY(-1px); }
+    .run:active { transform: none; box-shadow: none; }
+    .run[disabled] { cursor: progress; background: #2e3236; transform: none; box-shadow: none; }
+    .run .icon { width: 18px; height: 18px; stroke-width: 2.2; }
+    .run[disabled] .icon { animation: spin 900ms linear infinite; }
+    .last, .cost { margin: 0; font-size: 12px; color: var(--ink-2); line-height: 1.4; }
+
+    /* ---------- Funnel strip ---------- */
+    .funnel { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--strip); border: 1px solid var(--rule); }
+    .funnel li { position: relative; padding: 12px 18px 12px; border-left: 1px solid var(--rule-soft); }
+    .funnel li:first-child { border-left: 0; }
+    .funnel li + li::before {
+      content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
+      background: var(--strip); border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); transform: rotate(45deg);
+    }
+    .funnel li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 10px; padding-bottom: 10px; }
+    .funnel .k { margin-top: 0 !important; }
+    .funnel .v { display: block; font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .funnel .k { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-2); }
+    .funnel li.new { background: var(--new); }
+    .funnel li.new::before { background: var(--new); }
+    .funnel li.new .k { color: var(--ink); }
+
+    /* ---------- Filter bar ---------- */
+    .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; padding: 14px 0 6px; }
+    .seg { display: inline-flex; border: 1px solid var(--ink); background: var(--strip); }
+    .seg button { border: 0; border-left: 1px solid var(--rule); background: transparent; padding: 6px 12px; font-size: 13px; font-weight: 600; transition: background 140ms var(--ease); }
+    .seg button:first-child { border-left: 0; }
+    .seg button:hover { background: var(--board); }
+    .seg button[aria-pressed="true"] { background: var(--ink); color: var(--strip); }
+    .seg .n { margin-left: 6px; font-weight: 500; opacity: 0.7; font-variant-numeric: tabular-nums; }
+    .bar .lbl { font-size: 13px; color: var(--ink-2); margin-right: 8px; }
+    .switch { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .switch input { appearance: none; margin: 0; width: 36px; height: 20px; border: 1px solid var(--ink); background: var(--strip); position: relative; cursor: pointer; transition: background 160ms var(--ease); }
+    .switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--ink); transition: transform 180ms var(--ease); }
+    .switch input:checked { background: var(--new); }
+    .switch input:checked::after { transform: translateX(16px); }
+    .keys { margin-left: auto; font-size: 12px; color: var(--ink-2); }
+    kbd { display: inline-block; min-width: 20px; padding: 0 5px; border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--strip); font: 600 11px/18px var(--text); text-align: center; }
+
+    /* ---------- Boards ---------- */
+    .notice { margin: 10px 0 0; padding: 11px 14px; background: var(--strip); border: 1px solid var(--ink); font-size: 14px; }
+    .notice.bad { background: var(--stop-tint); border-color: var(--stop); color: #7a1c10; }
+    .loading { height: 3px; margin-top: 14px; background: linear-gradient(90deg, var(--board-deep) 0 40%, var(--ink) 40% 60%, var(--board-deep) 60%) 0 0 / 250% 100%; animation: slide 1.1s linear infinite; }
+    .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 16px 0 8px; }
+    .board-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 8px; border-bottom: 3px solid var(--ink); }
+    .board-head h2 { margin: 0; font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
+    .board-head .n { font-family: var(--display); font-weight: 700; font-size: 26px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+    .board-sub { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+
+    .tier { margin-top: 18px; }
+    .tier-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-family: var(--display); font-weight: 800; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .tier-head .sw { width: 12px; height: 12px; flex: none; }
+    .tier-head .range { font-family: var(--text); font-weight: 500; font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+    .tier-head .n { margin-left: auto; font-variant-numeric: tabular-nums; }
+    .tier-head::after { content: ""; order: 2; flex: 1; height: 1px; background: var(--rule); min-width: 12px; }
+    .tier-head .n { order: 3; margin-left: 0; }
+    .t-strong .sw { background: var(--strong); }
+    .t-possible .sw { background: var(--possible); }
+    .t-long .sw { background: var(--long); }
+
+    /* One ruled board per tier: strips share hairlines instead of floating as separate cards. */
+    .strips { list-style: none; margin: 0; padding: 0; background: var(--strip); border: 1px solid var(--rule-soft); }
+    .strip {
+      position: relative; display: grid; grid-template-columns: 76px 1fr; gap: 0 16px;
+      padding: 14px 16px 14px 14px; background: var(--strip); border-top: 1px solid var(--rule-soft);
+      outline: none; transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), background 180ms var(--ease);
+    }
+    .strip:first-child { border-top: 0; }
+    .strip:hover { background: #fff; }
+    .strip:focus-visible, .strip.is-focus { z-index: 1; transform: translateY(-2px); box-shadow: var(--lift); outline: 1px solid var(--ink); }
+
+    .tile {
+      position: relative; width: 76px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; background: var(--long); box-shadow: 0 1px 2px rgba(20, 22, 24, 0.25);
+    }
+    /* Rank buys space: possible roles get a smaller tile and a tighter report than strong ones. */
+    .t-possible .strip { grid-template-columns: 60px 1fr; padding-top: 11px; padding-bottom: 11px; }
+    .t-possible .tile { width: 60px; height: 60px; }
+    .t-possible .tile .num { font-size: 40px; }
+    .t-possible .tile .unit { font-size: 9px; }
+    .t-possible .reach { border-top: 0; padding-top: 0; margin-top: 6px; }
+    .tile .num { font-family: var(--display); font-weight: 900; font-size: 50px; line-height: 0.85; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .tile .unit { margin-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.9; }
+    .b-strong .tile { background: var(--strong); }
+    .b-possible .tile { background: var(--possible); }
+    .b-blocked .tile { background: var(--long); }
+    .b-blocked .tile::after { content: ""; position: absolute; left: 8px; right: 8px; top: 42%; height: 5px; background: var(--stop); transform: rotate(-12deg); }
+
+    .s-body { min-width: 0; }
+    .s-head { display: flex; align-items: flex-start; gap: 14px; }
+    .s-title { flex: 1; margin: 0; font-size: 16px; line-height: 1.3; font-weight: 700; text-wrap: pretty; }
+    .s-title a { text-decoration: none; }
+    .s-title a:hover { text-decoration: underline; }
+    .open {
+      flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; margin-top: -2px;
+      border: 1px solid var(--ink); font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap;
+      transition: background 140ms var(--ease), color 140ms var(--ease);
+    }
+    .open:hover { background: var(--ink); color: var(--strip); }
+    .meta { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+    .meta .co { color: var(--ink); font-weight: 600; }
+    .new-tag { display: inline-block; padding: 1px 6px; background: var(--new); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .track { display: inline-block; padding: 0 6px; border: 1px solid var(--rule); font-size: 11px; font-weight: 600; color: var(--ink-2); }
+    .stop { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--stop); }
+    .report { margin: 10px 0 0; display: grid; gap: 4px; font-size: 14px; max-width: 72ch; }
+    .report div { display: grid; grid-template-columns: 92px 1fr; gap: 12px; }
+    .report dt { font-size: 12px; font-weight: 700; color: var(--ink-3); padding-top: 2px; }
+    .report dd { margin: 0; }
+    .report .gap dd { color: var(--ink-2); }
+    .reach { display: grid; grid-template-columns: 104px 1fr; align-items: baseline; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--rule-soft); font-size: 13px; }
+    .reach .lbl { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+    .reach .links { display: flex; flex-wrap: wrap; gap: 4px 0; }
+    .stop-tag { color: var(--stop); font-weight: 700; }
+
+    /* Decisions: the same segmented control as the filter bar, smaller. Chosen inverts to ink. */
+    .decide { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; }
+    .seg.sm button { padding: 4px 10px; font-size: 12px; }
+    .why-not { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+    .why-not button { padding: 4px 9px; border: 1px dashed var(--ink); background: transparent; font-size: 12px; font-weight: 600; transition: background 140ms var(--ease), color 140ms var(--ease); }
+    .why-not button:hover { background: var(--ink); color: var(--strip); border-style: solid; }
+    .decide-note { font-size: 12px; color: var(--ink-2); }
+    .dec-tag { display: inline-block; padding: 0 6px; border: 1px solid var(--ink); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .dec-tag.solid { background: var(--ink); color: var(--strip); }
+    .rule-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 0; padding: 12px 14px; background: var(--strip); border: 1px solid var(--ink); font-size: 14px; }
+    .rule-card p { flex: 1; min-width: 240px; margin: 0; }
+    .rule-card .btn { padding: 6px 12px; font-size: 13px; }
+    button.link { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+    .reach a { display: inline-flex; align-items: center; gap: 3px; margin-right: 14px; text-decoration: underline; text-decoration-color: var(--rule); }
+    .reach a:hover { text-decoration-color: var(--ink); }
+    .reach a .icon { width: 11px; height: 11px; opacity: 0.55; }
+
+    /* Long shots fold to one line until opened. */
+    .strip.compact { grid-template-columns: 1fr; padding: 0; }
+    .strip.compact details > summary { list-style: none; display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 12px; padding: 8px 12px 8px 8px; cursor: pointer; }
+    .strip.compact summary::-webkit-details-marker { display: none; }
+    .strip.compact summary:focus-visible { outline-offset: -2px; }
+    .strip.compact .tile { width: 48px; height: 48px; }
+    .strip.compact .tile .num { font-size: 32px; }
+    .strip.compact .tile .unit { display: none; }
+    .strip.compact .b-blocked.tile::after, .strip.compact.b-blocked .tile::after { left: 6px; right: 6px; height: 4px; top: 46%; }
+    .c-line { min-width: 0; }
+    .c-line .s-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .c-line .meta { margin-top: 1px; font-size: 12px; }
+    .chev { width: 16px; height: 16px; color: var(--ink-3); transition: transform 180ms var(--ease); }
+    details[open] .chev { transform: rotate(180deg); }
+    .c-more { padding: 2px 16px 14px 68px; }
+    .c-more .open { margin-top: 10px; }
+
+    /* Beyond your list: the same board language, one full width column, with an Add button beside Open. */
+    .explore { padding-top: 34px; }
+    .explore-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 18px; }
+    .explore-bar .btn:disabled { opacity: 0.6; cursor: progress; }
+    .explore-status { margin: 0; font-size: 13px; color: var(--ink-2); }
+    .explore-status.bad { color: var(--stop); font-weight: 600; }
+    .explore .tier + .tier { margin-top: 18px; }
+    .add {
+      flex: none; padding: 4px 9px; margin-top: -2px; border: 1px solid var(--ink); background: transparent;
+      font-size: 12px; font-weight: 700; white-space: nowrap; transition: background 140ms var(--ease), color 140ms var(--ease);
+    }
+    .add:hover { background: var(--ink); color: var(--strip); }
+    .add:disabled { opacity: 0.5; }
+    .on-list { flex: none; padding: 4px 9px; margin-top: -2px; border: 1px dashed var(--rule); font-size: 12px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+    .board-empty { margin-top: 18px; padding: 16px; border: 1px dashed var(--rule); font-size: 14px; color: var(--ink-2); }
+    .empty { padding: 56px 0 40px; max-width: 60ch; }
+    .empty h2 { margin: 0 0 10px; font-family: var(--display); font-weight: 900; font-size: 48px; line-height: 0.95; text-transform: uppercase; }
+    .empty p { margin: 0; font-size: 16px; color: var(--ink-2); }
+
+    /* ---------- Filtered out and errors ---------- */
+    .lower { display: grid; gap: 14px; padding: 26px 0 72px; }
+    .cut { background: var(--strip); border: 1px solid var(--rule-soft); }
+    .cut > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; padding: 14px 16px; cursor: pointer; list-style: none; }
+    .cut > summary h3 { white-space: nowrap; }
+    .cut > summary::-webkit-details-marker { display: none; }
+    .cut h3 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: 0.02em; }
+    .cut .sub { font-size: 13px; color: var(--ink-2); }
+    .cut .chev { margin-left: auto; }
+    .cut[open] .chev { transform: rotate(180deg); }
+    .cut-body { padding: 0 16px 16px; }
+    .reasons { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .reasons li { display: inline-flex; align-items: baseline; gap: 8px; padding: 4px 10px; border: 1px solid var(--rule); font-size: 13px; }
+    .reasons b { font-family: var(--display); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .dropped { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .dropped th { text-align: left; font-size: 12px; font-weight: 700; color: var(--ink-3); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--ink); }
+    .dropped td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+    .dropped td.r { color: var(--ink-2); }
+    .errors { padding: 14px 16px; background: var(--stop-tint); border: 1px solid var(--stop); font-size: 13px; }
+    .errors h3 { margin: 0 0 6px; font-size: 15px; color: #7a1c10; }
+    .errors ul { margin: 6px 0 0; padding-left: 18px; }
+    .errors code { font-size: 12px; background: rgba(255, 255, 255, 0.6); padding: 1px 4px; }
+
+    /* ---------- Drop overlay ---------- */
+    .drop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(20, 22, 24, 0.92); color: var(--strip); }
+    .drop .frame { border: 2px dashed var(--strip); padding: 60px 64px; text-align: center; max-width: 660px; margin: 24px; }
+    .drop strong { display: block; font-family: var(--display); font-weight: 900; font-size: 56px; line-height: 0.95; }
+    .drop span { display: block; margin-top: 14px; color: #c9cdc8; }
+
+    /* ---------- Setup preview ---------- */
+    .preview-note { background: var(--ink); color: var(--strip); font-size: 13px; padding: 8px 0; }
+    .preview-note a { color: var(--strip); }
+    .setup { display: grid; grid-template-columns: 240px minmax(0, 760px); gap: 48px; padding-top: 8px; padding-bottom: 120px; }
+    .steps { position: sticky; top: 20px; align-self: start; list-style: none; margin: 0; padding: 0; counter-reset: step; }
+    .steps li { counter-increment: step; }
+    .steps a { display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 10px; padding: 8px 0; text-decoration: none; font-size: 14px; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--rule); }
+    .steps a::before { content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; background: var(--strip); border: 1px solid var(--rule); font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); }
+    .steps a.done::before { background: var(--ink); border-color: var(--ink); color: var(--strip); }
+    .steps a:hover { color: var(--ink); }
+    .setup h1 { margin: 0 0 8px; font-family: var(--display); font-weight: 900; font-size: 56px; line-height: 0.92; text-transform: uppercase; }
+    .setup .lede { margin: 0 0 28px; font-size: 16px; color: var(--ink-2); max-width: 58ch; }
+    .q { padding: 24px 0 26px; border-top: 3px solid var(--ink); }
+    .q h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1.05; text-transform: uppercase; }
+    .q .help { margin: 6px 0 14px; font-size: 14px; color: var(--ink-2); max-width: 62ch; }
+    .dropzone { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 20px; background: var(--strip); border: 1.5px dashed var(--ink-3); }
+    .dropzone .big { font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; line-height: 1.05; }
+    .dropzone p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+    .dropzone .icon { width: 30px; height: 30px; stroke-width: 1.5; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--ink); background: transparent; font-size: 14px; font-weight: 700; }
+    .btn:hover { background: var(--ink); color: var(--strip); }
+    .btn.solid { background: var(--ink); color: var(--strip); }
+    .btn.solid:hover { box-shadow: var(--lift); }
+    .warn { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+    .warn b { display: inline-block; padding: 0 6px; background: var(--ink); color: var(--strip); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; }
+    .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+    .choice { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--strip); border: 1px solid var(--rule); font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color 140ms var(--ease), background 140ms var(--ease); }
+    .choice:hover { border-color: var(--ink); }
+    .choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .choice .box { width: 16px; height: 16px; flex: none; border: 1.5px solid var(--ink); display: grid; place-items: center; }
+    .choice .box .icon { width: 12px; height: 12px; stroke-width: 2.6; opacity: 0; }
+    .choice .count { margin-left: auto; padding-left: 8px; font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .choice:has(input:checked) { background: var(--ink); border-color: var(--ink); color: var(--strip); }
+    .choice:has(input:checked) .box { border-color: var(--strip); }
+    .choice:has(input:checked) .box .icon { opacity: 1; }
+    .choice:has(input:checked) .count { color: #c9cdc8; }
+    .choice:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+    .chips-in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; background: var(--strip); border: 1px solid var(--rule); }
+    .chips-in:focus-within { border-color: var(--ink); }
+    .token { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; background: var(--ink); color: var(--strip); font-size: 13px; font-weight: 600; }
+    .token button { border: 0; background: transparent; color: inherit; padding: 0 2px; display: grid; place-items: center; }
+    .chips-in input { flex: 1; min-width: 180px; border: 0; background: transparent; padding: 6px; outline: none; }
+    .field { width: 100%; padding: 10px 12px; background: var(--strip); border: 1px solid var(--rule); font-size: 15px; outline: none; }
+    .field:focus { border-color: var(--ink); }
+    textarea.field { min-height: 120px; resize: vertical; line-height: 1.5; }
+    .count-line { margin-top: 4px; font-size: 12px; color: var(--ink-3); text-align: right; }
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .modes .choice { align-items: flex-start; flex-direction: column; gap: 4px; padding: 14px; }
+    .modes .choice .t { display: flex; align-items: center; gap: 10px; }
+    .modes .choice small { font-weight: 500; font-size: 13px; color: var(--ink-2); padding-left: 26px; }
+    .modes .choice:has(input:checked) small { color: #c9cdc8; }
+    .key-row { margin-top: 10px; }
+    .key-row label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+    .savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--strip); border-top: 3px solid var(--ink); }
+    .savebar .wrap { display: flex; align-items: center; gap: 18px; padding-top: 12px; padding-bottom: 12px; }
+    .savebar p { margin: 0; font-size: 14px; color: var(--ink-2); }
+    .savebar p b { color: var(--ink); font-family: var(--display); font-size: 22px; font-weight: 800; }
+    .savebar p.setup-msg { color: var(--ink); font-weight: 600; }
+    .savebar p.setup-msg.bad { color: var(--stop); }
+    .savebar p.setup-msg:empty { display: none; }
+    .savebar .run { width: auto; min-height: 50px; margin-left: auto; font-size: 22px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes slide { to { background-position: -150% 0; } }
+    @media (prefers-reduced-motion: no-preference) {
+      .drop { animation: fade 160ms ease-out; }
+      .boards.fresh .strip { animation: settle 420ms var(--ease) both; }
+      .boards.fresh .strip.is-new { animation-name: drop-in; }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes settle { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      @keyframes drop-in { 0% { opacity: 0; transform: translateY(-10px); box-shadow: var(--lift); } 70% { opacity: 1; box-shadow: var(--lift); } 100% { transform: none; box-shadow: none; } }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .loading { animation: none; }
+      .run[disabled] .icon { animation: none; }
+      * { transition-duration: 0ms !important; }
+    }
+
+    @media (max-width: 1180px) {
+      .top .wrap { grid-template-columns: 1fr 1fr; }
+      .brand { grid-column: 1 / -1; }
+    }
+    @media (max-width: 980px) {
+      .boards { grid-template-columns: 1fr; gap: 36px; }
+      .setup { grid-template-columns: 1fr; gap: 20px; }
+      .steps { position: static; display: flex; flex-wrap: wrap; gap: 6px; }
+      .steps a { border: 0; padding: 0; grid-template-columns: 26px auto; gap: 6px; font-size: 13px; }
+      .steps a::before { width: 26px; height: 26px; font-size: 15px; }
+      .keys { display: none; }
+    }
+    @media (max-width: 680px) {
+      body { font-size: 14px; }
+      .wrap { padding: 0 16px; }
+      .top { padding: 16px 0 12px; }
+      .top .wrap { grid-template-columns: 1fr; gap: 12px; }
+      .wordmark { font-size: 38px; }
+      .run { min-height: 52px; font-size: 23px; }
+      .funnel { grid-template-columns: repeat(3, 1fr); }
+      .funnel li { padding: 10px 12px; border-left: 1px solid var(--rule-soft); border-top: 1px solid var(--rule-soft); }
+      .funnel li:nth-child(-n+3) { border-top: 0; }
+      .funnel li:nth-child(3n+1) { border-left: 0; }
+      .funnel li::before { display: none; }
+      .funnel li.new { grid-column: span 2; }
+      .funnel li { flex-direction: column; gap: 2px; }
+      .funnel .v { font-size: 28px; }
+      .funnel .k { font-size: 12px; line-height: 1.3; }
+      .bar { gap: 10px 14px; }
+      .bar .lbl { display: block; margin: 0 0 4px; font-size: 12px; }
+      .board-head h2 { font-size: 28px; }
+      .strip { grid-template-columns: 58px 1fr; gap: 0 12px; padding: 12px; }
+      .tile { width: 58px; height: 58px; }
+      .tile .num { font-size: 38px; }
+      .t-possible .strip { grid-template-columns: 50px 1fr; }
+      .t-possible .tile { width: 50px; height: 50px; }
+      .t-possible .tile .num { font-size: 32px; }
+      .s-body { display: flex; flex-direction: column; }
+      .s-head { display: contents; }
+      .s-title { order: 1; }
+      .s-body > .meta { order: 2; }
+      .s-body .open { order: 3; align-self: flex-start; margin-top: 8px; }
+      .s-body > .stop, .s-body > .report, .s-body > .reach { order: 4; }
+      .s-body > .decide { order: 5; }
+      .report div { grid-template-columns: 1fr; gap: 0; }
+      .reach { grid-template-columns: 1fr; }
+      .c-more { padding: 2px 12px 12px; }
+      .dropped thead { display: none; }
+      .dropped tr { display: grid; padding: 6px 0; border-bottom: 1px solid var(--rule-soft); }
+      .dropped td { border: 0; padding: 0; }
+      .drop strong { font-size: 36px; }
+      .drop .frame { padding: 40px 24px; }
+      .setup h1 { font-size: 42px; }
+      .dropzone { grid-template-columns: 1fr; }
+      .choices { grid-template-columns: 1fr 1fr; }
+      .choice { padding: 10px; font-size: 13px; gap: 8px; }
+      .modes { grid-template-columns: 1fr; }
+      .savebar .wrap { flex-direction: column; align-items: stretch; gap: 8px; }
+      .savebar .run { margin-left: 0; width: 100%; }
+    }
+  </style>
+<script>
+    // Static demo: answers the app's /api/* requests from data.json, so the page runs on GitHub Pages with no server.
+    // Decisions are kept in this browser only. Built by npm run build-demo.
+    (() => {
+      const realFetch = window.fetch.bind(window);
+      const snapshot = realFetch("data.json").then((r) => r.json());
+      const KEY = "shortlist-demo-decisions";
+      const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } };
+      const write = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} };
+      const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+      window.fetch = async (url, opts = {}) => {
+        const where = typeof url === "string" ? url : url.url;
+        if (!where.startsWith("/api/")) return realFetch(url, opts);
+        const s = await snapshot;
+        const decisions = read();
+        const marked = (list) => list.map((r) => (decisions[r.id] ? { ...r, ...decisions[r.id] } : r));
+        if (where === "/api/status") {
+          return reply({ demo: true, staticDemo: s.staticDemo, aiOn: false, model: s.latest.summary.model || "", watchlistCount: s.latest.summary.companies, runs: 1, needsSetup: false, resume: null, analytics: s.analytics });
+        }
+        if (where === "/api/latest" || where === "/api/run") return reply({ ...s.latest, results: marked(s.latest.results), rules: [], accuracy: null });
+        if (where === "/api/decision") {
+          const body = JSON.parse(opts.body || "{}");
+          if (body.decision === "clear") delete decisions[body.id];
+          else decisions[body.id] = { decision: body.decision, reason: body.reason || null };
+          write(decisions);
+          return reply({ decision: decisions[body.id] || null, rules: [], accuracy: null });
+        }
+        return reply({ error: "This works in the full app. The demo is a saved snapshot." }, 400);
+      };
+    })();
+  </script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-out" viewBox="0 0 16 16"><path d="M5.5 3.5h7v7M12.5 3.5 3.5 12.5" /></symbol>
+    <symbol id="i-up" viewBox="0 0 16 16"><path d="M8 11V2.5M4.5 6 8 2.5 11.5 6M2.5 10v3.5h11V10" /></symbol>
+    <symbol id="i-run" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" /></symbol>
+    <symbol id="i-chev" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4" /></symbol>
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="m3 8.5 3.2 3L13 4.5" /></symbol>
+    <symbol id="i-x" viewBox="0 0 16 16"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></symbol>
+  </svg>
+
+  <div id="app">
+    <header class="top">
+      <div class="wrap">
+        <div class="brand">
+          <h1 class="wordmark">Shortlist</h1>
+          <p class="mode" id="mode">Loading...</p>
+          <a class="settings" href="#setup">Settings</a>
+        </div>
+
+        <section class="resume" aria-label="Your resume">
+          <p class="lbl">Ranked against</p>
+          <p class="file" id="resumeFile">Not uploaded yet</p>
+          <p class="when" id="resumeWhen">Shortlist is using data/profile.md.</p>
+          <button class="pick" id="pick" type="button"><svg class="icon"><use href="#i-up" /></svg><span id="pickLabel">Upload resume</span></button>
+          <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" hidden />
+        </section>
+
+        <div class="runbox">
+          <button class="run" id="run" type="button"><svg class="icon"><use href="#i-run" /></svg><span id="runLabel">Check my list</span></button>
+          <p class="last" id="last"></p>
+          <p class="cost" id="cost"></p>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <ul class="funnel" id="funnel" hidden aria-label="This check, step by step" aria-live="polite"></ul>
+
+      <div class="bar" id="filters" hidden>
+        <div><span class="lbl">Track</span><span class="seg" id="tracks" role="group" aria-label="Filter by track"></span></div>
+        <div><span class="lbl">Decisions</span><span class="seg" id="decisionView" role="group" aria-label="Filter by your decision"></span></div>
+        <label class="switch"><input type="checkbox" id="newOnly" /> New since last check only</label>
+        <div><span class="lbl" id="minFitLbl">Minimum fit</span><span class="seg" id="minFit" role="group" aria-labelledby="minFitLbl">
+          <button type="button" data-min="0" aria-pressed="true">Any</button><button type="button" data-min="50" aria-pressed="false">50+</button><button type="button" data-min="75" aria-pressed="false">75+</button>
+        </span></div>
+        <p class="keys"><kbd>J</kbd> <kbd>K</kbd> move between roles, <kbd>O</kbd> opens the posting</p>
+      </div>
+
+      <div id="notice"></div>
+      <div id="rules"></div>
+      <div id="loading"></div>
+      <div id="message"></div>
+      <div class="boards" id="boards" hidden>
+        <section aria-labelledby="gradHead">
+          <div class="board-head"><h2 id="gradHead">2027 and new grad</h2><span class="n" id="gradCount"></span></div>
+          <p class="board-sub">New grad, campus, MBA 2027 and rotational programs.</p>
+          <div id="boardGrad"></div>
+        </section>
+        <section aria-labelledby="openHead">
+          <div class="board-head"><h2 id="openHead">Full-time, open now</h2><span class="n" id="openCount"></span></div>
+          <p class="board-sub">Other full-time roles that passed your filters.</p>
+          <div id="boardOpen"></div>
+        </section>
+      </div>
+
+      <!-- Explore: roles at companies that are not on the watchlist. Live mode only. -->
+      <section class="explore" id="explore" hidden aria-labelledby="exploreHead">
+        <div class="board-head"><h2 id="exploreHead">Beyond your list</h2><span class="n" id="exploreCount"></span></div>
+        <p class="board-sub" id="exploreSub"></p>
+        <div class="explore-bar">
+          <button class="btn solid" id="exploreBtn" type="button">Explore</button>
+          <p class="explore-status" id="exploreStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div id="exploreList"></div>
+        <div id="exploreMore"></div>
+      </section>
+
+      <div class="lower">
+        <div id="errors"></div>
+        <div id="accuracy"></div>
+        <div id="dropped"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Setup, at /#setup. It opens by itself on a fresh install and from Settings after that. Demo mode shows a preview that does not save. -->
+  <div id="setupView" hidden>
+    <div class="preview-note" id="setupNote" hidden><div class="wrap" id="setupNoteText"></div></div>
+    <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
+    <main class="wrap setup">
+      <ol class="steps" id="setupSteps"></ol>
+      <form id="setupForm" novalidate></form>
+    </main>
+    <div class="savebar"><div class="wrap">
+      <p id="setupSummary"></p>
+      <p class="setup-msg" id="setupMsg" role="status" aria-live="polite"></p>
+      <button class="run" id="setupSave" type="button"><span>Save and check my list</span></button>
+    </div></div>
+  </div>
+
+  <div class="drop" id="drop" hidden aria-hidden="true">
+    <div class="frame">
+      <strong>Drop your resume to rescore every role</strong>
+      <span>PDF, Word or text. Contact details are removed before anything is scored.</span>
+    </div>
+  </div>
+
+  <script>
+    // Everything from job boards is outside text, so every string goes through esc() before it reaches the page.
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    const $ = (id) => document.getElementById(id);
+    const icon = (name, cls = "icon") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}" /></svg>`;
+    const TRACK_ORDER = ["Full-time", "Program", "Internship", "Fellowship", "Pre-doc"];
+    const TIERS = [
+      { key: "strong", name: "Strong fit", range: "75 and up" },
+      { key: "possible", name: "Possible", range: "50 to 74" },
+      { key: "long", name: "Long shot", range: "under 50, dealbreakers and unscored" }
+    ];
+    const view = { track: "All", newOnly: false, minFit: 0, decisions: "open" };
+    let data = null;
+    let st = null;
+    let busy = false;
+
+    const n = (x) => Number(x || 0).toLocaleString();
+    function ago(iso) {
+      if (!iso) return "";
+      const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+      if (mins < 1) return "just now";
+      if (mins < 60) return `${mins} min ago`;
+      const hrs = Math.round(mins / 60);
+      if (hrs < 24) return `${hrs} hr ago`;
+      const days = Math.round(hrs / 24);
+      return `${days} day${days === 1 ? "" : "s"} ago`;
+    }
+    const posted = (d) => (d === null || d === undefined) ? "" : d <= 0 ? "posted today" : `posted ${d} day${d === 1 ? "" : "s"} ago`;
+    // Keyword scores measure word overlap with the resume, not fit, and rarely pass 40. So with keyword scoring
+    // I rank roles against each other instead: the top quarter, the next third, and the rest.
+    const KEYWORD_TIERS = [
+      { key: "strong", name: "Closest match", range: "top quarter by keyword overlap" },
+      { key: "possible", name: "Some overlap", range: "the next third" },
+      { key: "long", name: "Little overlap", range: "the rest, dealbreakers and unscored" }
+    ];
+    const keywordMode = () => data?.summary?.method === "keywords";
+    let cuts = { strong: 75, possible: 50 };
+    function setCuts() {
+      cuts = { strong: 75, possible: 50 };
+      if (!keywordMode()) return;
+      const fits = (data.results || []).filter((r) => !r.error && !r.dealbreaker && r.fit > 0).map((r) => r.fit).sort((a, b) => b - a);
+      // The score at a share of the way down the list. Roles tied with it land in the same tier.
+      const at = (share) => fits.length ? fits[Math.max(0, Math.ceil(fits.length * share) - 1)] : Infinity;
+      cuts = { strong: at(0.25), possible: at(0.6) };
+    }
+    // Which tier a role sits in, and the color of its score tile.
+    function tier(r) {
+      if (r.error || r.fit === null || r.fit === undefined || r.dealbreaker || r.fit <= 0) return "long";
+      if (r.fit >= cuts.strong) return "strong";
+      if (r.fit >= cuts.possible) return "possible";
+      return "long";
+    }
+    // Minimum fit: a score in AI mode, a tier in keyword mode (50 means the top two tiers, 75 the top one).
+    function passesMin(r) {
+      if (!view.minFit) return true;
+      if (!keywordMode()) return (r.fit ?? 0) >= view.minFit;
+      return view.minFit >= 75 ? tier(r) === "strong" : tier(r) !== "long";
+    }
+    function band(r) {
+      if (r.dealbreaker) return "b-blocked";
+      return `b-${tier(r)}`;
+    }
+    function notice(text, bad) { $("notice").innerHTML = text ? `<p class="notice${bad ? " bad" : ""}" role="status">${text}</p>` : ""; }
+
+    // ---------- Top band ----------
+    function renderTop() {
+      // The static demo (npm run build-demo, docs/demo) runs on a saved snapshot and a fictional resume.
+      const sd = st?.staticDemo;
+      if (sd) {
+        $("mode").textContent = sd.note;
+        $("resumeFile").textContent = sd.resumeName;
+        $("resumeWhen").innerHTML = `A fictional resume, used for every score here. <a href="${esc(sd.resumeLink)}" target="_blank" rel="noopener">View it</a>`;
+        $("pick").hidden = true;
+        document.querySelector(".settings").hidden = true;
+      } else if (st) {
+        $("mode").textContent = st.demo
+          ? "Demo data: fictional postings, keyword scoring, no API calls."
+          : st.aiOn ? `${n(st.watchlistCount)} companies on your watchlist, scored by ${st.model.split("/").pop()}.`
+          : st.keywordsChosen ? `${n(st.watchlistCount)} companies on your watchlist, free keyword scoring.`
+                    : `${n(st.watchlistCount)} companies on your watchlist, keyword scoring. Add an OpenRouter key in Settings for AI scoring.`;
+        const r = st.resume;
+        $("resumeFile").textContent = r ? r.fileName : st.demo ? "Sample profile (demo)" : "Not uploaded yet";
+        $("resumeWhen").textContent = r ? `Updated ${ago(r.uploadedAt)}. Drop a new file anywhere to replace it.` : st.demo ? "Uploads work in live mode." : "Shortlist is using data/profile.md. Drop a resume anywhere.";
+        $("pickLabel").textContent = r ? "Replace" : "Upload";
+        $("pick").hidden = Boolean(st.demo);
+      }
+      const s = data?.summary;
+      $("funnel").hidden = !s;
+      $("filters").hidden = !(data?.results || []).length;
+      if (!s) { $("last").textContent = ""; $("cost").textContent = ""; return; }
+      $("last").textContent = `Last checked ${ago(s.runAt)}.`;
+      $("funnel").innerHTML = [
+        ["Companies checked", s.companies],
+        ["Open roles found", s.found],
+        ["Passed your filters", s.passedFilter],
+        ["Scored so far", s.scored],
+        ["New since last check", s.newCount, "new"]
+      ].map(([k, v, cls]) => `<li${cls ? ` class="${cls}"` : ""}><span class="v">${n(v)}</span><span class="k">${k}</span></li>`).join("");
+      const parts = [];
+      if (s.method === "ai") parts.push(`This check scored ${n(s.scoredThisRun ?? s.scored)} roles for $${(s.costUsd || 0).toFixed(4)}.`);
+      else parts.push("Keyword scoring, so checks cost nothing. Roles are ranked against each other by shared words; AI scoring in Settings gives a real fit score.");
+      if (s.waiting) parts.push(`${n(s.waiting)} more will be scored on your next checks.`);
+      if (s.cacheReset) parts.push("Your resume changed, so every role is being rescored.");
+      $("cost").textContent = parts.join(" ");
+    }
+
+    function renderTracks() {
+      const results = data?.results || [];
+      const counts = {};
+      results.forEach((r) => { counts[r.track] = (counts[r.track] || 0) + 1; });
+      const options = ["All", ...TRACK_ORDER.filter((t) => counts[t])];
+      if (!options.includes(view.track)) view.track = "All";
+      $("tracks").innerHTML = options.map((t) =>
+        `<button type="button" data-track="${esc(t)}" aria-pressed="${view.track === t}">${esc(t)}<span class="n">${t === "All" ? results.length : counts[t]}</span></button>`).join("");
+    }
+
+    // ---------- Boards ----------
+    function scoreTile(r) {
+      const score = r.fit === null || r.fit === undefined ? "?" : r.fit;
+      const kind = keywordMode() ? "Keyword match" : "Fit";
+      const label = r.error ? "Not scored" : r.dealbreaker ? `${kind} ${score} out of 100, blocked by a dealbreaker` : `${kind} ${score} out of 100`;
+      return `<div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : keywordMode() ? "match" : "fit"}</span></div>`;
+    }
+    function metaHtml(r) {
+      return `<p class="meta">${decisionTag(r)}${r.isNew ? `<span class="new-tag">New</span>` : ""}${r.dealbreaker ? `<span class="stop-tag">Dealbreaker</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
+    }
+    function reportHtml(r) {
+      const people = (r.people || []).map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" data-kind="people">${esc(p.label)}${icon("out")}</a>`).join("");
+      return `${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
+        ${r.error ? `<p class="stop">Could not score: ${esc(r.error)}</p>` : ""}
+        ${r.why || r.gap ? `<dl class="report">${r.why ? `<div><dt>Why it fits</dt><dd>${esc(r.why)}</dd></div>` : ""}${r.gap ? `<div class="gap"><dt>Gap</dt><dd>${esc(r.gap)}</dd></div>` : ""}</dl>` : ""}
+        ${people ? `<div class="reach"><span class="lbl">Reach out</span><span class="links">${people}</span></div>` : ""}`;
+    }
+    // Decisions. "Open" shows every role except the ones passed on; the others show one kind of decision.
+    // The reason keys match PASS_REASONS in src/decisions.js.
+    const PASS_LABELS = { function: "Wrong function", senior: "Too senior", location: "Wrong location", company: "Not interested in the company", other: "Something else" };
+    const DECISION_VIEWS = [["open", "Open", (r) => r.decision !== "passed"], ["saved", "Saved", (r) => r.decision === "saved"], ["applied", "Applied", (r) => r.decision === "applied"], ["passed", "Passed on", (r) => r.decision === "passed"]];
+    function decideHtml(r, from) {
+      const d = r.decision;
+      const btn = (key, label) => `<button type="button" data-decide="${key}" data-id="${esc(r.id)}" data-from="${from}" aria-pressed="${d === key}">${label}</button>`;
+      const chips = Object.entries(PASS_LABELS).map(([k, label]) => `<button type="button" data-reason="${k}" data-id="${esc(r.id)}" data-from="${from}">${label}</button>`).join("");
+      return `<div class="decide"><span class="seg sm" role="group" aria-label="Your decision">${btn("saved", "Save")}${btn("applied", "Applied")}${btn("passed", "Not for me")}</span>${d === "passed" && PASS_LABELS[r.reason] ? `<span class="decide-note">${PASS_LABELS[r.reason]}</span>` : ""}<span class="why-not" hidden>${chips}</span></div>`;
+    }
+    const decisionTag = (r) => (r.decision === "saved" ? `<span class="dec-tag">Saved</span>` : r.decision === "applied" ? `<span class="dec-tag solid">Applied</span>` : "");
+    const openLink = (r) => `<a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">Open posting${icon("out")}</a>`;
+
+    function stripHtml(r) {
+      const cls = `strip ${band(r)}${r.isNew ? " is-new" : ""}`;
+      if (tier(r) === "long") {
+        return `<li class="${cls} compact" tabindex="-1" data-url="${esc(r.url)}"><details>
+          <summary>${scoreTile(r)}<div class="c-line"><p class="s-title">${esc(r.title)}</p>${metaHtml(r)}</div>${icon("chev", "chev")}</summary>
+          <div class="c-more">${reportHtml(r)}${openLink(r)}${decideHtml(r, "board")}</div></details></li>`;
+      }
+      return `<li class="${cls}" tabindex="-1" data-url="${esc(r.url)}">
+        ${scoreTile(r)}
+        <div class="s-body">
+          <div class="s-head"><h3 class="s-title"><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a></h3>${openLink(r)}</div>
+          ${metaHtml(r)}
+          ${reportHtml(r)}
+          ${decideHtml(r, "board")}
+        </div>
+      </li>`;
+    }
+
+    function boardHtml(rows, emptyText) {
+      if (!rows.length) return `<p class="board-empty">${emptyText}</p>`;
+      return (keywordMode() ? KEYWORD_TIERS : TIERS).map((t) => {
+        const list = rows.filter((r) => tier(r) === t.key);
+        if (!list.length) return "";
+        return `<div class="tier t-${t.key}"><h3 class="tier-head"><span class="sw" aria-hidden="true"></span>${t.name} <span class="range">${t.range}</span><span class="n">${list.length}</span></h3>
+          <ol class="strips">${list.map(stripHtml).join("")}</ol></div>`;
+      }).join("");
+    }
+
+    function showMessage(title, body) {
+      $("boards").hidden = Boolean(title);
+      $("message").innerHTML = title ? `<div class="empty"><h2>${title}</h2><p>${body}</p></div>` : "";
+    }
+
+    function renderBoards(fresh) {
+      const all = data?.results || [];
+      $("boards").classList.toggle("fresh", Boolean(fresh));
+      if (!data?.summary) return showMessage("No check yet", `Press Check my list to pull every open role from the ${n(st?.watchlistCount)} companies on your watchlist, filter them, and rank what is left against your resume.`);
+      if (!all.length) {
+        const failed = data.summary.boardsFailed;
+        return failed
+          ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board and your connection.`)
+          : showMessage("No roles passed your filters", 'Open Filtered out below to see what was cut and why. Add roles or cities in <a href="#setup">Settings</a>, or loosen the other rules in data/preferences.json.');
+      }
+      const inView = DECISION_VIEWS.find(([k]) => k === view.decisions)[2];
+      const rows = all.filter((r) => inView(r) && (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && passesMin(r));
+      if (!rows.length) return showMessage("Nothing matches these filters", view.decisions === "open" ? "Turn off New since last check only, or lower the minimum fit." : "No roles have that decision yet. Choose Open under Decisions to see the rest.");
+      showMessage("");
+      const grad = rows.filter((r) => r.cohort === "2027 grad");
+      const open = rows.filter((r) => r.cohort !== "2027 grad");
+      $("gradCount").textContent = grad.length;
+      $("openCount").textContent = open.length;
+      $("boardGrad").innerHTML = boardHtml(grad, "No 2027 or new grad roles in this view.");
+      $("boardOpen").innerHTML = boardHtml(open, "No other open roles in this view.");
+    }
+
+    function renderDropped() {
+      const dropped = data?.dropped || [];
+      const total = data?.droppedCount ?? dropped.length;
+      if (!total) { $("dropped").innerHTML = ""; return; }
+      const reasons = (data?.droppedByReason || []).map((r) => `<li><b>${n(r.count)}</b>${esc(r.reason)}</li>`).join("");
+      const showing = dropped.length < total ? ` Showing the first ${n(dropped.length)}.` : "";
+      $("dropped").innerHTML = `<details class="cut"><summary><h3>Filtered out</h3><span class="sub tnum">${n(total)} roles never reached scoring</span>${icon("chev", "chev")}</summary>
+        <div class="cut-body">
+          ${reasons ? `<ul class="reasons">${reasons}</ul>` : ""}
+          <p class="cost">If a good role is in here, a rule is too strict. Roles and cities are in <a href="#setup">Settings</a>; the other rules are in data/preferences.json.${showing}</p>
+          <table class="dropped"><thead><tr><th>Role</th><th>Company</th><th>Why it was cut</th></tr></thead>
+          <tbody>${dropped.map((d) => `<tr><td>${esc(d.title)}</td><td>${esc(d.company)}</td><td class="r">${esc(d.reason)}</td></tr>`).join("")}</tbody></table>
+        </div></details>`;
+    }
+
+    function renderErrors() {
+      const errors = data?.errors || [];
+      $("errors").innerHTML = errors.length
+        ? `<div class="errors" role="status"><h3>${errors.length} board${errors.length === 1 ? "" : "s"} could not be checked</h3>
+           <p>Run <code>npm run check -- --prune</code> in the terminal to remove broken ones.</p>
+           <ul>${errors.slice(0, 20).map((e) => `<li>${esc(e.company)}: ${esc(e.error)}</li>`).join("")}</ul></div>`
+        : "";
+    }
+
+    // The minimum-fit buttons name tiers in keyword mode, since a keyword score of 50 is rare.
+    function renderMinFit() {
+      const kw = keywordMode();
+      $("minFitLbl").textContent = kw ? "Show" : "Minimum fit";
+      const labels = kw ? ["All", "Some overlap and up", "Closest only"] : ["Any", "50+", "75+"];
+      $("minFit").querySelectorAll("button").forEach((b, i) => { b.textContent = labels[i]; });
+    }
+
+    function renderDecisionView() {
+      const results = data?.results || [];
+      $("decisionView").innerHTML = DECISION_VIEWS.map(([k, label, test]) =>
+        `<button type="button" data-view="${k}" aria-pressed="${view.decisions === k}">${label}<span class="n">${results.filter(test).length}</span></button>`).join("");
+    }
+
+    // A suggested title rule appears once several roles passed on for the same reason share a word.
+    function renderRules() {
+      $("rules").innerHTML = (data?.rules || []).map((s) => `<div class="rule-card" role="status">
+        <p>You passed on <b>${n(s.count)}</b> roles with "${esc(s.word)}" in the title as ${s.reason === "senior" ? "too senior" : "the wrong function"}. Filter out titles with "${esc(s.word)}" from now on?</p>
+        <button type="button" class="btn solid" data-rule="add" data-word="${esc(s.word)}">Filter it out</button>
+        <button type="button" class="btn" data-rule="dismiss" data-word="${esc(s.word)}">Dismiss</button>
+      </div>`).join("");
+    }
+
+    // Ranking accuracy: how well the AI fit predicts the user's own decisions (src/accuracy.js).
+    function renderAccuracy() {
+      const a = data?.accuracy;
+      const m = a?.all;
+      if (!m || !m.decisions) { $("accuracy").innerHTML = ""; return; }
+      const pct = (x) => `${Math.round(x * 100)}%`;
+      const stats = m.auc === null ? "" : `<ul class="reasons">
+          <li><b>${m.auc.toFixed(2)}</b>AUC, where a coin flip is 0.50${m.aucRange ? ` (90% range ${m.aucRange[0].toFixed(2)} to ${m.aucRange[1].toFixed(2)})` : ""}</li>
+          <li><b>${n(Math.round(m.avgFitYes))}</b>average fit of saves and applications</li>
+          <li><b>${n(Math.round(m.avgFitNo))}</b>average fit of passes</li>
+          <li><b>${m.topK.yes} of ${m.topK.k}</b>top roles by fit you saved or applied to, against ${pct(m.yesRate)} overall</li>
+        </ul>`;
+      const j = a.jobOnly;
+      $("accuracy").innerHTML = `<details class="cut"><summary><h3>Ranking accuracy</h3><span class="sub tnum">${m.auc === null ? `${n(m.decisions)} decisions so far` : `AUC ${m.auc.toFixed(2)} from ${n(m.decisions)} decisions`}</span>${icon("chev", "chev")}</summary>
+        <div class="cut-body">
+          <p class="cost">Does the AI fit score rank the roles you saved or applied to above the ones you passed on? AUC is how often a random save outscores a random pass.</p>
+          ${stats}
+          <table class="dropped"><thead><tr><th>Fit</th><th>Decisions</th><th>Saved or applied</th></tr></thead>
+          <tbody>${m.bands.map((b) => `<tr><td>${b.label}</td><td class="tnum">${n(b.decisions)}</td><td class="r tnum">${b.decisions ? `${n(b.yes)} (${pct(b.yes / b.decisions)})` : ""}</td></tr>`).join("")}</tbody></table>
+          <p class="cost">${esc(m.verdict)}${j.auc !== null ? ` Counting only passes about the job itself (wrong function, too senior, something else), AUC is ${j.auc.toFixed(2)}.` : ""}</p>
+          ${a.coverage ? `<p class="cost">${esc(a.coverage)}</p>` : ""}
+        </div></details>`;
+    }
+
+    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderDecisionView(); renderRules(); renderBoards(fresh); renderAccuracy(); renderDropped(); renderErrors(); }
+
+    async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
+
+    // ---------- Usage analytics ----------
+    // PostHog loads only when POSTHOG_KEY is set in .env. This page shows a resume, job titles and scores, so
+    // automatic click capture and session recording are off, and track() sends only the properties listed here.
+    // Never add resume text, scores, titles, company names or setup choices.
+    const EVENTS = {
+      run_clicked: ["scoring"],
+      resume_uploaded: ["file_type", "from"],
+      posting_opened: ["column", "how"],
+      people_link_opened: ["link_type"],
+      explore_clicked: [],
+      role_saved: ["from"],
+      role_applied: ["from"],
+      role_passed: ["reason", "from"],
+      rule_added: [],
+      company_added: ["from"],
+      setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time"]
+    };
+    function startAnalytics(cfg) {
+      if (!cfg?.key || window.posthog?.__loaded) return;
+      // PostHog's standard loader: queues calls until array.js arrives from PostHog's servers.
+      !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once unregister identify reset get_distinct_id opt_in_capturing opt_out_capturing has_opted_out_capturing set_config".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+      // Project settings in PostHog can switch on extra capture (dead clicks, web vitals, heatmaps, surveys),
+      // so each is turned off here, and before_send drops any event that is not one of mine or a page view.
+      const SYSTEM_EVENTS = ["$pageview", "$pageleave", "$identify"];
+      posthog.init(cfg.key, {
+        api_host: cfg.host,
+        autocapture: false,
+        rageclick: false,
+        capture_dead_clicks: false,
+        capture_performance: false,
+        enable_heatmaps: false,
+        disable_surveys: true,
+        disable_session_recording: true,
+        capture_pageview: true,
+        person_profiles: "identified_only",
+        before_send: (event) => (event && (EVENTS[event.event] || SYSTEM_EVENTS.includes(event.event)) ? event : null)
+      });
+      posthog.register({ app: st?.staticDemo ? "static_demo" : "local", mode: st?.demo ? "demo" : "live" });
+    }
+    function track(event, props = {}) {
+      if (!window.posthog || !EVENTS[event]) return;
+      const safe = {};
+      for (const k of EVENTS[event]) if (props[k] !== undefined) safe[k] = props[k];
+      posthog.capture(event, safe);
+    }
+    const fileType = (name) => (/\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : "text");
+    // The kind of Reach out link, never the school or company in it.
+    const linkType = (label) => (/alumni/i.test(label) ? "alumni" : /2nd-degree/i.test(label) ? "connections" : /recruit/i.test(label) ? "recruiters" : /MBAs/i.test(label) ? "mbas" : "team");
+    // Opening a posting or a Reach out link, by click (including a middle click for a new tab) or the O key.
+    function trackOpen(e) {
+      const a = e.target.closest("a[data-kind]");
+      if (!a) return;
+      if (a.dataset.kind === "posting") track("posting_opened", { column: a.closest("#explore") ? "explore" : a.closest("#boardGrad") ? "grad" : "open", how: "click" });
+      else if (a.dataset.kind === "people") track("people_link_opened", { link_type: linkType(a.textContent) });
+    }
+    $("boards").addEventListener("click", trackOpen);
+    $("boards").addEventListener("auxclick", (e) => { if (e.button === 1) trackOpen(e); });
+    $("explore").addEventListener("click", trackOpen);
+    $("explore").addEventListener("auxclick", (e) => { if (e.button === 1) trackOpen(e); });
+
+    // ---------- Actions ----------
+    async function runCheck(label) {
+      if (busy) return;
+      busy = true;
+      const btn = $("run");
+      btn.disabled = true;
+      $("runLabel").textContent = label || `Checking ${n(st?.watchlistCount)} boards...`;
+      $("loading").innerHTML = `<div class="loading" role="progressbar" aria-label="Checking your list"></div>`;
+      try {
+        const res = await fetch("/api/run", { method: "POST" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        data = json;
+        await refreshStatus();
+        notice("");
+        renderAll(true);
+        return true;
+      } catch (err) {
+        notice(`The check stopped: ${esc(err.message)}. The terminal running npm start has the details.`, true);
+        return false;
+      } finally {
+        busy = false;
+        btn.disabled = false;
+        $("runLabel").textContent = "Check my list";
+        $("loading").innerHTML = "";
+      }
+    }
+
+    async function uploadResume(file) {
+      if (!file || busy) return;
+      if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) return notice("Use a PDF, Word (.docx) or text file.", true);
+      notice(`Reading ${esc(file.name)}...`);
+      try {
+        const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("resume_uploaded", { file_type: fileType(json.fileName), from: "board" });
+        await refreshStatus();
+        renderTop();
+        notice(`Read ${n(json.chars)} characters from ${esc(json.fileName)}. Rescoring your roles against it now.`);
+        if (!(await runCheck("Rescoring..."))) return;
+        const s = data?.summary || {};
+        notice((data?.results || []).length
+          ? `Rescored against ${esc(json.fileName)}.${s.waiting ? ` ${n(s.waiting)} more roles will be rescored on your next checks.` : ""}`
+          : `Saved ${esc(json.fileName)}. The check finished but no roles came back, so there was nothing to rescore yet.`);
+      } catch (err) {
+        notice(`Could not use that resume: ${esc(err.message)}`, true);
+      }
+    }
+
+    $("run").addEventListener("click", () => {
+      if (st?.staticDemo) {
+        track("run_clicked", { scoring: "demo" });
+        return notice(`This demo is a saved snapshot from ${new Date(st.staticDemo.snapshotAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}. In the full app, Check my list pulls fresh roles from every board.`);
+      }
+      track("run_clicked", { scoring: st?.demo ? "demo" : st?.aiOn ? "ai" : "keywords" });
+      runCheck();
+    });
+    $("pick").addEventListener("click", () => $("fileInput").click());
+    // On the setup screen a new resume is only saved; the check runs when setup is saved.
+    $("fileInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if ($("setupView").hidden) uploadResume(file); else setupUpload(file);
+    });
+    $("tracks").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      view.track = b.dataset.track;
+      renderTracks(); renderBoards(false);
+    });
+    $("decisionView").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      view.decisions = b.dataset.view;
+      renderDecisionView(); renderBoards(false);
+    });
+
+    // Every role on the board or in Beyond your list with this id gets the same decision.
+    function setDecision(id, decision, reason) {
+      const lists = [data?.results, explore?.latest?.results, explore?.latest?.more].filter(Boolean);
+      for (const list of lists) for (const r of list) if (r.id === id) { r.decision = decision || undefined; r.reason = reason || undefined; }
+    }
+    async function sendDecision(id, decision, reason, from) {
+      try {
+        const res = await fetch("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, decision, reason }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        const role = [...(data?.results || []), ...(explore?.latest?.results || []), ...(explore?.latest?.more || [])].find((r) => r.id === id);
+        setDecision(id, decision === "clear" ? null : decision, reason);
+        if (data) { data.rules = json.rules; data.accuracy = json.accuracy; }
+        if (decision === "saved") track("role_saved", { from });
+        if (decision === "applied") track("role_applied", { from });
+        if (decision === "passed") track("role_passed", { reason, from });
+        renderDecisionView(); renderRules(); renderBoards(false); renderAccuracy(); renderExplore();
+        notice(decision === "passed" && role
+          ? `Marked "${esc(role.title)}" at ${esc(role.company)} as not for you (${PASS_LABELS[reason].toLowerCase()}). <button type="button" class="link" data-decide="clear" data-id="${esc(id)}" data-from="${from}">Undo</button>`
+          : "");
+      } catch (err) {
+        notice(`Could not save that: ${esc(err.message)}`, true);
+      }
+    }
+    document.addEventListener("click", async (e) => {
+      const d = e.target.closest("[data-decide]");
+      if (d) {
+        const { decide, id, from } = d.dataset;
+        const current = d.getAttribute("aria-pressed") === "true";
+        if (decide === "passed" && !current) {
+          // Not for me asks why before anything is saved.
+          const chips = d.closest(".decide").querySelector(".why-not");
+          chips.hidden = !chips.hidden;
+          return;
+        }
+        return sendDecision(id, current || decide === "clear" ? "clear" : decide, null, from || "board");
+      }
+      const reason = e.target.closest("[data-reason]");
+      if (reason) return sendDecision(reason.dataset.id, "passed", reason.dataset.reason, reason.dataset.from || "board");
+      const rule = e.target.closest("[data-rule]");
+      if (rule) {
+        try {
+          const res = await fetch("/api/rules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word: rule.dataset.word, action: rule.dataset.rule }) });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+          if (json.action === "add") track("rule_added");
+          data.rules = json.rules;
+          renderRules();
+          notice(json.action === "add" ? `Titles with "${esc(json.word)}" are filtered out from your next check. They will show under Filtered out with that reason.` : "");
+        } catch (err) {
+          notice(`Could not change that rule: ${esc(err.message)}`, true);
+        }
+      }
+    });
+    $("newOnly").addEventListener("change", (e) => { view.newOnly = e.target.checked; renderBoards(false); });
+    $("minFit").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      view.minFit = Number(b.dataset.min);
+      $("minFit").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      renderBoards(false);
+    });
+
+    // Keyboard triage: J and K move between roles, O opens the posting, Enter opens a folded long shot.
+    document.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || !$("setupView").hidden) return;
+      if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+      const strips = [...document.querySelectorAll("#boards .strip")];
+      if (!strips.length) return;
+      const current = e.target.closest(".strip");
+      const i = strips.indexOf(current);
+      const key = e.key.toLowerCase();
+      if (key === "j" || key === "k") {
+        e.preventDefault();
+        const next = strips[key === "j" ? Math.min(i + 1, strips.length - 1) : Math.max(i - 1, 0)] || strips[0];
+        next.focus({ preventScroll: true });
+        next.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      } else if (key === "o" && current) {
+        e.preventDefault();
+        track("posting_opened", { column: current.closest("#boardGrad") ? "grad" : "open", how: "keyboard" });
+        window.open(current.dataset.url, "_blank", "noopener");
+      } else if (key === "enter" && current === e.target && current.classList.contains("compact")) {
+        e.preventDefault();
+        const d = current.querySelector("details");
+        d.open = !d.open;
+      }
+    });
+
+    // Drag a file anywhere on the page to replace the resume. Off in demo modes, where there is nothing to replace.
+    let dragDepth = 0;
+    const hasFile = (e) => [...(e.dataTransfer?.types || [])].includes("Files") && !st?.demo;
+    window.addEventListener("dragenter", (e) => { if (!hasFile(e)) return; e.preventDefault(); dragDepth++; $("drop").hidden = false; });
+    window.addEventListener("dragover", (e) => { if (hasFile(e)) e.preventDefault(); });
+    window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").hidden = true; });
+    window.addEventListener("drop", (e) => {
+      if (!hasFile(e)) return;
+      e.preventDefault();
+      dragDepth = 0;
+      $("drop").hidden = true;
+      if ($("setupView").hidden) uploadResume(e.dataTransfer.files[0]); else setupUpload(e.dataTransfer.files[0]);
+    });
+
+    // ---------- Beyond your list (explore) ----------
+    // Explore checks about 10,000 companies that are not on the watchlist. A sweep runs in the background on the
+    // server, so while it runs the page asks for progress every 2 seconds.
+    let explore = null;
+    let explorePoll = null;
+    const EXPLORE_TIERS = {
+      ai: TIERS,
+      keywords: [
+        { key: "strong", name: "Closest match", range: "75 and up, by title and resume words" },
+        { key: "possible", name: "Some overlap", range: "50 to 74" },
+        { key: "long", name: "Little overlap", range: "under 50, dealbreakers and unscored" }
+      ]
+    };
+    const exploreTier = (r) => (r.error || r.fit === null || r.fit === undefined || r.dealbreaker ? "long" : r.fit >= 75 ? "strong" : r.fit >= 50 ? "possible" : "long");
+    const exploreAction = (r) => r.onWatchlist
+      ? `<span class="on-list">On your watchlist</span>`
+      : `<button type="button" class="add" data-ats="${esc(r.ats)}" data-board="${esc(r.board)}">Add ${esc(r.company)}</button>`;
+
+    function exploreStrip(r, ai) {
+      const score = r.fit === null || r.fit === undefined ? "?" : r.fit;
+      const label = `${ai ? "Fit" : "Match"} ${score} out of 100${r.dealbreaker ? ", blocked by a dealbreaker" : ""}`;
+      const band = r.dealbreaker ? "b-blocked" : `b-${exploreTier(r)}`;
+      return `<li class="strip ${band}${r.isNew ? " is-new" : ""}" tabindex="-1" data-url="${esc(r.url)}">
+        <div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : ai ? "fit" : "match"}</span></div>
+        <div class="s-body">
+          <div class="s-head"><h3 class="s-title"><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a></h3>${openLink(r)}${exploreAction(r)}</div>
+          ${metaHtml(r)}
+          ${reportHtml(r)}
+          ${decideHtml(r, "explore")}
+        </div>
+      </li>`;
+    }
+
+    function renderExplore() {
+      const sec = $("explore");
+      sec.hidden = !st || st.demo;
+      if (sec.hidden) return;
+      const latest = explore?.latest;
+      const s = latest?.summary;
+      const running = Boolean(explore?.running);
+      const p = explore?.progress;
+      const ai = s?.method === "ai";
+
+      $("exploreBtn").disabled = running;
+      $("exploreBtn").textContent = running ? "Exploring..." : s ? "Explore again" : "Explore";
+      $("exploreCount").textContent = s ? latest.results.length : "";
+      $("exploreSub").textContent = s
+        ? `Last explored ${ago(s.runAt)}: ${n(s.checked)} companies not on your watchlist, ${n(s.found)} open roles, ${n(s.passedFilter)} passed your filters. ${ai ? `The top ${n(s.shown)} were scored by AI for $${(s.costUsd || 0).toFixed(4)}.` : `The top ${n(s.shown)} were ranked for free.`}`
+        : "Checks the job boards of about 10,000 more companies with your filters and shows the best roles here. Nothing joins your watchlist unless you add it.";
+      const cost = st.aiOn ? `AI scores the top ${explore?.top || 40} roles, about $0.03; roles it scored before are not paid for again.` : "Free keyword ranking, no AI cost.";
+      $("exploreStatus").classList.toggle("bad", !running && Boolean(explore?.error));
+      $("exploreStatus").textContent = running
+        ? (p?.total ? `Checked ${n(p.done)} of ${n(p.total)} companies: ${n(p.found)} open roles, ${n(p.passed)} pass your filters.` : "Starting...")
+        : explore?.error ? `The last explore stopped: ${explore.error}` : `${cost} A sweep takes a few minutes.`;
+
+      const results = (latest?.results || []).filter((r) => r.decision !== "passed");
+      $("exploreList").innerHTML = (ai ? EXPLORE_TIERS.ai : EXPLORE_TIERS.keywords).map((t) => {
+        const list = results.filter((r) => exploreTier(r) === t.key);
+        if (!list.length) return "";
+        return `<div class="tier t-${t.key}"><h3 class="tier-head"><span class="sw" aria-hidden="true"></span>${t.name} <span class="range">${t.range}</span><span class="n">${list.length}</span></h3>
+          <ol class="strips">${list.map((r) => exploreStrip(r, ai)).join("")}</ol></div>`;
+      }).join("");
+
+      const more = latest?.more || [];
+      $("exploreMore").innerHTML = more.length ? `<details class="cut"><summary><h3>More to look at</h3><span class="sub tnum">The next ${n(more.length)} roles, ranked for free by title and resume words</span>${icon("chev", "chev")}</summary>
+        <div class="cut-body"><table class="dropped"><thead><tr><th>Role</th><th>Company</th><th>Where</th><th>Match</th><th></th></tr></thead>
+        <tbody>${more.map((r) => `<tr><td><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a>${r.isNew ? ` <span class="new-tag">New</span>` : ""}</td><td>${esc(r.company)}</td><td>${esc(r.location || "")}</td><td class="tnum">${esc(r.fit ?? "")}</td><td>${exploreAction(r)}</td></tr>`).join("")}</tbody></table></div></details>` : "";
+    }
+
+    async function loadExplore() {
+      clearTimeout(explorePoll);
+      if (!st || st.demo) return renderExplore();
+      try { explore = await fetch("/api/explore").then((r) => r.json()); } catch { explore = null; }
+      renderExplore();
+      if (explore?.running) explorePoll = setTimeout(loadExplore, 2000);
+    }
+
+    $("exploreBtn").addEventListener("click", async () => {
+      track("explore_clicked");
+      $("exploreBtn").disabled = true;
+      try { explore = await fetch("/api/explore", { method: "POST" }).then((r) => r.json()); } catch { explore = null; }
+      loadExplore();
+    });
+    $("explore").addEventListener("click", async (e) => {
+      const b = e.target.closest("button.add");
+      if (!b) return;
+      b.disabled = true;
+      try {
+        const res = await fetch("/api/watchlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ats: b.dataset.ats, board: b.dataset.board }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("company_added", { from: "explore" });
+        for (const r of [...explore.latest.results, ...explore.latest.more]) if (r.ats === b.dataset.ats && r.board === b.dataset.board) r.onWatchlist = true;
+        await refreshStatus();
+        renderTop();
+        renderExplore();
+        $("exploreStatus").textContent = `Added ${json.company} to your watchlist. Your next check includes it, and roles explore already scored are not paid for again.`;
+      } catch (err) {
+        b.disabled = false;
+        $("exploreStatus").classList.add("bad");
+        $("exploreStatus").textContent = `Could not add it: ${err.message}`;
+      }
+    });
+
+    // ---------- Setup ----------
+    // Live mode reads and saves GET and POST /api/setup. Demo mode has no setup to save, so it shows this
+    // sample in the same shape, with saving turned off.
+    const SETUP_PREVIEW = {
+      roles: ["strategy", "programs"],
+      cities: ["newYork"],
+      sectors: ["ai", "supplyChain"],
+      schools: ["Example Business School"],
+      lookingFor: "",
+      sampleResume: true,
+      watchlistCount: 0,
+      scoring: "keywords",
+      hasKey: false,
+      options: {
+        roles: [
+          { key: "strategy", label: "Strategy and operations" }, { key: "product", label: "Product management" },
+          { key: "finance", label: "Finance and corporate development" }, { key: "supplyChain", label: "Supply chain" },
+          { key: "realEstate", label: "Real estate" }, { key: "marketing", label: "Marketing" },
+          { key: "programs", label: "Rotational and leadership programs" }
+        ],
+        cities: ["New York", "San Francisco Bay Area", "Los Angeles", "Boston", "Chicago", "Seattle", "Washington, DC", "Austin", "Dallas", "Atlanta", "Denver", "Miami", "Remote"]
+          .map((label) => ({ key: label === "New York" ? "newYork" : label.replace(/\W/g, ""), label })),
+        sectors: [
+          { key: "ai", label: "AI and software", count: 61 }, { key: "hardtech", label: "Aerospace, defense and hard tech", count: 46 },
+          { key: "climate", label: "Energy and climate", count: 21 }, { key: "supplyChain", label: "Supply chain and logistics", count: 15 },
+          { key: "fintech", label: "Fintech and financial services", count: 28 }, { key: "consumer", label: "Consumer and marketplaces", count: 38 },
+          { key: "health", label: "Health", count: 12 }, { key: "realEstate", label: "Real estate and proptech", count: 21 }
+        ]
+      }
+    };
+    const LOOKING_FOR_MAX = 2000;
+    let setup = null;
+    let schools = [];
+
+    function choiceList(name, options, picked) {
+      return `<div class="choices">${options.map((o) => `<label class="choice"><input type="checkbox" name="${name}" value="${esc(o.key)}"${picked.includes(o.key) ? " checked" : ""} /><span class="box">${icon("check")}</span>${esc(o.label)}${o.count !== undefined ? `<span class="count" aria-label="${n(o.count)} companies">${n(o.count)}</span>` : ""}</label>`).join("")}</div>`;
+    }
+
+    function setupMsg(text, bad) {
+      $("setupMsg").textContent = text || "";
+      $("setupMsg").classList.toggle("bad", Boolean(bad));
+    }
+
+    function resumeLine(s) {
+      if (s.sampleResume) return `<p class="warn" id="sampleWarn"><b>Sample</b>Right now Shortlist would score against a fictional sample resume. Add yours to continue.</p>`;
+      const r = st?.resume;
+      return `<p class="warn"><b>Ready</b>${r ? `Using ${esc(r.fileName)}, added ${ago(r.uploadedAt)}.` : "Using the resume in data/profile.md."} Add a new file to replace it.</p>`;
+    }
+
+    function renderSchools() {
+      $("schoolTokens").innerHTML = schools.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-i="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("");
+    }
+
+    function renderSetup(s) {
+      const sections = [
+        ["resume", "Your resume"], ["roles", "Kinds of roles"], ["cities", "Cities"], ["sectors", "Companies to watch"],
+        ["schools", "Your schools"], ["lookingFor", "What you are looking for"], ["scoring", "Scoring"]
+      ];
+      $("setupSteps").innerHTML = sections.map(([id, label]) => {
+        const done = id === "resume" ? !s.sampleResume : Array.isArray(s[id]) ? s[id].length > 0 : id === "lookingFor" ? Boolean(s.lookingFor) : id === "scoring";
+        return `<li><a href="#setup" data-jump="q-${id}" class="${done ? "done" : ""}">${label}</a></li>`;
+      }).join("");
+      // AI scoring shows as chosen only when a key is saved, since without one every check falls back to keywords.
+      const ai = s.scoring === "ai" && s.hasKey;
+      schools = [...s.schools];
+      $("setupForm").innerHTML = `
+        <h1>${st?.needsSetup ? "Set up your board" : "Settings"}</h1>
+        <p class="lede">Tell Shortlist what you are recruiting for. It checks your companies' job boards, cuts what does not fit these rules, and ranks the rest against your resume. You can change any of this later from Settings.</p>
+        <section class="q" id="q-resume"><h2>Your resume</h2>
+          <p class="help">PDF, Word or text. Shortlist removes your email, phone and links before anything is saved or scored. The file itself is not kept.</p>
+          <div class="dropzone">${icon("up")}<div><div class="big">Drop your resume here</div><p>or choose a file from your computer</p></div><button type="button" class="btn" id="setupPick">Choose file</button></div>
+          <div id="resumeLine">${resumeLine(s)}</div>
+        </section>
+        <section class="q" id="q-roles"><h2>Kinds of roles</h2>
+          <p class="help">Pick every kind you would apply to. MBA 2027 and new grad titles are always included.</p>
+          ${choiceList("roles", s.options.roles, s.roles)}
+        </section>
+        <section class="q" id="q-cities"><h2>Cities</h2>
+          <p class="help">Roles outside these cities are filtered out. Pick none to see every city.</p>
+          ${choiceList("cities", s.options.cities, s.cities)}
+        </section>
+        <section class="q" id="q-sectors"><h2>Companies to watch</h2>
+          <p class="help">Start from a ready list of companies in each sector; the number is how many companies each adds. Unchecking a sector removes only its starter companies, never ones you added yourself.</p>
+          ${choiceList("sectors", s.options.sectors, s.sectors)}
+        </section>
+        <section class="q" id="q-schools"><h2>Your schools</h2>
+          <p class="help">Used for the Reach out links on each role, so you find alumni at that company first. Press Enter after each one.</p>
+          <div class="chips-in"><span id="schoolTokens" style="display:contents"></span><input type="text" id="schoolInput" maxlength="80" placeholder="Add a school, like Wharton or your undergrad" aria-label="Add a school" /></div>
+        </section>
+        <section class="q" id="q-lookingFor"><h2>What you are looking for</h2>
+          <p class="help">A few sentences in your own words. The model reads this next to your resume when it scores each role. Changing it means every role is scored again on your next check.</p>
+          <textarea class="field" name="lookingFor" maxlength="${LOOKING_FOR_MAX}" placeholder="For example: Strategy or operations roles at a growth stage company in New York. Open to rotational programs. Not interested in pure sales.">${esc(s.lookingFor)}</textarea>
+          <p class="count-line tnum"><span id="lfCount">${s.lookingFor.length}</span> of ${n(LOOKING_FOR_MAX)} characters</p>
+        </section>
+        <section class="q" id="q-scoring"><h2>Scoring</h2>
+          <p class="help">Keyword scoring is free and works right away. AI scoring reads each role against your resume and explains the fit and the gap. Each role is paid for once, and switching back and forth keeps the scores you paid for.</p>
+          <div class="modes">
+            <label class="choice"><input type="radio" name="scoring" value="keywords"${ai ? "" : " checked"} /><span class="t"><span class="box">${icon("check")}</span>Keyword scoring</span><small>Free. No account needed.</small></label>
+            <label class="choice"><input type="radio" name="scoring" value="ai"${ai ? " checked" : ""} /><span class="t"><span class="box">${icon("check")}</span>AI scoring with OpenRouter</span><small>Needs an OpenRouter key. Cost shows after every check.</small></label>
+          </div>
+          <div class="key-row" id="keyRow" hidden><label for="orKey">OpenRouter key</label><input class="field" id="orKey" type="password" autocomplete="off" placeholder="${s.hasKey ? "A key is saved. Paste a new one only to replace it." : "Paste your key from openrouter.ai/keys. It stays on this computer."}" /></div>
+        </section>`;
+      renderSchools();
+      setupMsg("");
+      updateSetupSummary();
+    }
+
+    function updateSetupSummary() {
+      if (!setup) return;
+      const form = $("setupForm");
+      const picked = (name) => [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
+      const sectors = setup.options.sectors.filter((x) => picked("sectors").includes(x.key));
+      const companies = sectors.reduce((a, x) => a + x.count, 0);
+      const roles = picked("roles").length;
+      const cities = picked("cities").length;
+      $("setupSummary").innerHTML = `<b class="tnum">${n(companies)}</b> starter companies to watch. ${roles} kind${roles === 1 ? "" : "s"} of role, ${cities ? `${cities} cit${cities === 1 ? "y" : "ies"}` : "every city"}.`;
+      $("keyRow").hidden = form.querySelector('input[name="scoring"]:checked')?.value !== "ai";
+    }
+
+    async function openSetup() {
+      const demo = st?.demo;
+      try {
+        setup = demo ? SETUP_PREVIEW : await fetch("/api/setup").then((r) => r.json());
+      } catch {
+        setup = null;
+      }
+      $("setupNote").hidden = Boolean(st?.needsSetup) && !demo;
+      $("setupNoteText").innerHTML = demo
+        ? 'Preview of the setup screen. It saves in live mode (npm start). <a href="#">Back to the board</a>'
+        : 'Changes apply when you save. <a href="#">Back to the board</a> without saving.';
+      if (!setup?.options) return setupMsg("Could not load setup. Is npm start still running?", true);
+      renderSetup(setup);
+    }
+
+    function addSchool() {
+      const input = $("schoolInput");
+      const name = input.value.replace(/,/g, " ").trim();
+      if (name && !schools.some((x) => x.toLowerCase() === name.toLowerCase())) schools.push(name);
+      input.value = "";
+      renderSchools();
+    }
+
+    async function setupUpload(file) {
+      if (!file) return;
+      if (st?.demo) return setupMsg("Resume upload works in live mode. Stop the demo and run npm start.", true);
+      if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) return setupMsg("Use a PDF, Word (.docx) or text file.", true);
+      setupMsg(`Reading ${file.name}...`);
+      try {
+        const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("resume_uploaded", { file_type: fileType(json.fileName), from: "setup" });
+        await refreshStatus();
+        setup.sampleResume = false;
+        $("resumeLine").innerHTML = resumeLine(setup);
+        $("setupSteps").querySelector('[data-jump="q-resume"]').classList.add("done");
+        setupMsg(`Read ${n(json.chars)} characters from ${json.fileName}.`);
+      } catch (err) {
+        setupMsg(`Could not use that resume: ${err.message}`, true);
+      }
+    }
+
+    async function saveSetup() {
+      if (st?.demo) return setupMsg("This is a preview. Stop the demo and run npm start to set up your own board.", true);
+      if (!setup) return;
+      const form = $("setupForm");
+      const picked = (name) => [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
+      if ($("schoolInput").value.trim()) addSchool();
+      const scoring = form.querySelector('input[name="scoring"]:checked')?.value || "keywords";
+      const apiKey = $("orKey").value.trim();
+      if (setup.sampleResume) return setupMsg("Add your resume first. Shortlist ranks every role against it.", true);
+      if (!picked("sectors").length && !setup.watchlistCount) return setupMsg("Pick at least one sector so there are companies to check.", true);
+      if (scoring === "ai" && !setup.hasKey && !apiKey) return setupMsg("Paste your OpenRouter key, or choose keyword scoring.", true);
+      const btn = $("setupSave");
+      btn.disabled = true;
+      setupMsg(apiKey ? "Checking your key with OpenRouter..." : "Saving...");
+      try {
+        const res = await fetch("/api/setup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roles: picked("roles"), cities: picked("cities"), sectors: picked("sectors"), schools,
+            lookingFor: form.querySelector('textarea[name="lookingFor"]').value, scoring, ...(apiKey ? { apiKey } : {})
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        // Counts and the scoring choice only, never which roles, cities, sectors or schools.
+        track("setup_saved", {
+          roles_count: picked("roles").length, cities_count: picked("cities").length, sectors_count: picked("sectors").length,
+          schools_count: schools.length, scoring, first_time: Boolean(st?.needsSetup)
+        });
+        $("orKey").value = "";
+        setup = json;
+        await refreshStatus();
+        location.hash = "";
+        runCheck();
+      } catch (err) {
+        setupMsg(err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    $("setupForm").addEventListener("change", updateSetupSummary);
+    $("setupForm").addEventListener("input", (e) => { if (e.target.name === "lookingFor") $("lfCount").textContent = e.target.value.length; });
+    $("setupForm").addEventListener("keydown", (e) => {
+      if (e.target.id !== "schoolInput") return;
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSchool(); }
+      else if (e.key === "Backspace" && !e.target.value && schools.length) { schools.pop(); renderSchools(); }
+    });
+    $("setupForm").addEventListener("click", (e) => {
+      const remove = e.target.closest("#schoolTokens button");
+      if (remove) { schools.splice(Number(remove.dataset.i), 1); renderSchools(); $("schoolInput").focus(); }
+      if (e.target.closest("#setupPick")) $("fileInput").click();
+    });
+    $("setupSteps").addEventListener("click", (e) => {
+      const a = e.target.closest("a[data-jump]");
+      if (!a) return;
+      e.preventDefault();
+      $(a.dataset.jump).scrollIntoView({ block: "start" });
+    });
+    $("setupSave").addEventListener("click", saveSetup);
+
+    function route() {
+      if (st?.staticDemo && location.hash === "#setup") { location.hash = ""; return; }
+      const onSetup = location.hash === "#setup";
+      $("app").hidden = onSetup;
+      $("setupView").hidden = !onSetup;
+      if (onSetup) openSetup();
+      window.scrollTo(0, 0);
+    }
+    window.addEventListener("hashchange", route);
+
+    setInterval(renderTop, 60000);
+    (async () => {
+      [st, data] = await Promise.all([fetch("/api/status").then((r) => r.json()), fetch("/api/latest").then((r) => r.json())]);
+      startAnalytics(st.analytics);
+      renderAll(false);
+      loadExplore();
+      // A fresh install goes straight to setup. Changing the hash runs route() through hashchange.
+      if (st.needsSetup && location.hash !== "#setup") location.hash = "#setup";
+      else route();
+    })();
+  </script>
+</body>
+</html>
