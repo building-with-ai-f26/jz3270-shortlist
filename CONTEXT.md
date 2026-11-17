@@ -1,0 +1,85 @@
+# CONTEXT.md: What we asked, what we decided, and why
+
+This is the running memory of building Shortlist with a coding agent. It tracks Jordan's requests, the decisions that came out of them and the reasons behind them, so a new session (or a new person) can pick up without rereading old chats.
+
+How it fits with the other files:
+- `AGENTS.md` holds the rules, the commands, the map of the code and the current roadmap. It says what to do.
+- `CONTEXT.md` (this file) holds the history and the reasoning. It says why things are the way they are.
+- `PRODUCT.md` and `DESIGN.md` hold the product principles and the design system.
+- `docs/index.html` is the public Product Page, PRD and build log.
+
+This repository is public. Never put resume content, keys, emails or anything from `data/` in this file.
+
+**Updating it:** at the end of each working session, add a dated entry to the log (what Jordan asked, what was decided, what shipped, key numbers), and update "Key decisions" and "Open questions" if anything changed.
+
+## Where things stand (Nov 17)
+
+- Build 1 shipped Nov 9. Build 2 was submitted for Nov 16 with PostHog evidence, PRD v2 and the Build 2 log. The professor liked the Big Board design, so it stays.
+- Build 3 (due Nov 23) is the data roadmap below, then a move to Vercel and Supabase.
+- 119 tests (one skips on purpose; it only runs on Node older than 22).
+- OpenRouter spend: about $0.62 through Build 2.
+
+## Key decisions and why
+
+**Product**
+- **Off-cycle MBA recruiting is the target.** On-cycle recruiting (consulting, banking) is already served by career centers and 12twenty; off-cycle roles open whenever a team has a need, which is the watching problem Shortlist solves.
+- **The name stays "Shortlist" for now** (Nov 10). Jordan considered renaming because "The Shortlist" is taken. Candidates discussed: Rolecall (favorite), Perch, Offcycle, Ripe. The repository name `jz3270-shortlist` must stay because of the course naming rule and the submitted Product Page URL.
+- **Anyone can set it up** (Nov 10). A classmate clones, runs `npm install` and `npm start`, and finishes setup in the browser. Jordan's own defaults (real estate and supply chain searches, NYU Stern) became choices instead of code.
+- **Look beyond a fixed company list, with the same filters** (Nov 11). Startups Jordan might love are the ones he does not know to add. "Explore" sweeps an open directory of 9,935 companies on Greenhouse, Lever and Ashby (LastRound AI, CC BY 4.0). Scraping LinkedIn Jobs, Wellfound or Y Combinator's job site was ruled out because they forbid it; paid Google Jobs search (SerpApi) was ruled out over cost and its legal dispute.
+- **"Remote" means US remote by default** (Nov 11). Remote roles that list only places abroad are filtered out with their own reason; `remoteAnywhere` turns this off.
+
+**Data and learning (the roadmap approved Nov 17)**
+- **Learning needs decisions first.** One user makes dozens of decisions, not thousands, so the plan is: record decisions, measure accuracy, then a small, explainable model (logistic regression in plain JavaScript), switched on only if it beats the AI fit alone.
+- **Decisions keep a snapshot taken on the server** from the app's own results, not from the page, so the data stays trustworthy.
+- **Rule suggestions never touch words that let roles in**, words that name a chosen kind of role, or words from roles Jordan saved.
+- **Accuracy is measured with AUC** (how often a random save outscores a random pass; 0.5 is a coin flip), with a 90% range from resampling, plus a fairer cut that ignores passes about the company or location, which a resume match cannot know.
+- **The "nerd graph" comes after the model** (Jordan's idea, Nov 17): a brutalist plain-SVG chart of what the model learned and a before-and-after calibration chart.
+- **The recruiting season in one place** comes after that (Jordan's idea, Nov 17): more stages (interviewing, offer, rejected), applications added by hand from LinkedIn and 12twenty, a season view, and a spreadsheet download for Google Sheets. Interview and offer outcomes become the strongest labels for the model.
+
+**Privacy and cost**
+- **Personal data stays in `data/`**, which is gitignored. Uploaded resumes are read in memory; only cleaned text is saved, with email, phone and links removed.
+- **PostHog sends named events only.** Click capture and session replay are off in the local app because it shows the resume and scores; the public Product Page uses the standard snippet with replay on. `before_send` drops anything not on the list.
+- **Pay for each role once.** Scores are cached by posting ID; keyword and explore scores have their own files so switching modes never discards paid scores.
+- **Product Page screenshots never show the real resume.** The Build 2 screenshot was made from a live check against the fictional sample resume in a throwaway folder.
+
+**Process**
+- **Plan before multi-file changes, small commits, Jordan pushes** (through GitHub Desktop; the `gh` command line is signed in to a work account without access to this repository).
+- **Jordan edits `README.md` and `docs/index.html` by hand,** so changes there are shown as a diff and saved only after approval. Writing for the Product Page follows his writing style: no em or en dashes.
+- **Tests never call OpenRouter;** real checks during development use throwaway data folders and keyword scoring unless a paid check is agreed first.
+
+## Session log
+
+### Nov 10: move to Claude Code, setup for anyone, redesign, PostHog
+- **Asked:** run `npm install` and `npm test`, commit the Build 2 files, then plan "make it work for anyone." Found that 18 Build 1 files had been deleted by a folder copy; restored them before committing.
+- **Asked:** setup for classmates. Built in five steps: preferences from plain choices, the `/api/setup` routes, 242 starter companies by sector, OpenRouter key or free keyword scoring, and the setup screen.
+- **Asked:** a redesign using Mobbin and Impeccable. Ran in a separate session on its own branch; the result, "The Big Board," was merged.
+- **Found and fixed:** keyword-scored roles all landed in "Long shot," so keyword mode now tiers roles by rank.
+- **Asked:** how to push and see the app running; how the LinkedIn links work (plain search links, nothing scraped); a new name (kept Shortlist); PostHog. PostHog was installed with five named events and privacy settings.
+- **Cost note:** a test of the setup screen accidentally ran a paid check ($0.0175).
+
+### Nov 11: explore beyond the watchlist
+- **Asked:** "not just the companies we have in a list, but all the jobs possible that fit." Researched sources; chose the open ATS directory. A 100-company sample, then a full free sweep: 9,730 companies in under 3 minutes, 243,426 open roles, 3,996 passed the filters.
+- **Found:** the free keyword ranking picked poor roles (sales, IT) and "Remote" let in roles abroad. Ranking now uses the chosen kinds of role; Remote means US remote. The top 40 went from 18 to 39 titles naming Jordan's roles.
+- **Found:** a test resume belonging to someone else had been left loaded, which skewed scores. Jordan's own resume was restored.
+
+### Nov 12 to 13: explore in the app, Product Page
+- **Asked:** put explore in the app. "Beyond your list" shows the top 40 with "Add to watchlist." First AI explore on Jordan's resume: 3,151 roles passed, best fits 72, cost $0.03.
+- **Asked:** the Product Page fixes: off-cycle tagline, the Build 1 board count (241), and removing a stray copy of the page.
+- **Asked:** "nice to haves" that set Shortlist apart. Suggested triage with rule learning, a "recurring gaps" summary, and a scheduled morning check with notifications.
+
+### Nov 13 to 15: Build 2 write-up and submission
+- **Asked:** write PRD v2 and the Build 2 log in Jordan's voice, then check the Build 2 requirements. Replaced the Build 1 screenshot (it quoted the real resume) with a live check on the sample resume, and filled in PostHog evidence (5 users, 5 sessions) and hours (3 to 4).
+
+### Nov 17: the data roadmap, Workday, the move to the cloud
+- **Asked:** keep the design and make the next iterations data-oriented, "maybe a learning algo." Agreed the roadmap above. Jordan added the nerd graph and the season tracker with a Google Sheets export.
+- **Built:** decisions (Save, Applied, Not for me with a reason, rule suggestions) and the accuracy check. First result on 32 decisions: AUC 0.64 (90% range 0.49 to 0.79). All decisions were on roles scored 50 to 72, so long shots still need labels.
+- **Found and fixed:** 28 of 38 Workday companies failed because Workday answered "too many requests." Workday now runs 2 at a time with waits, retries and an early stop. Jordan's note: Workday tends to struggle with this, so keep checking.
+- **Asked:** after the data steps, move to Vercel and Supabase as in Jordan's past projects, with security for resumes, separate development and production databases, schema changes saved in Git, pull requests that go live with no dashboard clicks, and rollback. Recorded in `AGENTS.md`; to be planned in detail before any code.
+- **Asked:** this file.
+
+## Open questions
+
+- **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, where each user's OpenRouter key lives, and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
+- **Workday from the cloud:** Workday limits requests per visitor, and cloud servers share addresses, so cloud checks may be throttled more than a laptop.
+- **Learning model:** needs about 50 decisions with some long shots before it can be judged.
+- **Rename:** still open if Jordan wants it later.

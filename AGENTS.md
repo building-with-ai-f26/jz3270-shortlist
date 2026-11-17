@@ -45,6 +45,7 @@
 | `fixtures/sample-postings.json` | Fictional postings in real ATS response shapes, for demo mode and tests |
 | `fixtures/resume-sample.pdf`, `.docx` | A fictional resume (Sam Rivera) for the upload tests |
 | `docs/index.html` | Public Product Page, living PRD and build log (GitHub Pages) |
+| `CONTEXT.md` | The running history: what Jordan asked each session, the decisions made and why, and open questions. No personal data |
 
 ## 4. Non-Negotiable Engineering Rules
 1. **Plan before coding:** Before touching multiple files, propose a brief plan and wait for approval.
@@ -102,6 +103,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 2. **Small learning model:** a logistic regression in plain JavaScript (no new packages) on signals such as AI fit, title words, sector, seniority words, location and age, giving an adjusted fit with its reason. Only switched on if step 2 shows it predicts decisions better than the AI fit alone.
 3. **The "nerd graph":** a brutalist plain-SVG chart in the Big Board style of what the model learned (each signal as a bar left or right) and a before-and-after calibration chart.
 4. **The recruiting season in one place (Jordan's idea, Nov 17):** more stages on each decision (Saved, Applied, Interviewing, Offer, Rejected, Withdrawn), each dated; applications added by hand for roles found on LinkedIn or 12twenty (and maybe an import of LinkedIn's data export, if it includes job applications; confirm first); a season view in the Big Board style (funnel, response and interview rates, median days to hear back, by sector or role type); and a one-click spreadsheet download that opens in Google Sheets. A live Google Sheets sync would need a Google sign-in and a new dependency, so only if the download feels clunky. Interview and offer outcomes also become the strongest labels for steps 2 and 3.
-5. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
+5. **Move to Vercel and Supabase (Build 3, after the data steps; Jordan, Nov 17):** as in Jordan's earlier projects. Requirements: security, since resumes and their bullets are sensitive; separate development and production databases; schema changes saved in Git as migrations; a pull request goes live (a preview deploy) with no dashboard clicks; and any release can be rolled back. Plan it in detail and get approval before any code, including sign-in and per-user privacy (row level security), where OpenRouter keys live, how multi-minute checks and explore sweeps run in the cloud (background jobs), Workday limits from shared cloud addresses, and the new packages it needs (rule 2). Open questions are in `CONTEXT.md`.
+6. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
 
-**Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.
+**Working agreements:** At the end of each working session, add a dated entry to `CONTEXT.md` (what Jordan asked, what was decided and why, what shipped) and update this section. Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.
