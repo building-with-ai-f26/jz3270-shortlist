@@ -25,7 +25,7 @@
 | --- | --- |
 | `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run`, `/api/resume`, `/api/setup`, `/api/explore` (start a sweep in the background, report progress and results), `/api/watchlist` (add a company from explore), `/api/decision` (save, applied, not for me, undo) and `/api/rules` (add or dismiss a suggested title rule) routes |
 | `src/pipeline.js` | One run: fetch, filter, score (reusing saved scores), mark new, save to `data/` |
-| `src/sources.js` | Fetches each board (8 at a time, 20-second timeout) and normalizes postings. Workday sites are searched with `workdaySearch` terms (20 results per page, Workday's limit) instead of downloaded whole. Greenhouse and Workday descriptions are fetched only for postings about to be scored. `parseBoardUrl` turns any careers link into a watchlist entry |
+| `src/sources.js` | Fetches each board (8 at a time, Workday 2 at a time; 20-second timeout) and normalizes postings. Workday answers 429 when asked too fast, so each Workday search waits and retries (Retry-After, or 2, 4, 8 seconds), searches pause 250 ms apart, a refused company stops searching, and after 3 refused companies the rest of that check's Workday companies are skipped with a "try again in a few minutes" message. Workday sites are searched with `workdaySearch` terms (20 results per page, Workday's limit) instead of downloaded whole. Greenhouse and Workday descriptions are fetched only for postings about to be scored. `parseBoardUrl` turns any careers link into a watchlist entry |
 | `src/discover.js` | Guesses each company's board name and probes Greenhouse, Lever and Ashby to find it |
 | `src/pool.js` | Small helper that limits how many requests run at once |
 | `src/filter.js` | Free rule-based filter (title, track, location, age), keeps a reason for every drop |
@@ -73,7 +73,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Build 2 (due Mon Nov 16, noon):** PRD v2 and the Build 2 log on `docs/index.html`, the smallest local version, PostHog installed on the Product Page and the local app with events verified, and local setup documented here.
 
-**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 112 tests.
+**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 119 tests.
 
 **Done Nov 10: anyone can set it up.** A classmate can clone, `npm install`, `npm start`, and finish setup in the browser. A fresh install opens setup by itself; Settings reopens it. Setup covers the resume, kinds of roles, cities, sectors of starter companies (242 companies with working boards, from `config/starter-watchlist.json`), schools, "What I'm looking for", and AI scoring with an OpenRouter key or free keyword scoring. Jordan's own defaults (real estate and supply chain searches, NYU Stern) are now choices, not code. Testing on Nov 10 spent $0.0175 on OpenRouter (37 test roles scored by mistake while checking the setup screen).
 
@@ -95,12 +95,13 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Done Nov 17: accuracy check, step 2 (Build 4 Track A evidence).** `npm run accuracy` and a folded "Ranking accuracy" panel next to Filtered out. First result on Jordan's 32 decisions (11 saved, 2 applied, 19 passed, all on roles scored 50 to 72): AUC 0.64, 90% range 0.49 to 0.79, average fit 60 for yes and 57 for no, 5 of the top 10 by fit saved against 41% overall, and all 3 roles at 70 or above saved. The verdict: the fit somewhat separates saves from passes, but a coin flip cannot be ruled out yet. Next data to add: decisions on long shots (under 50), which no decision covers yet.
 
+**Done Nov 17: Workday rate limits.** 28 of 38 Workday companies failed on the Nov 17 check because Workday answered 429 ("too many requests") to 372 of 384 requests: up to 20 requests per company, 8 companies at once, with no waiting. Now Workday runs 2 companies at a time with retries, pauses and a per-check cutoff (see `src/sources.js`). While Workday was still penalizing that day's bursts, the new code gave up in 31 seconds with a clear message instead of crawling for 10+ minutes; the success case still needs a check once Workday cools down. Fewer Workday search terms or one page per search would cut requests further.
+
 **Next, in order (the data roadmap Jordan approved on Nov 17):**
 1. **More decisions,** especially on long shots under 50, so the accuracy check covers the whole range.
 2. **Small learning model:** a logistic regression in plain JavaScript (no new packages) on signals such as AI fit, title words, sector, seniority words, location and age, giving an adjusted fit with its reason. Only switched on if step 2 shows it predicts decisions better than the AI fit alone.
 3. **The "nerd graph":** a brutalist plain-SVG chart in the Big Board style of what the model learned (each signal as a bar left or right) and a before-and-after calibration chart.
 4. **The recruiting season in one place (Jordan's idea, Nov 17):** more stages on each decision (Saved, Applied, Interviewing, Offer, Rejected, Withdrawn), each dated; applications added by hand for roles found on LinkedIn or 12twenty (and maybe an import of LinkedIn's data export, if it includes job applications; confirm first); a season view in the Big Board style (funnel, response and interview rates, median days to hear back, by sector or role type); and a one-click spreadsheet download that opens in Google Sheets. A live Google Sheets sync would need a Google sign-in and a new dependency, so only if the download feels clunky. Interview and offer outcomes also become the strongest labels for steps 2 and 3.
-5. **Workday boards failing:** the Nov 12 check showed many large Workday companies (eBay, Disney, Target, Boeing, Northrop Grumman, RTX, Blue Origin, GE) failing with "Workday did not answer any search". Look into it.
-6. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
+5. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
 
 **Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.

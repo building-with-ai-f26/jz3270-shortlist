@@ -143,23 +143,56 @@ export function normalizeWorkday(jobs, entry, wd, now = Date.now()) {
   });
 }
 
-async function fetchWorkday(entry, fetchImpl, { searches = WORKDAY_DEFAULT_SEARCHES, maxPerSearch = 40, now = Date.now() } = {}) {
+// Workday limits how fast one visitor can search. When it answers 429 ("too many requests") or 503, I wait
+// and try the same search again: as long as Workday asks for (Retry-After), or 2, 4 and then 8 seconds.
+export const WORKDAY_RETRY_WAITS_MS = [2000, 4000, 8000];
+export const WORKDAY_THROTTLED = "Workday asked Shortlist to slow down (too many requests). This usually clears within a few minutes.";
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function retryAfterMs(res) {
+  const value = res.headers?.get?.("retry-after");
+  if (!value) return null;
+  const seconds = Number(value);
+  const ms = Number.isFinite(seconds) ? seconds * 1000 : new Date(value).getTime() - Date.now();
+  return Number.isFinite(ms) && ms > 0 ? Math.min(ms, 30000) : null;
+}
+
+// Once this many Workday companies are refused in one check, the rest are skipped with the same message,
+// so a check never crawls through minutes of waiting while Workday is limiting us.
+export const WORKDAY_GIVE_UP_AFTER = 3;
+
+async function fetchWorkday(entry, fetchImpl, { searches = WORKDAY_DEFAULT_SEARCHES, maxPerSearch = 40, now = Date.now(), wait = sleep, pauseMs = 250, workdayGate = null } = {}) {
   const wd = parseWorkdayUrl(entry.url || "");
   if (!wd) return { entry, postings: [], error: "Workday entry needs a careers link like https://company.wd5.myworkdayjobs.com/SiteName" };
+  if (workdayGate && workdayGate.refused >= WORKDAY_GIVE_UP_AFTER) return { entry, postings: [], error: WORKDAY_THROTTLED };
   const api = `https://${wd.host}/wday/cxs/${wd.tenant}/${wd.site}/jobs`;
   const found = new Map();
   let anyOk = false;
+  let throttled = false;
+  let requests = 0;
+
+  const search = async (body) => {
+    for (let attempt = 0; ; attempt++) {
+      // A short pause between this company's requests keeps the check under Workday's limit.
+      if (requests++ > 0 && pauseMs) await wait(pauseMs);
+      const res = await fetchImpl(api, {
+        ...requestOptions(),
+        method: "POST",
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if ((res.status !== 429 && res.status !== 503) || attempt >= WORKDAY_RETRY_WAITS_MS.length) return res;
+      await wait(retryAfterMs(res) ?? WORKDAY_RETRY_WAITS_MS[attempt]);
+    }
+  };
 
   try {
-    for (const searchText of searches) {
+    searching: for (const searchText of searches) {
       for (let offset = 0; offset < maxPerSearch; offset += 20) {
-        const res = await fetchImpl(api, {
-          ...requestOptions(),
-          method: "POST",
-          headers: { "Accept": "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify({ appliedFacets: {}, limit: 20, offset, searchText })
-        });
+        const res = await search({ appliedFacets: {}, limit: 20, offset, searchText });
         if (!res.ok) {
+          // Still refused after every retry: stop this company's searches and keep what was found.
+          if (res.status === 429 || res.status === 503) { throttled = true; break searching; }
           if (!anyOk && (res.status === 404 || res.status === 422)) return { entry, postings: [], error: `Workday site "${wd.tenant}/${wd.site}" not found (check the careers link)` };
           break;
         }
@@ -172,7 +205,8 @@ async function fetchWorkday(entry, fetchImpl, { searches = WORKDAY_DEFAULT_SEARC
   } catch (err) {
     if (!anyOk) return { entry, postings: [], error: `Could not reach Workday: ${describeError(err)}` };
   }
-  if (!anyOk) return { entry, postings: [], error: "Workday did not answer any search" };
+  if (!anyOk && throttled && workdayGate) workdayGate.refused++;
+  if (!anyOk) return { entry, postings: [], error: throttled ? WORKDAY_THROTTLED : "Workday did not answer any search" };
   return { entry, postings: normalizeWorkday([...found.values()], entry, wd, now), error: null };
 }
 
@@ -275,8 +309,19 @@ export function parseBoardUrl(url) {
   return null;
 }
 
+// Workday companies run 2 at a time, apart from the other boards, because Workday limits how fast one
+// visitor can search; everything else runs 8 at a time. Results come back in watchlist order.
+export const WORKDAY_CONCURRENCY = 2;
 export async function fetchAll(watchlist, fetchImpl = fetch, concurrency = 8, opts = {}) {
-  return pool(watchlist, concurrency, (entry) => fetchBoard(entry, fetchImpl, opts));
+  const indexed = watchlist.map((entry, i) => ({ entry, i }));
+  const isWorkday = ({ entry }) => entry.ats === "workday";
+  const shared = { ...opts, workdayGate: opts.workdayGate || { refused: 0 } };
+  const run = (list, n) => pool(list, n, ({ entry, i }) => fetchBoard(entry, fetchImpl, shared).then((r) => ({ r, i })));
+  const [others, workday] = await Promise.all([
+    run(indexed.filter((x) => !isWorkday(x)), concurrency),
+    run(indexed.filter(isWorkday), opts.workdayConcurrency || WORKDAY_CONCURRENCY)
+  ]);
+  return [...others, ...workday].sort((a, b) => a.i - b.i).map(({ r }) => r);
 }
 
 // Fills in the description for Greenhouse and Workday postings listed without one. If the detail

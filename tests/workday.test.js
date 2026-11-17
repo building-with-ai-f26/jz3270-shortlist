@@ -136,3 +136,89 @@ test("pasted SmartRecruiters links are recognized", () => {
   assert.deepEqual(parseBoardUrl("https://jobs.smartrecruiters.com/ServiceNow"), { ats: "smartrecruiters", board: "ServiceNow" });
   assert.deepEqual(parseBoardUrl("https://careers.smartrecruiters.com/ServiceNow/jobs"), { ats: "smartrecruiters", board: "ServiceNow" });
 });
+
+// ---- Workday rate limits (HTTP 429) ----
+import { fetchAll, WORKDAY_THROTTLED } from "../src/sources.js";
+
+// A Workday site that answers "too many requests" for the first few searches, then works.
+function throttledWorkday(failures, retryAfter = null) {
+  let left = failures;
+  return async (url) => {
+    if (url.includes("/jobs") && left > 0) {
+      left--;
+      return { ok: false, status: 429, headers: { get: (h) => (h === "retry-after" ? retryAfter : null) }, json: async () => ({}) };
+    }
+    return { ok: true, status: 200, json: async () => ({ jobPostings: [JOBS[0]] }) };
+  };
+}
+const acme = { company: "Acme", ats: "workday", board: "acme/AcmeCareers", url: SITE };
+
+test("a Workday 'too many requests' answer is waited out and the same search retried", async () => {
+  const waits = [];
+  const r = await fetchBoard(acme, throttledWorkday(2), { searches: ["MBA"], maxPerSearch: 20, now: NOW, wait: async (ms) => { waits.push(ms); }, pauseMs: 0 });
+  assert.equal(r.error, null);
+  assert.equal(r.postings.length, 1);
+  assert.deepEqual(waits, [2000, 4000], "2 seconds, then 4");
+});
+
+test("Workday's own Retry-After is used when it sends one", async () => {
+  const waits = [];
+  await fetchBoard(acme, throttledWorkday(1, "3"), { searches: ["MBA"], maxPerSearch: 20, now: NOW, wait: async (ms) => { waits.push(ms); }, pauseMs: 0 });
+  assert.deepEqual(waits, [3000]);
+});
+
+test("after three retries it gives up with a message that says to wait, not that the link is broken", async () => {
+  const waits = [];
+  const r = await fetchBoard(acme, throttledWorkday(99), { searches: ["MBA"], maxPerSearch: 20, now: NOW, wait: async (ms) => { waits.push(ms); }, pauseMs: 0 });
+  assert.equal(r.error, WORKDAY_THROTTLED);
+  assert.deepEqual(waits, [2000, 4000, 8000]);
+});
+
+test("a short pause separates one company's Workday searches", async () => {
+  const waits = [];
+  await fetchBoard(acme, throttledWorkday(0), { searches: ["MBA", "2027", "rotational"], maxPerSearch: 20, now: NOW, wait: async (ms) => { waits.push(ms); } });
+  assert.deepEqual(waits, [250, 250], "a pause before each search after the first");
+});
+
+test("Workday companies run 2 at a time while other boards still run 8 at a time", async () => {
+  const live = { workday: 0, other: 0 };
+  const peak = { workday: 0, other: 0 };
+  const fake = async (url) => {
+    const kind = url.includes("myworkdayjobs") ? "workday" : "other";
+    live[kind]++;
+    peak[kind] = Math.max(peak[kind], live[kind]);
+    await new Promise((r) => setTimeout(r, 5));
+    live[kind]--;
+    return kind === "workday"
+      ? { ok: true, status: 200, json: async () => ({ jobPostings: [] }) }
+      : { ok: true, status: 200, json: async () => ({ jobs: [] }) };
+  };
+  const list = [
+    ...Array.from({ length: 6 }, (_, i) => ({ company: `W${i}`, ats: "workday", board: `w${i}/Careers`, url: `https://w${i}.wd5.myworkdayjobs.com/Careers` })),
+    ...Array.from({ length: 12 }, (_, i) => ({ company: `G${i}`, ats: "greenhouse", board: `g${i}` }))
+  ];
+  const results = await fetchAll(list, fake, 8, { searches: ["MBA"], maxPerSearch: 20, pauseMs: 0 });
+  assert.equal(peak.workday, 2);
+  assert.ok(peak.other > 2 && peak.other <= 8);
+  assert.deepEqual(results.map((r) => r.entry.company), list.map((e) => e.company), "results keep watchlist order");
+});
+
+test("a company stops searching once Workday still refuses after every retry", async () => {
+  let calls = 0;
+  const fake = async (url) => { calls++; return { ok: false, status: 429, headers: { get: () => null }, json: async () => ({}) }; };
+  const r = await fetchBoard(acme, fake, { searches: ["MBA", "2027", "rotational", "strategy"], maxPerSearch: 40, now: NOW, wait: async () => {}, pauseMs: 0 });
+  assert.equal(r.error, WORKDAY_THROTTLED);
+  assert.equal(calls, 4, "one search tried four times, then the other three searches are skipped");
+});
+
+test("after 3 Workday companies are refused in one check, the rest are skipped without waiting", async () => {
+  const asked = new Set();
+  const fake = async (url) => {
+    if (url.includes("myworkdayjobs")) { asked.add(new URL(url).hostname); return { ok: false, status: 429, headers: { get: () => null }, json: async () => ({}) }; }
+    return { ok: true, status: 200, json: async () => ({ jobs: [] }) };
+  };
+  const list = Array.from({ length: 8 }, (_, i) => ({ company: `W${i}`, ats: "workday", board: `w${i}/Careers`, url: `https://w${i}.wd5.myworkdayjobs.com/Careers` }));
+  const results = await fetchAll(list, fake, 8, { searches: ["MBA"], maxPerSearch: 20, pauseMs: 0, wait: async () => {}, workdayConcurrency: 1 });
+  assert.ok(results.every((r) => r.error === WORKDAY_THROTTLED), "every company says to try again later");
+  assert.equal(asked.size, 3, "only the first 3 companies were asked at all");
+});
