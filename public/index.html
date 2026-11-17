@@ -498,6 +498,7 @@
 
       <div class="lower">
         <div id="errors"></div>
+        <div id="accuracy"></div>
         <div id="dropped"></div>
       </div>
     </main>
@@ -764,7 +765,31 @@
       </div>`).join("");
     }
 
-    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderDecisionView(); renderRules(); renderBoards(fresh); renderDropped(); renderErrors(); }
+    // Ranking accuracy: how well the AI fit predicts the user's own decisions (src/accuracy.js).
+    function renderAccuracy() {
+      const a = data?.accuracy;
+      const m = a?.all;
+      if (!m || !m.decisions) { $("accuracy").innerHTML = ""; return; }
+      const pct = (x) => `${Math.round(x * 100)}%`;
+      const stats = m.auc === null ? "" : `<ul class="reasons">
+          <li><b>${m.auc.toFixed(2)}</b>AUC, where a coin flip is 0.50${m.aucRange ? ` (90% range ${m.aucRange[0].toFixed(2)} to ${m.aucRange[1].toFixed(2)})` : ""}</li>
+          <li><b>${n(Math.round(m.avgFitYes))}</b>average fit of saves and applications</li>
+          <li><b>${n(Math.round(m.avgFitNo))}</b>average fit of passes</li>
+          <li><b>${m.topK.yes} of ${m.topK.k}</b>top roles by fit you saved or applied to, against ${pct(m.yesRate)} overall</li>
+        </ul>`;
+      const j = a.jobOnly;
+      $("accuracy").innerHTML = `<details class="cut"><summary><h3>Ranking accuracy</h3><span class="sub tnum">${m.auc === null ? `${n(m.decisions)} decisions so far` : `AUC ${m.auc.toFixed(2)} from ${n(m.decisions)} decisions`}</span>${icon("chev", "chev")}</summary>
+        <div class="cut-body">
+          <p class="cost">Does the AI fit score rank the roles you saved or applied to above the ones you passed on? AUC is how often a random save outscores a random pass.</p>
+          ${stats}
+          <table class="dropped"><thead><tr><th>Fit</th><th>Decisions</th><th>Saved or applied</th></tr></thead>
+          <tbody>${m.bands.map((b) => `<tr><td>${b.label}</td><td class="tnum">${n(b.decisions)}</td><td class="r tnum">${b.decisions ? `${n(b.yes)} (${pct(b.yes / b.decisions)})` : ""}</td></tr>`).join("")}</tbody></table>
+          <p class="cost">${esc(m.verdict)}${j.auc !== null ? ` Counting only passes about the job itself (wrong function, too senior, something else), AUC is ${j.auc.toFixed(2)}.` : ""}</p>
+          ${a.coverage ? `<p class="cost">${esc(a.coverage)}</p>` : ""}
+        </div></details>`;
+    }
+
+    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderDecisionView(); renderRules(); renderBoards(fresh); renderAccuracy(); renderDropped(); renderErrors(); }
 
     async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
 
@@ -914,11 +939,11 @@
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
         const role = [...(data?.results || []), ...(explore?.latest?.results || []), ...(explore?.latest?.more || [])].find((r) => r.id === id);
         setDecision(id, decision === "clear" ? null : decision, reason);
-        if (data) data.rules = json.rules;
+        if (data) { data.rules = json.rules; data.accuracy = json.accuracy; }
         if (decision === "saved") track("role_saved", { from });
         if (decision === "applied") track("role_applied", { from });
         if (decision === "passed") track("role_passed", { reason, from });
-        renderDecisionView(); renderRules(); renderBoards(false); renderExplore();
+        renderDecisionView(); renderRules(); renderBoards(false); renderAccuracy(); renderExplore();
         notice(decision === "passed" && role
           ? `Marked "${esc(role.title)}" at ${esc(role.company)} as not for you (${PASS_LABELS[reason].toLowerCase()}). <button type="button" class="link" data-decide="clear" data-id="${esc(id)}" data-from="${from}">Undo</button>`
           : "");

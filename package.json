@@ -12,6 +12,7 @@
     "check": "node scripts/check-sources.js",
     "build-starter": "node scripts/build-starter.js",
     "explore": "node scripts/explore.js",
+    "accuracy": "node scripts/accuracy.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

@@ -8,7 +8,8 @@ import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths, read
 import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
 import { readSetup, saveSetup } from "./src/setup.js";
 import { runExplore, readExplore, addFromExplore } from "./src/explore.js";
-import { decide, withDecisions, ruleSuggestions, applyRule } from "./src/decisions.js";
+import { decide, withDecisions, ruleSuggestions, applyRule, readDecisions } from "./src/decisions.js";
+import { accuracyReport } from "./src/accuracy.js";
 
 loadEnv(ROOT);
 const DEMO = process.argv.includes("--demo") || process.env.SHORTLIST_DEMO === "1";
@@ -32,7 +33,8 @@ function forPage(latest) {
   return {
     ...latest,
     results: withDecisions(latest.results || [], DEMO),
-    rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {}))
+    rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})),
+    accuracy: accuracyReport(readDecisions(DEMO).decisions)
   };
 }
 function exploreForPage() {
@@ -127,7 +129,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = JSON.parse((await readBody(req, 4096, "That request is too large.")).toString("utf8"));
       const saved = decide(body.id, body.decision, body.reason, { demo: DEMO });
-      return send(res, 200, { decision: saved, rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})) });
+      return send(res, 200, { decision: saved, rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})), accuracy: accuracyReport(readDecisions(DEMO).decisions) });
     } catch (err) {
       return send(res, 400, { error: err.message });
     }
