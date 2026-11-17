@@ -3,7 +3,7 @@
 > Give this file to your coding agent and check that it is using these instructions. Keep the stack, commands, and ground rules current.
 
 ## 1. Project Overview
-- **What this repo builds:** Shortlist, a local web app that checks the public job boards (Greenhouse, Lever, Ashby, Workday, SmartRecruiters) of companies on a watchlist, filters out roles that fail the user's rules, scores the rest against the user's resume with a model, and shows two ranked columns (2027 and new grad, and full-time roles open now) with what is new since the last check. Each role also gets 3 to 5 LinkedIn search links for people worth reaching out to.
+- **What this repo builds:** Shortlist, a local web app that checks the public job boards (Greenhouse, Lever, Ashby, Workday, SmartRecruiters) of companies on a watchlist, filters out roles that fail the user's rules, scores the rest against the user's resume with a model, and shows two ranked columns (2027 and new grad, and full-time roles open now) with what is new since the last check. Each role also gets 3 to 5 LinkedIn search links for people worth reaching out to, and buttons to save it, mark it applied, or pass on it with a reason.
 - **Primary user & core workflow:** MBA students recruiting off-cycle for full-time roles and programs. Core workflow: on first run a setup screen asks for the resume, kinds of roles, cities, sectors of companies, schools and scoring; after that, "Check my list." See the living PRD in `docs/index.html`.
 - **Tech stack:** Node.js 22+ (built-in `fetch`, `http`, `node:test`). Two npm packages, both only for reading uploaded resumes: `unpdf` (PDF) and `mammoth` (Word). Plain HTML/CSS/JS front end in `public/index.html`. JSON files for storage. Scoring through the OpenRouter chat completions API, default model `anthropic/claude-haiku-5.5`.
 
@@ -22,7 +22,7 @@
 ## 3. Map of the code
 | File | Job |
 | --- | --- |
-| `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run`, `/api/resume`, `/api/setup`, `/api/explore` (start a sweep in the background, report progress and results) and `/api/watchlist` (add a company from explore) routes |
+| `server.js` | Local web server and the `/api/status`, `/api/latest`, `/api/run`, `/api/resume`, `/api/setup`, `/api/explore` (start a sweep in the background, report progress and results), `/api/watchlist` (add a company from explore), `/api/decision` (save, applied, not for me, undo) and `/api/rules` (add or dismiss a suggested title rule) routes |
 | `src/pipeline.js` | One run: fetch, filter, score (reusing saved scores), mark new, save to `data/` |
 | `src/sources.js` | Fetches each board (8 at a time, 20-second timeout) and normalizes postings. Workday sites are searched with `workdaySearch` terms (20 results per page, Workday's limit) instead of downloaded whole. Greenhouse and Workday descriptions are fetched only for postings about to be scored. `parseBoardUrl` turns any careers link into a watchlist entry |
 | `src/discover.js` | Guesses each company's board name and probes Greenhouse, Lever and Ashby to find it |
@@ -33,6 +33,7 @@
 | `src/people.js` | Builds the "Reach out" LinkedIn people-search links for each role from the company, the team and `networkSchools` |
 | `src/setup.js` | The setup screen's server side. Turns choices (kinds of roles, cities, schools, scoring) into `preferences.json`, adds or removes starter companies by sector in `watchlist.json`, and rewrites "What I'm looking for" only when it changed |
 | `src/explore.js` | Explore: sweeps the open company directory (skipping watchlist companies and boards that recently closed), filters each board as it arrives, ranks survivors with free keyword scoring, AI-scores only the top `maxToScore`, saves its own scores in `data/scores.explore.json` so nothing is paid twice |
+| `src/decisions.js` | The user's decisions on roles (saved, applied, not for me with a reason) in `data/decisions.json`, each with a snapshot of the role taken from the app's own results, for the accuracy check and learning model. Suggests a title rule once 3 roles passed as wrong function or too senior share a word, never a word that lets roles in, names a chosen role type, or appears in a saved or applied role |
 | `src/env.js` | Loads `.env` without a dependency. Saves a key pasted in setup to `.env` after a free check with OpenRouter; the key is never sent back to the page |
 | `public/index.html` | The whole front end: the board, the "Beyond your list" explore section under it, and the setup screen at `/#setup`. Keyword-scored roles are tiered by rank, AI-scored roles by fit |
 | `PRODUCT.md`, `DESIGN.md`, `.impeccable/` | Product principles and the design system from the Big Board redesign. Read `DESIGN.md` before changing the look |
@@ -70,7 +71,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Build 2 (due Mon Nov 16, noon):** PRD v2 and the Build 2 log on `docs/index.html`, the smallest local version, PostHog installed on the Product Page and the local app with events verified, and local setup documented here.
 
-**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 100 tests.
+**Already built for Build 2:** resume drag and drop (PDF, Word or text) that rescores every role, 3 to 5 "Reach out" LinkedIn search links per role, the Big Board redesign, Node 22+ with `npm install`, 107 tests.
 
 **Done Nov 10: anyone can set it up.** A classmate can clone, `npm install`, `npm start`, and finish setup in the browser. A fresh install opens setup by itself; Settings reopens it. Setup covers the resume, kinds of roles, cities, sectors of starter companies (242 companies with working boards, from `config/starter-watchlist.json`), schools, "What I'm looking for", and AI scoring with an OpenRouter key or free keyword scoring. Jordan's own defaults (real estate and supply chain searches, NYU Stern) are now choices, not code. Testing on Nov 10 spent $0.0175 on OpenRouter (37 test roles scored by mistake while checking the setup screen).
 
@@ -88,9 +89,13 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Done Nov 13: Product Page fixes.** The off-cycle tagline from the old root `index.html` is now on `docs/index.html` and in the `README.md` pitch, the Build 1 entry says all 241 boards were reachable on the last check before the deadline (Nov 8), and the stray root `index.html` is deleted (still in Git history). Pushing works through GitHub Desktop; the `gh` command line is signed in as cottonwoodjz, which has no access to this repo.
 
-**Next, in order:**
-1. **Submit Build 2 (due Mon Nov 16, noon):** the write-up is complete on `docs/index.html` (Nov 15): PostHog evidence (5 users, 5 sessions, Nov 8 to 15, session replay on in the project; the local app keeps replay off on purpose), Build 2 at $0.41 and 3 to 4 hours, about $0.62 in all. Jordan pushes from GitHub Desktop and submits the Product Page link, the repo link and his PostHog screenshot.
-2. **Build 3 candidates:** triage on each role (Applied, Saved, Not for me with a reason) that suggests filter rules; a "Your recurring gaps" panel across the top roles; a scheduled morning check with a Mac notification for new strong fits.
-3. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
+**Done Nov 17: decisions, step 1 of the data roadmap (Build 3).** Every role on the board and in "Beyond your list" has Save, Applied and Not for me (with a reason: wrong function, too senior, wrong location, not interested in the company, something else). A Decisions filter shows Open (everything not passed on), Saved, Applied or Passed on, and any decision can be undone. After 3 passes for wrong function or too senior share a title word, a card suggests filtering it out; adding it puts the word in `titleExclude`, so those roles show under Filtered out with their reason. Decisions live in `data/decisions.json` (demo mode uses `data/demo/decisions.json` and never suggests rules). New PostHog events: `role_saved`, `role_applied`, `role_passed` (reason category only) and `rule_added`, which with `run_clicked` and `posting_opened` make the Build 3 funnel. Checked in the browser on a throwaway folder with free keyword scoring.
+
+**Next, in order (the data roadmap Jordan approved on Nov 17):**
+1. **Label 30 to 40 roles** on the real board with Save, Applied and Not for me, so the next steps have data.
+2. **Accuracy check (Build 4, Track A):** from `data/decisions.json`, how well the AI fit predicts Jordan's decisions: saved vs passed fit, how many of the top 10 were saved, where saves land by tier.
+3. **Small learning model:** a logistic regression in plain JavaScript (no new packages) on signals such as AI fit, title words, sector, seniority words, location and age, giving an adjusted fit with its reason. Only switched on if step 2 shows it predicts decisions better than the AI fit alone.
+4. **The "nerd graph":** a brutalist plain-SVG chart in the Big Board style of what the model learned (each signal as a bar left or right) and a before-and-after calibration chart.
+5. **Explore polish:** more non-US city names for the Remote rule (Kitchener got through), and retries for boards that time out.
 
 **Working agreements:** Jordan edits `README.md` and `docs/index.html` by hand, so propose changes to those two files as small edits and show the diff before saving. Never stage `data/`, `.env` or `node_modules/`. Commit in small steps with plain messages; Jordan pushes.

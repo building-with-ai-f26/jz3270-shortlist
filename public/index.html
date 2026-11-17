@@ -196,6 +196,20 @@
     .reach .lbl { font-size: 12px; font-weight: 700; color: var(--ink-3); }
     .reach .links { display: flex; flex-wrap: wrap; gap: 4px 0; }
     .stop-tag { color: var(--stop); font-weight: 700; }
+
+    /* Decisions: the same segmented control as the filter bar, smaller. Chosen inverts to ink. */
+    .decide { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; }
+    .seg.sm button { padding: 4px 10px; font-size: 12px; }
+    .why-not { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+    .why-not button { padding: 4px 9px; border: 1px dashed var(--ink); background: transparent; font-size: 12px; font-weight: 600; transition: background 140ms var(--ease), color 140ms var(--ease); }
+    .why-not button:hover { background: var(--ink); color: var(--strip); border-style: solid; }
+    .decide-note { font-size: 12px; color: var(--ink-2); }
+    .dec-tag { display: inline-block; padding: 0 6px; border: 1px solid var(--ink); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .dec-tag.solid { background: var(--ink); color: var(--strip); }
+    .rule-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 0; padding: 12px 14px; background: var(--strip); border: 1px solid var(--ink); font-size: 14px; }
+    .rule-card p { flex: 1; min-width: 240px; margin: 0; }
+    .rule-card .btn { padding: 6px 12px; font-size: 13px; }
+    button.link { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
     .reach a { display: inline-flex; align-items: center; gap: 3px; margin-right: 14px; text-decoration: underline; text-decoration-color: var(--rule); }
     .reach a:hover { text-decoration-color: var(--ink); }
     .reach a .icon { width: 11px; height: 11px; opacity: 0.55; }
@@ -386,6 +400,7 @@
       .s-body > .meta { order: 2; }
       .s-body .open { order: 3; align-self: flex-start; margin-top: 8px; }
       .s-body > .stop, .s-body > .report, .s-body > .reach { order: 4; }
+      .s-body > .decide { order: 5; }
       .report div { grid-template-columns: 1fr; gap: 0; }
       .reach { grid-template-columns: 1fr; }
       .c-more { padding: 2px 12px 12px; }
@@ -444,6 +459,7 @@
 
       <div class="bar" id="filters" hidden>
         <div><span class="lbl">Track</span><span class="seg" id="tracks" role="group" aria-label="Filter by track"></span></div>
+        <div><span class="lbl">Decisions</span><span class="seg" id="decisionView" role="group" aria-label="Filter by your decision"></span></div>
         <label class="switch"><input type="checkbox" id="newOnly" /> New since last check only</label>
         <div><span class="lbl" id="minFitLbl">Minimum fit</span><span class="seg" id="minFit" role="group" aria-labelledby="minFitLbl">
           <button type="button" data-min="0" aria-pressed="true">Any</button><button type="button" data-min="50" aria-pressed="false">50+</button><button type="button" data-min="75" aria-pressed="false">75+</button>
@@ -452,6 +468,7 @@
       </div>
 
       <div id="notice"></div>
+      <div id="rules"></div>
       <div id="loading"></div>
       <div id="message"></div>
       <div class="boards" id="boards" hidden>
@@ -519,7 +536,7 @@
       { key: "possible", name: "Possible", range: "50 to 74" },
       { key: "long", name: "Long shot", range: "under 50, dealbreakers and unscored" }
     ];
-    const view = { track: "All", newOnly: false, minFit: 0 };
+    const view = { track: "All", newOnly: false, minFit: 0, decisions: "open" };
     let data = null;
     let st = null;
     let busy = false;
@@ -623,7 +640,7 @@
       return `<div class="tile" role="img" aria-label="${esc(label)}"><span class="num">${esc(score)}</span><span class="unit">${r.error ? "unscored" : keywordMode() ? "match" : "fit"}</span></div>`;
     }
     function metaHtml(r) {
-      return `<p class="meta">${r.isNew ? `<span class="new-tag">New</span>` : ""}${r.dealbreaker ? `<span class="stop-tag">Dealbreaker</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
+      return `<p class="meta">${decisionTag(r)}${r.isNew ? `<span class="new-tag">New</span>` : ""}${r.dealbreaker ? `<span class="stop-tag">Dealbreaker</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
     }
     function reportHtml(r) {
       const people = (r.people || []).map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" data-kind="people">${esc(p.label)}${icon("out")}</a>`).join("");
@@ -632,6 +649,17 @@
         ${r.why || r.gap ? `<dl class="report">${r.why ? `<div><dt>Why it fits</dt><dd>${esc(r.why)}</dd></div>` : ""}${r.gap ? `<div class="gap"><dt>Gap</dt><dd>${esc(r.gap)}</dd></div>` : ""}</dl>` : ""}
         ${people ? `<div class="reach"><span class="lbl">Reach out</span><span class="links">${people}</span></div>` : ""}`;
     }
+    // Decisions. "Open" shows every role except the ones passed on; the others show one kind of decision.
+    // The reason keys match PASS_REASONS in src/decisions.js.
+    const PASS_LABELS = { function: "Wrong function", senior: "Too senior", location: "Wrong location", company: "Not interested in the company", other: "Something else" };
+    const DECISION_VIEWS = [["open", "Open", (r) => r.decision !== "passed"], ["saved", "Saved", (r) => r.decision === "saved"], ["applied", "Applied", (r) => r.decision === "applied"], ["passed", "Passed on", (r) => r.decision === "passed"]];
+    function decideHtml(r, from) {
+      const d = r.decision;
+      const btn = (key, label) => `<button type="button" data-decide="${key}" data-id="${esc(r.id)}" data-from="${from}" aria-pressed="${d === key}">${label}</button>`;
+      const chips = Object.entries(PASS_LABELS).map(([k, label]) => `<button type="button" data-reason="${k}" data-id="${esc(r.id)}" data-from="${from}">${label}</button>`).join("");
+      return `<div class="decide"><span class="seg sm" role="group" aria-label="Your decision">${btn("saved", "Save")}${btn("applied", "Applied")}${btn("passed", "Not for me")}</span>${d === "passed" && PASS_LABELS[r.reason] ? `<span class="decide-note">${PASS_LABELS[r.reason]}</span>` : ""}<span class="why-not" hidden>${chips}</span></div>`;
+    }
+    const decisionTag = (r) => (r.decision === "saved" ? `<span class="dec-tag">Saved</span>` : r.decision === "applied" ? `<span class="dec-tag solid">Applied</span>` : "");
     const openLink = (r) => `<a class="open" href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">Open posting${icon("out")}</a>`;
 
     function stripHtml(r) {
@@ -639,7 +667,7 @@
       if (tier(r) === "long") {
         return `<li class="${cls} compact" tabindex="-1" data-url="${esc(r.url)}"><details>
           <summary>${scoreTile(r)}<div class="c-line"><p class="s-title">${esc(r.title)}</p>${metaHtml(r)}</div>${icon("chev", "chev")}</summary>
-          <div class="c-more">${reportHtml(r)}${openLink(r)}</div></details></li>`;
+          <div class="c-more">${reportHtml(r)}${openLink(r)}${decideHtml(r, "board")}</div></details></li>`;
       }
       return `<li class="${cls}" tabindex="-1" data-url="${esc(r.url)}">
         ${scoreTile(r)}
@@ -647,6 +675,7 @@
           <div class="s-head"><h3 class="s-title"><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a></h3>${openLink(r)}</div>
           ${metaHtml(r)}
           ${reportHtml(r)}
+          ${decideHtml(r, "board")}
         </div>
       </li>`;
     }
@@ -676,8 +705,9 @@
           ? showMessage("No roles came back", `${failed} of ${data.summary.companies} boards could not be checked (details below). Run npm run check in the terminal to test each board and your connection.`)
           : showMessage("No roles passed your filters", 'Open Filtered out below to see what was cut and why. Add roles or cities in <a href="#setup">Settings</a>, or loosen the other rules in data/preferences.json.');
       }
-      const rows = all.filter((r) => (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && passesMin(r));
-      if (!rows.length) return showMessage("Nothing matches these filters", "Turn off New since last check only, or lower the minimum fit.");
+      const inView = DECISION_VIEWS.find(([k]) => k === view.decisions)[2];
+      const rows = all.filter((r) => inView(r) && (view.track === "All" || r.track === view.track) && (!view.newOnly || r.isNew) && passesMin(r));
+      if (!rows.length) return showMessage("Nothing matches these filters", view.decisions === "open" ? "Turn off New since last check only, or lower the minimum fit." : "No roles have that decision yet. Choose Open under Decisions to see the rest.");
       showMessage("");
       const grad = rows.filter((r) => r.cohort === "2027 grad");
       const open = rows.filter((r) => r.cohort !== "2027 grad");
@@ -719,7 +749,22 @@
       $("minFit").querySelectorAll("button").forEach((b, i) => { b.textContent = labels[i]; });
     }
 
-    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderBoards(fresh); renderDropped(); renderErrors(); }
+    function renderDecisionView() {
+      const results = data?.results || [];
+      $("decisionView").innerHTML = DECISION_VIEWS.map(([k, label, test]) =>
+        `<button type="button" data-view="${k}" aria-pressed="${view.decisions === k}">${label}<span class="n">${results.filter(test).length}</span></button>`).join("");
+    }
+
+    // A suggested title rule appears once several roles passed on for the same reason share a word.
+    function renderRules() {
+      $("rules").innerHTML = (data?.rules || []).map((s) => `<div class="rule-card" role="status">
+        <p>You passed on <b>${n(s.count)}</b> roles with "${esc(s.word)}" in the title as ${s.reason === "senior" ? "too senior" : "the wrong function"}. Filter out titles with "${esc(s.word)}" from now on?</p>
+        <button type="button" class="btn solid" data-rule="add" data-word="${esc(s.word)}">Filter it out</button>
+        <button type="button" class="btn" data-rule="dismiss" data-word="${esc(s.word)}">Dismiss</button>
+      </div>`).join("");
+    }
+
+    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderDecisionView(); renderRules(); renderBoards(fresh); renderDropped(); renderErrors(); }
 
     async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
 
@@ -733,6 +778,10 @@
       posting_opened: ["column", "how"],
       people_link_opened: ["link_type"],
       explore_clicked: [],
+      role_saved: ["from"],
+      role_applied: ["from"],
+      role_passed: ["reason", "from"],
+      rule_added: [],
       company_added: ["from"],
       setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time"]
     };
@@ -846,6 +895,67 @@
       view.track = b.dataset.track;
       renderTracks(); renderBoards(false);
     });
+    $("decisionView").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      view.decisions = b.dataset.view;
+      renderDecisionView(); renderBoards(false);
+    });
+
+    // Every role on the board or in Beyond your list with this id gets the same decision.
+    function setDecision(id, decision, reason) {
+      const lists = [data?.results, explore?.latest?.results, explore?.latest?.more].filter(Boolean);
+      for (const list of lists) for (const r of list) if (r.id === id) { r.decision = decision || undefined; r.reason = reason || undefined; }
+    }
+    async function sendDecision(id, decision, reason, from) {
+      try {
+        const res = await fetch("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, decision, reason }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        const role = [...(data?.results || []), ...(explore?.latest?.results || []), ...(explore?.latest?.more || [])].find((r) => r.id === id);
+        setDecision(id, decision === "clear" ? null : decision, reason);
+        if (data) data.rules = json.rules;
+        if (decision === "saved") track("role_saved", { from });
+        if (decision === "applied") track("role_applied", { from });
+        if (decision === "passed") track("role_passed", { reason, from });
+        renderDecisionView(); renderRules(); renderBoards(false); renderExplore();
+        notice(decision === "passed" && role
+          ? `Marked "${esc(role.title)}" at ${esc(role.company)} as not for you (${PASS_LABELS[reason].toLowerCase()}). <button type="button" class="link" data-decide="clear" data-id="${esc(id)}" data-from="${from}">Undo</button>`
+          : "");
+      } catch (err) {
+        notice(`Could not save that: ${esc(err.message)}`, true);
+      }
+    }
+    document.addEventListener("click", async (e) => {
+      const d = e.target.closest("[data-decide]");
+      if (d) {
+        const { decide, id, from } = d.dataset;
+        const current = d.getAttribute("aria-pressed") === "true";
+        if (decide === "passed" && !current) {
+          // Not for me asks why before anything is saved.
+          const chips = d.closest(".decide").querySelector(".why-not");
+          chips.hidden = !chips.hidden;
+          return;
+        }
+        return sendDecision(id, current || decide === "clear" ? "clear" : decide, null, from || "board");
+      }
+      const reason = e.target.closest("[data-reason]");
+      if (reason) return sendDecision(reason.dataset.id, "passed", reason.dataset.reason, reason.dataset.from || "board");
+      const rule = e.target.closest("[data-rule]");
+      if (rule) {
+        try {
+          const res = await fetch("/api/rules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word: rule.dataset.word, action: rule.dataset.rule }) });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+          if (json.action === "add") track("rule_added");
+          data.rules = json.rules;
+          renderRules();
+          notice(json.action === "add" ? `Titles with "${esc(json.word)}" are filtered out from your next check. They will show under Filtered out with that reason.` : "");
+        } catch (err) {
+          notice(`Could not change that rule: ${esc(err.message)}`, true);
+        }
+      }
+    });
     $("newOnly").addEventListener("change", (e) => { view.newOnly = e.target.checked; renderBoards(false); });
     $("minFit").addEventListener("click", (e) => {
       const b = e.target.closest("button");
@@ -922,6 +1032,7 @@
           <div class="s-head"><h3 class="s-title"><a href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="posting">${esc(r.title)}</a></h3>${openLink(r)}${exploreAction(r)}</div>
           ${metaHtml(r)}
           ${reportHtml(r)}
+          ${decideHtml(r, "explore")}
         </div>
       </li>`;
     }
@@ -948,7 +1059,7 @@
         ? (p?.total ? `Checked ${n(p.done)} of ${n(p.total)} companies: ${n(p.found)} open roles, ${n(p.passed)} pass your filters.` : "Starting...")
         : explore?.error ? `The last explore stopped: ${explore.error}` : `${cost} A sweep takes a few minutes.`;
 
-      const results = latest?.results || [];
+      const results = (latest?.results || []).filter((r) => r.decision !== "passed");
       $("exploreList").innerHTML = (ai ? EXPLORE_TIERS.ai : EXPLORE_TIERS.keywords).map((t) => {
         const list = results.filter((r) => exploreTier(r) === t.key);
         if (!list.length) return "";

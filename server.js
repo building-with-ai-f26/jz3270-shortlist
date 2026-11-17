@@ -4,10 +4,11 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { loadEnv, saveApiKey } from "./src/env.js";
-import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths } from "./src/pipeline.js";
+import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths, readJson } from "./src/pipeline.js";
 import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
 import { readSetup, saveSetup } from "./src/setup.js";
 import { runExplore, readExplore, addFromExplore } from "./src/explore.js";
+import { decide, withDecisions, ruleSuggestions, applyRule } from "./src/decisions.js";
 
 loadEnv(ROOT);
 const DEMO = process.argv.includes("--demo") || process.env.SHORTLIST_DEMO === "1";
@@ -24,6 +25,20 @@ function send(res, code, body, type = "application/json") {
 }
 
 let running = null;
+
+// A check's results as the page needs them: each role with the user's decision, plus any suggested rules.
+// Demo mode keeps its own decisions in data/demo and never suggests rules, since its preferences are the example file.
+function forPage(latest) {
+  return {
+    ...latest,
+    results: withDecisions(latest.results || [], DEMO),
+    rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {}))
+  };
+}
+function exploreForPage() {
+  const latest = readExplore();
+  return latest ? { ...latest, results: withDecisions(latest.results), more: withDecisions(latest.more) } : null;
+}
 const EXPLORE_TOP = 40;
 let exploring = null;
 let exploreProgress = null;
@@ -95,7 +110,7 @@ const server = http.createServer(async (req, res) => {
         .catch((err) => { console.error(err); exploreError = err.message; })
         .finally(() => { exploring = null; });
     }
-    return send(res, 200, { running: Boolean(exploring), progress: exploring ? exploreProgress : null, error: exploreError, top: EXPLORE_TOP, latest: readExplore() });
+    return send(res, 200, { running: Boolean(exploring), progress: exploring ? exploreProgress : null, error: exploreError, top: EXPLORE_TOP, latest: exploreForPage() });
   }
   if (req.method === "POST" && url.pathname === "/api/watchlist") {
     if (DEMO) return send(res, 400, { error: "The watchlist is in live mode. Stop the demo and run npm start." });
@@ -106,15 +121,37 @@ const server = http.createServer(async (req, res) => {
       return send(res, 400, { error: err.message });
     }
   }
+  // Decisions: saved, applied, or not for me with a reason ("clear" undoes one). Only roles from the latest
+  // check or explore results are accepted, and the role's details are taken from those saved results.
+  if (req.method === "POST" && url.pathname === "/api/decision") {
+    try {
+      const body = JSON.parse((await readBody(req, 4096, "That request is too large.")).toString("utf8"));
+      const saved = decide(body.id, body.decision, body.reason, { demo: DEMO });
+      return send(res, 200, { decision: saved, rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})) });
+    } catch (err) {
+      return send(res, 400, { error: err.message });
+    }
+  }
+  // A suggested title rule: add it to the excluded words, or dismiss it. Only current suggestions are accepted.
+  if (req.method === "POST" && url.pathname === "/api/rules") {
+    if (DEMO) return send(res, 400, { error: "Rules work in live mode. Stop the demo and run npm start." });
+    try {
+      const body = JSON.parse((await readBody(req, 4096, "That request is too large.")).toString("utf8"));
+      const result = applyRule(body.word, body.action);
+      return send(res, 200, { ...result, rules: ruleSuggestions(readJson(paths(false).preferences, {})) });
+    } catch (err) {
+      return send(res, 400, { error: err.message });
+    }
+  }
   if (req.method === "GET" && url.pathname === "/api/latest") {
-    return send(res, 200, readLatest(DEMO) || { summary: null, results: [], dropped: [], errors: [] });
+    return send(res, 200, forPage(readLatest(DEMO) || { summary: null, results: [], dropped: [], errors: [] }));
   }
   if (req.method === "POST" && url.pathname === "/api/run") {
     // If someone double-clicks the button, both clicks share one run instead of paying twice.
     try {
       running = running || runPipeline({ demo: DEMO });
       const latest = await running;
-      return send(res, 200, latest);
+      return send(res, 200, forPage(latest));
     } catch (err) {
       console.error(err);
       return send(res, 500, { error: err.message });
