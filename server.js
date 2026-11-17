@@ -6,7 +6,8 @@ import path from "node:path";
 import { loadEnv, saveApiKey } from "./src/env.js";
 import { ROOT, runPipeline, readLatest, status, ensurePersonalFiles, paths, readJson } from "./src/pipeline.js";
 import { saveResume, readResumeMeta, MAX_BYTES } from "./src/resume.js";
-import { readSetup, saveSetup } from "./src/setup.js";
+import { readSetup, saveSetup, readScoring, saveScoring, scoringContext, cleanWeights } from "./src/setup.js";
+import { yourScore } from "./src/yourscore.js";
 import { runExplore, readExplore, addFromExplore } from "./src/explore.js";
 import { decide, withDecisions, ruleSuggestions, applyRule, readDecisions } from "./src/decisions.js";
 import { accuracyReport } from "./src/accuracy.js";
@@ -29,12 +30,22 @@ let running = null;
 
 // A check's results as the page needs them: each role with the user's decision, plus any suggested rules.
 // Demo mode keeps its own decisions in data/demo and never suggests rules, since its preferences are the example file.
+// The user's dials and what the score math needs, so the page can turn each AI fit into "your score".
+function scoringFor() {
+  const prefs = readJson(paths(DEMO).preferences, {});
+  return { weights: cleanWeights(prefs.weights || {}), context: scoringContext(prefs) };
+}
+function accuracyFor() {
+  const { weights, context } = scoringFor();
+  return accuracyReport(readDecisions(DEMO).decisions, (role) => yourScore(role, weights, context).score);
+}
 function forPage(latest) {
   return {
     ...latest,
     results: withDecisions(latest.results || [], DEMO),
     rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})),
-    accuracy: accuracyReport(readDecisions(DEMO).decisions)
+    accuracy: accuracyFor(),
+    scoring: scoringFor()
   };
 }
 function exploreForPage() {
@@ -65,6 +76,21 @@ function readBody(req, limit, tooBig = "That file is over 10 MB. Export a smalle
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  // The score math, shared with the page (and copied into the static demo).
+  if (req.method === "GET" && url.pathname === "/yourscore.js") {
+    return send(res, 200, fs.readFileSync(path.join(ROOT, "src", "yourscore.js"), "utf8"), "text/javascript; charset=utf-8");
+  }
+  // Your scoring: the dials that adjust each AI fit. Saving them costs nothing and starts no check.
+  if (url.pathname === "/api/scoring" && (req.method === "GET" || req.method === "POST")) {
+    if (DEMO && req.method === "POST") return send(res, 400, { error: "Your scoring saves in live mode. Stop the demo and run npm start." });
+    if (req.method === "GET") return send(res, 200, DEMO ? { ...scoringFor(), lookingFor: "" } : readScoring(paths(false).dataDir));
+    try {
+      const body = JSON.parse((await readBody(req, 64 * 1024, "That form is too large.")).toString("utf8"));
+      return send(res, 200, { ...saveScoring(body, paths(false).dataDir), accuracy: accuracyFor() });
+    } catch (err) {
+      return send(res, 400, { error: err.message });
+    }
+  }
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
     return send(res, 200, fs.readFileSync(path.join(ROOT, "public", "index.html"), "utf8"), "text/html; charset=utf-8");
   }
@@ -129,7 +155,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = JSON.parse((await readBody(req, 4096, "That request is too large.")).toString("utf8"));
       const saved = decide(body.id, body.decision, body.reason, { demo: DEMO });
-      return send(res, 200, { decision: saved, rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})), accuracy: accuracyReport(readDecisions(DEMO).decisions) });
+      return send(res, 200, { decision: saved, rules: DEMO ? [] : ruleSuggestions(readJson(paths(false).preferences, {})), accuracy: accuracyFor() });
     } catch (err) {
       return send(res, 400, { error: err.message });
     }

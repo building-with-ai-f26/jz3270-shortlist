@@ -16,7 +16,7 @@ This repository is public. Never put resume content, keys, emails or anything fr
 
 - Build 1 shipped Nov 9. Build 2 was submitted for Nov 16 with PostHog evidence, PRD v2 and the Build 2 log. The professor liked the Big Board design, so it stays.
 - Build 3 (due Nov 23) is the data roadmap below, then a move to Vercel and Supabase.
-- 125 tests (one skips on purpose; it only runs on Node older than 22).
+- 132 tests (one skips on purpose; it only runs on Node older than 22).
 - A static demo for classmates lives at `docs/demo/` on GitHub Pages.
 - OpenRouter spend: about $0.62 through Build 2, plus $0.0673 for the demo snapshot on Nov 17.
 
@@ -30,6 +30,7 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **"Remote" means US remote by default** (Nov 11). Remote roles that list only places abroad are filtered out with their own reason; `remoteAnywhere` turns this off.
 
 **Data and learning (the roadmap approved Nov 17)**
+- **Your score = AI fit plus the user's own dials** (Nov 17). Different people care about different things; stated preferences work from day one, before any decisions exist. Dials are capped at 25 points either way so the AI fit stays the backbone, and every point is shown on the card.
 - **Learning needs decisions first.** One user makes dozens of decisions, not thousands, so the plan is: record decisions, measure accuracy, then a small, explainable model (logistic regression in plain JavaScript), switched on only if it beats the AI fit alone.
 - **Decisions keep a snapshot taken on the server** from the app's own results, not from the page, so the data stays trustworthy.
 - **Rule suggestions never touch words that let roles in**, words that name a chosen kind of role, or words from roles Jordan saved.
@@ -82,6 +83,8 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Asked:** open the demo to visitors' own resumes. A static page can only rank them by shared words (AI scoring would expose the OpenRouter key), so Jordan chose to wait for the Vercel and Supabase site.
 - **Asked:** more Workday workarounds. Found that every Workday site publishes `siteMap.xml` with its newest 100 jobs. Jordan's point that roles older than about 14 days are too late to apply to made it enough: Workday v2 reads the sitemap, fetches details only for new matching roles, caches results, and searches at most once a day for fast posters. Setup gained a 7, 14 or 30 day choice; Jordan's window is now 14 days. Ruled out: pretending to be a browser or switching addresses to dodge limits.
 - **Asked:** auto-apply, since Greenhouse has autofill. Advised against submitting for the user: there is no applicant-side way to submit through Greenhouse, form answers (work authorization, custom questions) must be his, it hurts targeted off-cycle recruiting, and the PRD's Out of Scope #1 rules it out. Proposed "Apply assist" instead: show a role's application questions in advance, drafted answers to copy, the sites' own autofill, and one-click Applied tracking for the season tracker. Not yet added to the roadmap.
+- **Asked:** show how jobs are scored, and let people set their own scoring preferences, starting with their own words. Built "Your scoring": the AI fit stays the backbone, and dials (kinds of role, startups or large companies, top city, senior titles, 2027 programs, freshness, dream and avoid companies) add or take away at most 25 points, free and instant, with the math on every card. Decided the learning model will suggest dial changes instead of being a hidden model, so it stays explainable and in the user's control.
+- **Asked:** a home page that starts with the resume drop zone and these dials, and a percent-complete graphic during checks. Planned next, after Your scoring.
 
 ## Open questions
 

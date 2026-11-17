@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadEnv } from "../src/env.js";
 import { ROOT } from "../src/pipeline.js";
+import { scoringContext, cleanWeights, lookingForText } from "../src/setup.js";
 
 loadEnv(ROOT);
 const i = process.argv.indexOf("--from");
@@ -24,6 +25,8 @@ if (from === path.join(ROOT, "data")) {
 const out = path.join(ROOT, "docs", "demo");
 const RESUME = path.join(ROOT, "fixtures", "resume-mba-pm.md");
 const latest = JSON.parse(fs.readFileSync(path.join(from, "latest.json"), "utf8"));
+const prefs = JSON.parse(fs.readFileSync(path.join(from, "preferences.json"), "utf8"));
+const profile = fs.readFileSync(path.join(from, "profile.md"), "utf8");
 const snapshotAt = latest.summary.runAt;
 const day = new Date(snapshotAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -36,6 +39,8 @@ const data = {
   },
   // The Product Page already shows this public PostHog key; events are tagged app: static_demo.
   analytics: process.env.POSTHOG_KEY ? { key: process.env.POSTHOG_KEY, host: process.env.POSTHOG_HOST || "https://us.i.posthog.com" } : null,
+  // Visitors can try the dials in "Your scoring"; their choices stay in their browser.
+  scoring: { weights: cleanWeights({}), context: scoringContext(prefs), lookingFor: lookingForText(profile) },
   latest: {
     // A snapshot has nothing waiting to be scored, no new checks coming, and no "last check" to be new since.
     summary: { ...latest.summary, waiting: 0, cacheReset: false, newCount: 0 },
@@ -55,6 +60,8 @@ const shim = `<script>
       const realFetch = window.fetch.bind(window);
       const snapshot = realFetch("data.json").then((r) => r.json());
       const KEY = "shortlist-demo-decisions";
+      const DIALS = "shortlist-demo-scoring";
+      const dials = (s) => { try { return JSON.parse(localStorage.getItem(DIALS)) || s.scoring.weights; } catch { return s.scoring.weights; } };
       const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } };
       const write = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} };
       const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -67,7 +74,14 @@ const shim = `<script>
         if (where === "/api/status") {
           return reply({ demo: true, staticDemo: s.staticDemo, aiOn: false, model: s.latest.summary.model || "", watchlistCount: s.latest.summary.companies, runs: 1, needsSetup: false, resume: null, analytics: s.analytics });
         }
-        if (where === "/api/latest" || where === "/api/run") return reply({ ...s.latest, results: marked(s.latest.results), rules: [], accuracy: null });
+        const scoring = { weights: dials(s), context: s.scoring.context };
+        if (where === "/api/latest" || where === "/api/run") return reply({ ...s.latest, results: marked(s.latest.results), rules: [], accuracy: null, scoring });
+        if (where === "/api/scoring" && (opts.method || "GET") === "GET") return reply({ ...scoring, lookingFor: s.scoring.lookingFor });
+        if (where === "/api/scoring") {
+          const body = JSON.parse(opts.body || "{}");
+          try { localStorage.setItem(DIALS, JSON.stringify(body.weights)); } catch {}
+          return reply({ weights: body.weights, context: s.scoring.context, lookingFor: s.scoring.lookingFor, lookingForChanged: false, accuracy: null });
+        }
         if (where === "/api/decision") {
           const body = JSON.parse(opts.body || "{}");
           if (body.decision === "clear") delete decisions[body.id];
@@ -115,5 +129,7 @@ fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, "index.html"), page.replace("</head>", shim));
 fs.writeFileSync(path.join(out, "data.json"), JSON.stringify(data));
 fs.writeFileSync(path.join(out, "resume.html"), resume);
+// The score math, the same file the app serves.
+fs.copyFileSync(path.join(ROOT, "src", "yourscore.js"), path.join(out, "yourscore.js"));
 const kb = (f) => Math.round(fs.statSync(path.join(out, f)).size / 1024);
 console.log(`Built docs/demo: ${latest.results.length} roles from a check on ${day} (index.html ${kb("index.html")} KB, data.json ${kb("data.json")} KB, resume.html ${kb("resume.html")} KB).`);

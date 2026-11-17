@@ -324,6 +324,29 @@
     .field { width: 100%; padding: 10px 12px; background: var(--strip); border: 1px solid var(--rule); font-size: 15px; outline: none; }
     .field:focus { border-color: var(--ink); }
     textarea.field { min-height: 120px; resize: vertical; line-height: 1.5; }
+    /* Your scoring: dial rows with the shared segmented control, and a sticky preview of the top roles. */
+    .scoring-layout { display: grid; grid-template-columns: minmax(0, 760px) minmax(260px, 360px); gap: 40px; padding-top: 8px; padding-bottom: 120px; }
+    .scoring-layout h1 { margin: 0 0 8px; font-family: var(--display); font-weight: 900; font-size: 56px; line-height: 0.92; text-transform: uppercase; }
+    .scoring-layout .lede { margin: 0 0 28px; font-size: 16px; color: var(--ink-2); max-width: 62ch; }
+    .dial { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--rule-soft); }
+    .dial:first-of-type { border-top: 0; }
+    .dial-name { margin: 0; font-size: 15px; font-weight: 700; }
+    .dial-help { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); max-width: 46ch; }
+    .companies { margin-top: 12px; }
+    .companies .dial-name { margin-bottom: 6px; }
+    .preview { position: sticky; top: 20px; align-self: start; background: var(--strip); border: 1px solid var(--ink); }
+    .preview h2 { margin: 0; padding: 12px 14px; font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; border-bottom: 3px solid var(--ink); }
+    .preview ol { list-style: none; margin: 0; padding: 0; }
+    .preview li { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--rule-soft); }
+    .preview li:first-child { border-top: 0; }
+    .preview .mini { display: grid; place-items: center; width: 44px; height: 44px; color: #fff; background: var(--long); font-family: var(--display); font-weight: 900; font-size: 26px; }
+    .preview .mini.b-strong { background: var(--strong); }
+    .preview .mini.b-possible { background: var(--possible); }
+    .preview .t { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.3; }
+    .preview .c { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+    .preview .empty-note { padding: 14px; font-size: 13px; color: var(--ink-2); }
+    .score-math { margin: 8px 0 0; font-size: 12px; color: var(--ink-2); }
+    .score-math b { color: var(--ink); }
     .count-line { margin-top: 4px; font-size: 12px; color: var(--ink-3); text-align: right; }
     .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .modes .choice { align-items: flex-start; flex-direction: column; gap: 4px; padding: 14px; }
@@ -410,6 +433,9 @@
       .drop strong { font-size: 36px; }
       .drop .frame { padding: 40px 24px; }
       .setup h1 { font-size: 42px; }
+      .scoring-layout { grid-template-columns: 1fr; gap: 20px; }
+      .scoring-layout h1 { font-size: 42px; }
+      .preview { position: static; }
       .dropzone { grid-template-columns: 1fr; }
       .choices { grid-template-columns: 1fr 1fr; }
       .choice { padding: 10px; font-size: 13px; gap: 8px; }
@@ -425,6 +451,8 @@
       const realFetch = window.fetch.bind(window);
       const snapshot = realFetch("data.json").then((r) => r.json());
       const KEY = "shortlist-demo-decisions";
+      const DIALS = "shortlist-demo-scoring";
+      const dials = (s) => { try { return JSON.parse(localStorage.getItem(DIALS)) || s.scoring.weights; } catch { return s.scoring.weights; } };
       const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } };
       const write = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} };
       const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -437,7 +465,14 @@
         if (where === "/api/status") {
           return reply({ demo: true, staticDemo: s.staticDemo, aiOn: false, model: s.latest.summary.model || "", watchlistCount: s.latest.summary.companies, runs: 1, needsSetup: false, resume: null, analytics: s.analytics });
         }
-        if (where === "/api/latest" || where === "/api/run") return reply({ ...s.latest, results: marked(s.latest.results), rules: [], accuracy: null });
+        const scoring = { weights: dials(s), context: s.scoring.context };
+        if (where === "/api/latest" || where === "/api/run") return reply({ ...s.latest, results: marked(s.latest.results), rules: [], accuracy: null, scoring });
+        if (where === "/api/scoring" && (opts.method || "GET") === "GET") return reply({ ...scoring, lookingFor: s.scoring.lookingFor });
+        if (where === "/api/scoring") {
+          const body = JSON.parse(opts.body || "{}");
+          try { localStorage.setItem(DIALS, JSON.stringify(body.weights)); } catch {}
+          return reply({ weights: body.weights, context: s.scoring.context, lookingFor: s.scoring.lookingFor, lookingForChanged: false, accuracy: null });
+        }
         if (where === "/api/decision") {
           const body = JSON.parse(opts.body || "{}");
           if (body.decision === "clear") delete decisions[body.id];
@@ -466,7 +501,8 @@
         <div class="brand">
           <h1 class="wordmark">Shortlist</h1>
           <p class="mode" id="mode">Loading...</p>
-          <a class="settings" href="#setup">Settings</a>
+          <a class="settings" href="#scoring">Your scoring</a>
+          <a class="settings" href="#setup" id="settingsLink">Settings</a>
         </div>
 
         <section class="resume" aria-label="Your resume">
@@ -536,6 +572,21 @@
   </div>
 
   <!-- Setup, at /#setup. It opens by itself on a fresh install and from Settings after that. Demo mode shows a preview that does not save. -->
+  <!-- Your scoring, at /#scoring: how each score is made, and the dials that adjust the AI fit into your score. -->
+  <div id="scoringView" hidden>
+    <div class="preview-note"><div class="wrap">Dials re-rank your board right away and never start a check. <a href="#">Back to the board</a> without saving.</div></div>
+    <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
+    <main class="wrap scoring-layout">
+      <form id="scoringForm" novalidate></form>
+      <aside class="preview" aria-live="polite"><h2>Your top 5 now</h2><div id="scoringPreview"></div></aside>
+    </main>
+    <div class="savebar"><div class="wrap">
+      <p id="scoringSummary"></p>
+      <p class="setup-msg" id="scoringMsg" role="status" aria-live="polite"></p>
+      <button class="run" id="scoringSave" type="button"><span>Save your scoring</span></button>
+    </div></div>
+  </div>
+
   <div id="setupView" hidden>
     <div class="preview-note" id="setupNote" hidden><div class="wrap" id="setupNoteText"></div></div>
     <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
@@ -630,7 +681,7 @@
         $("resumeFile").textContent = sd.resumeName;
         $("resumeWhen").innerHTML = `A fictional resume, used for every score here. <a href="${esc(sd.resumeLink)}" target="_blank" rel="noopener">View it</a>`;
         $("pick").hidden = true;
-        document.querySelector(".settings").hidden = true;
+        $("settingsLink").hidden = true;
       } else if (st) {
         $("mode").textContent = st.demo
           ? "Demo data: fictional postings, keyword scoring, no API calls."
@@ -684,8 +735,9 @@
       return `<p class="meta">${decisionTag(r)}${r.isNew ? `<span class="new-tag">New</span>` : ""}${r.dealbreaker ? `<span class="stop-tag">Dealbreaker</span>` : ""}<span class="co">${esc(r.company)}</span><span>${esc(r.location || "location not listed")}</span>${r.ageDays !== null && r.ageDays !== undefined ? `<span>${posted(r.ageDays)}</span>` : ""}<span class="track">${esc(r.track)}</span></p>`;
     }
     function reportHtml(r) {
+      const math = mathHtml(r);
       const people = (r.people || []).map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" data-kind="people">${esc(p.label)}${icon("out")}</a>`).join("");
-      return `${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
+      return `${math}${r.dealbreaker ? `<p class="stop">Dealbreaker: ${esc(r.dealbreaker)}</p>` : ""}
         ${r.error ? `<p class="stop">Could not score: ${esc(r.error)}</p>` : ""}
         ${r.why || r.gap ? `<dl class="report">${r.why ? `<div><dt>Why it fits</dt><dd>${esc(r.why)}</dd></div>` : ""}${r.gap ? `<div class="gap"><dt>Gap</dt><dd>${esc(r.gap)}</dd></div>` : ""}</dl>` : ""}
         ${people ? `<div class="reach"><span class="lbl">Reach out</span><span class="links">${people}</span></div>` : ""}`;
@@ -825,11 +877,12 @@
           <table class="dropped"><thead><tr><th>Fit</th><th>Decisions</th><th>Saved or applied</th></tr></thead>
           <tbody>${m.bands.map((b) => `<tr><td>${b.label}</td><td class="tnum">${n(b.decisions)}</td><td class="r tnum">${b.decisions ? `${n(b.yes)} (${pct(b.yes / b.decisions)})` : ""}</td></tr>`).join("")}</tbody></table>
           <p class="cost">${esc(m.verdict)}${j.auc !== null ? ` Counting only passes about the job itself (wrong function, too senior, something else), AUC is ${j.auc.toFixed(2)}.` : ""}</p>
+          ${a.yours && a.yours.auc !== null ? `<p class="cost">With your scoring dials, AUC is <b>${a.yours.auc.toFixed(2)}</b> against ${m.auc.toFixed(2)} for the AI fit alone, so your dials ${a.yours.auc > m.auc ? "rank your choices better" : a.yours.auc < m.auc ? "rank your choices worse" : "make no difference"} so far.</p>` : ""}
           ${a.coverage ? `<p class="cost">${esc(a.coverage)}</p>` : ""}
         </div></details>`;
     }
 
-    function renderAll(fresh) { setCuts(); renderTop(); renderMinFit(); renderTracks(); renderDecisionView(); renderRules(); renderBoards(fresh); renderAccuracy(); renderDropped(); renderErrors(); }
+    function renderAll(fresh) { applyScoring(); setCuts(); renderTop(); renderMinFit(); renderTracks(); renderDecisionView(); renderRules(); renderBoards(fresh); renderAccuracy(); renderDropped(); renderErrors(); }
 
     async function refreshStatus() { st = await fetch("/api/status").then((r) => r.json()); }
 
@@ -847,6 +900,7 @@
       role_applied: ["from"],
       role_passed: ["reason", "from"],
       rule_added: [],
+      scoring_saved: ["dials_set", "companies_listed"],
       company_added: ["from"],
       setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time"]
     };
@@ -1036,7 +1090,7 @@
 
     // Keyboard triage: J and K move between roles, O opens the posting, Enter opens a folded long shot.
     document.addEventListener("keydown", (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || !$("setupView").hidden) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || !$("setupView").hidden || !$("scoringView").hidden) return;
       if (e.target.closest("input, textarea, select, [contenteditable]")) return;
       const strips = [...document.querySelectorAll("#boards .strip")];
       if (!strips.length) return;
@@ -1070,7 +1124,8 @@
       e.preventDefault();
       dragDepth = 0;
       $("drop").hidden = true;
-      if ($("setupView").hidden) uploadResume(e.dataTransfer.files[0]); else setupUpload(e.dataTransfer.files[0]);
+      if (!$("setupView").hidden) setupUpload(e.dataTransfer.files[0]);
+      else if (!$("app").hidden) uploadResume(e.dataTransfer.files[0]);
     });
 
     // ---------- Beyond your list (explore) ----------
@@ -1146,6 +1201,7 @@
       clearTimeout(explorePoll);
       if (!st || st.demo) return renderExplore();
       try { explore = await fetch("/api/explore").then((r) => r.json()); } catch { explore = null; }
+      applyScoring();
       renderExplore();
       if (explore?.running) explorePoll = setTimeout(loadExplore, 2000);
     }
@@ -1174,6 +1230,148 @@
         b.disabled = false;
         $("exploreStatus").classList.add("bad");
         $("exploreStatus").textContent = `Could not add it: ${err.message}`;
+      }
+    });
+
+    // ---------- Your score ----------
+    // src/yourscore.js (served as yourscore.js, and copied into the static demo) turns each AI fit into your score.
+    // The AI fit is kept as aiFit; fit becomes your score, so tiers, filters and sorting all follow it.
+    let scoreLib = null;
+    function rescored(list, weights, context) {
+      for (const r of list) {
+        if (r.aiFit === undefined) r.aiFit = r.fit;
+        const s = scoreLib.yourScore({ ...r, fit: r.aiFit }, weights, context);
+        r.fit = s.score;
+        r.scoreParts = s.parts;
+        r.capped = s.capped;
+      }
+      return list.sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1));
+    }
+    function applyScoring() {
+      if (!scoreLib || !data?.scoring) return;
+      const { weights, context } = data.scoring;
+      for (const list of [data.results, explore?.latest?.results].filter(Boolean)) rescored(list, weights, context);
+    }
+    const signed = (p) => (p > 0 ? `+${p}` : `${p}`);
+    function mathHtml(r) {
+      if (!r.scoreParts?.length || r.aiFit === null || r.aiFit === undefined) return "";
+      return `<p class="score-math tnum">${keywordMode() ? "Keyword match" : "AI fit"} ${r.aiFit} · ${r.scoreParts.map((p) => `${esc(p.label)} ${signed(p.points)}`).join(" · ")} = <b>${r.fit}</b>${r.capped ? " (your dials add at most 25 either way)" : ""}</p>`;
+    }
+
+    // ---------- Your scoring tab ----------
+    let scoringDraft = null;
+    const LEVELS = [[0, "Ignore"], [1, "A little"], [2, "A lot"]];
+    const SIZE_LEVELS = [[-2, "Prefer large"], [-1, "Lean large"], [0, "No preference"], [1, "Lean startups"], [2, "Prefer startups"]];
+    function dialHtml(key, label, help, value, levels = LEVELS) {
+      return `<div class="dial"><div><p class="dial-name">${label}</p>${help ? `<p class="dial-help">${help}</p>` : ""}</div><span class="seg sm" role="group" aria-label="${esc(label)}">${levels.map(([v, l]) => `<button type="button" data-dial="${key}" data-value="${v}" aria-pressed="${value === v}">${l}</button>`).join("")}</span></div>`;
+    }
+    function companiesHtml(kind, label, list) {
+      return `<div class="companies"><p class="dial-name">${label}</p><div class="chips-in">${list.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-remove-company="${kind}" data-i="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("")}<input type="text" maxlength="60" data-company-input="${kind}" placeholder="Add a company" aria-label="Add to ${esc(label.toLowerCase())}" /></div></div>`;
+    }
+    function renderScoring() {
+      const s = scoringDraft;
+      const w = s.weights;
+      const demo = Boolean(st?.staticDemo);
+      const families = [...s.context.families].sort((a, b) => Number(b.chosen) - Number(a.chosen));
+      $("scoringForm").innerHTML = `
+        <h1>Your scoring</h1>
+        <p class="lede">How each role is scored: your filters drop roles first. The AI then reads every remaining role against your resume and the words below, and gives it a fit from 0 to 100. Your dials add or take away points, at most 25 either way, to make your score. Dials cost nothing and never start a check.</p>
+        <section class="q"><h2>In your own words</h2>
+          <p class="help">What makes a role great for you? The AI reads this next to your resume for every role.${demo ? " In this demo it stays the sample resume's words." : " Changing it means roles are scored again on your next check."}</p>
+          <textarea class="field" id="scoringLookingFor" maxlength="2000"${demo ? " disabled" : ""}>${esc(s.lookingFor || "")}</textarea>
+        </section>
+        <section class="q"><h2>Kinds of role</h2><p class="help">Points when a title names that kind of role. If a title names several, the highest counts.</p>
+          ${families.map((f) => dialHtml(`role:${f.key}`, esc(f.label), f.chosen ? "One of the kinds you chose in Settings." : "", w.roles[f.key] || 0)).join("")}
+        </section>
+        <section class="q"><h2>Company and place</h2>
+          ${dialHtml("size", "Startups or large companies", "Approximate: guessed from the job system each company uses.", w.size, SIZE_LEVELS)}
+          ${s.context.topCity ? dialHtml("topCity", `Your top city: ${esc(s.context.topCity.label)}`, "The first city in your Settings.", w.topCity) : ""}
+        </section>
+        <section class="q"><h2>The role itself</h2>
+          ${dialHtml("seniority", "Avoid senior titles", "Senior, Lead, Principal, Director, Head of and similar titles lose points.", w.seniority)}
+          ${dialHtml("programs", "2027 and new grad roles", "Roles in the 2027 and new grad column gain points.", w.programs)}
+          ${dialHtml("freshness", "Newly posted", "Roles posted this week gain points, the last 3 days most.", w.freshness)}
+        </section>
+        <section class="q"><h2>Companies</h2>
+          <p class="help">A dream company gains 10 points and a company to avoid loses 15. Press Enter after each one.</p>
+          ${companiesHtml("dream", "Dream companies", w.dream)}
+          ${companiesHtml("avoid", "Companies to avoid", w.avoid)}
+        </section>`;
+      renderScoringPreview();
+    }
+    // The top 5 roles on the board with the dials as they are on screen right now.
+    function renderScoringPreview() {
+      const w = scoringDraft.weights;
+      const source = (data?.results || []).map((r) => ({ ...r, fit: r.aiFit ?? r.fit }));
+      const top = scoreLib ? rescored(source, w, scoringDraft.context).filter((r) => r.decision !== "passed").slice(0, 5) : [];
+      const tierOf = (fit) => (fit >= 75 ? "b-strong" : fit >= 50 ? "b-possible" : "");
+      $("scoringPreview").innerHTML = top.length
+        ? `<ol>${top.map((r) => `<li><span class="mini ${tierOf(r.fit ?? 0)}">${esc(r.fit ?? "?")}</span><div><p class="t">${esc(r.title)}</p><p class="c">${esc(r.company)}${r.scoreParts.length ? ` · ${r.scoreParts.map((p) => `${esc(p.label)} ${signed(p.points)}`).join(", ")}` : ""}</p></div></li>`).join("")}</ol>`
+        : `<p class="empty-note">Run Check my list to see your top roles here.</p>`;
+      const set = Object.values(w.roles).filter(Boolean).length + ["size", "topCity", "seniority", "programs", "freshness"].filter((k) => w[k]).length;
+      $("scoringSummary").innerHTML = `<b class="tnum">${set}</b> dial${set === 1 ? "" : "s"} set, ${w.dream.length + w.avoid.length} compan${w.dream.length + w.avoid.length === 1 ? "y" : "ies"} listed.`;
+    }
+    async function openScoring() {
+      try {
+        const json = await fetch("/api/scoring").then((r) => r.json());
+        scoringDraft = { weights: json.weights, context: json.context, lookingFor: json.lookingFor || "" };
+        $("scoringMsg").textContent = "";
+        renderScoring();
+      } catch {
+        $("scoringMsg").textContent = "Could not load your scoring. Is npm start still running?";
+      }
+    }
+    function addCompany(input) {
+      const name = input.value.replace(/,/g, " ").trim();
+      const list = scoringDraft.weights[input.dataset.companyInput];
+      if (name && !list.some((x) => x.toLowerCase() === name.toLowerCase())) list.push(name);
+      renderScoring();
+      document.querySelector(`[data-company-input="${input.dataset.companyInput}"]`).focus();
+    }
+    $("scoringForm").addEventListener("click", (e) => {
+      const dial = e.target.closest("[data-dial]");
+      if (dial) {
+        const v = Number(dial.dataset.value);
+        const key = dial.dataset.dial;
+        if (key.startsWith("role:")) scoringDraft.weights.roles[key.slice(5)] = v;
+        else scoringDraft.weights[key] = v;
+        dial.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === dial)));
+        return renderScoringPreview();
+      }
+      const remove = e.target.closest("[data-remove-company]");
+      if (remove) {
+        scoringDraft.weights[remove.dataset.removeCompany].splice(Number(remove.dataset.i), 1);
+        renderScoring();
+      }
+    });
+    $("scoringForm").addEventListener("keydown", (e) => {
+      const input = e.target.closest("[data-company-input]");
+      if (!input) return;
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addCompany(input); }
+      else if (e.key === "Backspace" && !input.value) { scoringDraft.weights[input.dataset.companyInput].pop(); renderScoring(); }
+    });
+    $("scoringForm").addEventListener("input", (e) => { if (e.target.id === "scoringLookingFor") scoringDraft.lookingFor = e.target.value; });
+    $("scoringSave").addEventListener("click", async () => {
+      document.querySelectorAll("[data-company-input]").forEach((i) => { if (i.value.trim()) addCompany(i); });
+      $("scoringSave").disabled = true;
+      try {
+        const res = await fetch("/api/scoring", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ weights: scoringDraft.weights, lookingFor: st?.staticDemo ? undefined : scoringDraft.lookingFor }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        const w = json.weights;
+        const dialsSet = Object.values(w.roles).filter(Boolean).length + ["size", "topCity", "seniority", "programs", "freshness"].filter((k) => w[k]).length;
+        const listed = w.dream.length + w.avoid.length;
+        track("scoring_saved", { dials_set: dialsSet, companies_listed: listed });
+        if (data) { data.scoring = { weights: json.weights, context: json.context }; if (json.accuracy) data.accuracy = json.accuracy; }
+        location.hash = "";
+        notice(json.lookingForChanged
+          ? "Your scoring is saved and the board is re-ranked. Because What I'm looking for changed, roles are scored again on your next check."
+          : "Your scoring is saved and the board is re-ranked. No check was needed.");
+      } catch (err) {
+        $("scoringMsg").classList.add("bad");
+        $("scoringMsg").textContent = `Could not save: ${err.message}`;
+      } finally {
+        $("scoringSave").disabled = false;
       }
     });
 
@@ -1230,14 +1428,23 @@
       $("schoolTokens").innerHTML = schools.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-i="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("");
     }
 
+    // How recent: 7, 14 or 30 days, plus the user's own setting if it is something else.
+    function ageOptions(s) {
+      const current = s.maxAgeDays ?? 14;
+      const notes = { 7: "Only the freshest roles.", 14: "Recommended for off-cycle recruiting.", 30: "A wider net." };
+      const choices = [...new Set([...(s.ageChoices || [7, 14, 30]), current])].sort((a, b) => a - b);
+      return choices.map((d) => `<label class="choice"><input type="radio" name="maxAgeDays" value="${d}"${d === current ? " checked" : ""} /><span class="t"><span class="box">${icon("check")}</span>Last ${d} days</span><small>${notes[d] || "Your current setting."}</small></label>`).join("");
+    }
+
     function renderSetup(s) {
       const sections = [
-        ["resume", "Your resume"], ["roles", "Kinds of roles"], ["cities", "Cities"], ["sectors", "Companies to watch"],
+        ["resume", "Your resume"], ["roles", "Kinds of roles"], ["cities", "Cities"], ["recent", "How recent"], ["sectors", "Companies to watch"],
         ["schools", "Your schools"], ["lookingFor", "What you are looking for"], ["scoring", "Scoring"]
       ];
       $("setupSteps").innerHTML = sections.map(([id, label]) => {
         const done = id === "resume" ? !s.sampleResume : Array.isArray(s[id]) ? s[id].length > 0 : id === "lookingFor" ? Boolean(s.lookingFor) : id === "scoring";
-        return `<li><a href="#setup" data-jump="q-${id}" class="${done ? "done" : ""}">${label}</a></li>`;
+        const finished = done || id === "recent";
+        return `<li><a href="#setup" data-jump="q-${id}" class="${finished ? "done" : ""}">${label}</a></li>`;
       }).join("");
       // AI scoring shows as chosen only when a key is saved, since without one every check falls back to keywords.
       const ai = s.scoring === "ai" && s.hasKey;
@@ -1257,6 +1464,10 @@
         <section class="q" id="q-cities"><h2>Cities</h2>
           <p class="help">Roles outside these cities are filtered out. Pick none to see every city.</p>
           ${choiceList("cities", s.options.cities, s.cities)}
+        </section>
+        <section class="q" id="q-recent"><h2>How recent</h2>
+          <p class="help">Only roles posted in this window reach your board, since older ones are usually too late to apply to. The rest show under Filtered out with the reason.</p>
+          <div class="modes">${ageOptions(s)}</div>
         </section>
         <section class="q" id="q-sectors"><h2>Companies to watch</h2>
           <p class="help">Start from a ready list of companies in each sector; the number is how many companies each adds. Unchecking a sector removes only its starter companies, never ones you added yourself.</p>
@@ -1359,6 +1570,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roles: picked("roles"), cities: picked("cities"), sectors: picked("sectors"), schools,
+            ...([7, 14, 30].includes(Number(form.querySelector('input[name="maxAgeDays"]:checked')?.value)) ? { maxAgeDays: Number(form.querySelector('input[name="maxAgeDays"]:checked').value) } : {}),
             lookingFor: form.querySelector('textarea[name="lookingFor"]').value, scoring, ...(apiKey ? { apiKey } : {})
           })
         });
@@ -1404,9 +1616,13 @@
     function route() {
       if (st?.staticDemo && location.hash === "#setup") { location.hash = ""; return; }
       const onSetup = location.hash === "#setup";
-      $("app").hidden = onSetup;
+      const onScoring = location.hash === "#scoring";
+      $("app").hidden = onSetup || onScoring;
       $("setupView").hidden = !onSetup;
+      $("scoringView").hidden = !onScoring;
       if (onSetup) openSetup();
+      if (onScoring) openScoring();
+      if (!onSetup && !onScoring && data) renderAll(false);
       window.scrollTo(0, 0);
     }
     window.addEventListener("hashchange", route);
@@ -1414,6 +1630,7 @@
     setInterval(renderTop, 60000);
     (async () => {
       [st, data] = await Promise.all([fetch("/api/status").then((r) => r.json()), fetch("/api/latest").then((r) => r.json())]);
+      try { scoreLib = await import("./yourscore.js"); } catch { scoreLib = null; }
       startAnalytics(st.analytics);
       renderAll(false);
       loadExplore();

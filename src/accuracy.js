@@ -74,7 +74,9 @@ function verdict(m) {
 
 // decisions: the object stored in data/decisions.json under "decisions".
 // Only roles scored by the AI count, since keyword scores rank roles against each other and mean something else.
-export function accuracyReport(decisions = {}) {
+// rescore, when given, turns a decision's role snapshot into "your score" (the AI fit plus the user's dials),
+// so the report can show whether the dials rank the user's choices better than the AI fit alone.
+export function accuracyReport(decisions = {}, rescore = null) {
   const scored = Object.values(decisions).filter((d) => d.role?.method === "ai" && typeof d.role.fit === "number");
   const rows = scored.map((d) => ({ fit: d.role.fit, yes: YES.has(d.decision), reason: d.reason }));
   const all = measure(rows);
@@ -83,7 +85,14 @@ export function accuracyReport(decisions = {}) {
   const range = fits.length ? [Math.min(...fits), Math.max(...fits)] : null;
   // The test is only fair if decisions cover low scores as well as high ones.
   const narrow = range && (range[0] >= 50 || range[1] - range[0] < 25);
+  let yours = null;
+  if (rescore) {
+    const rows2 = scored.map((d) => ({ fit: rescore(d.role), yes: YES.has(d.decision), reason: d.reason })).filter((r) => typeof r.fit === "number");
+    // Only worth showing when the dials actually move at least one score.
+    if (rows2.some((r, i) => r.fit !== rows[i]?.fit)) yours = { ...measure(rows2), verdict: verdict(measure(rows2)) };
+  }
   return {
+    yours,
     all: { ...all, verdict: verdict(all) },
     jobOnly: { ...jobOnly, verdict: verdict(jobOnly) },
     fitRange: range,

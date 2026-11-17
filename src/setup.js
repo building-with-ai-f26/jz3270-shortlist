@@ -251,3 +251,71 @@ export function saveSetup(input = {}, dataDir, starter = readStarter()) {
 
   return readSetup(dataDir, starter);
 }
+
+// ---------- Your scoring ----------
+// The dials that turn the AI fit into "your score" (src/yourscore.js does the math). They are saved in
+// preferences.json as `weights` and change nothing about what is fetched, filtered or paid for.
+
+// What the score math needs from setup: every kind of role with its title phrases, and the first chosen city.
+export function scoringContext(prefs = {}) {
+  const chosen = prefs.setup || inferChoices(prefs);
+  const city = CITIES[(chosen.cities || [])[0]];
+  return {
+    families: Object.entries(ROLE_FAMILIES).map(([key, f]) => ({ key, label: f.label, signals: f.signals, chosen: (chosen.roles || []).includes(key) })),
+    topCity: city ? { label: city.label, words: city.locations } : null
+  };
+}
+
+const level = (v, min, max, name) => {
+  const n = Number(v ?? 0);
+  if (!Number.isInteger(n) || n < min || n > max) throw new Error(`${name} must be a whole number from ${min} to ${max}.`);
+  return n;
+};
+const names = (list, name) => {
+  if (list !== undefined && !Array.isArray(list)) throw new Error(`${name} must be a list.`);
+  const out = [...new Set((list || []).map((s) => String(s).trim().slice(0, 60)).filter(Boolean))];
+  if (out.length > 30) throw new Error(`Keep ${name} to 30 companies.`);
+  return out;
+};
+
+// Checks every dial: 0 (ignore), 1 (a little) or 2 (a lot); size runs from -2 (large companies) to 2 (startups).
+export function cleanWeights(input = {}) {
+  const roles = {};
+  for (const [k, v] of Object.entries(input.roles || {})) {
+    if (!(k in ROLE_FAMILIES)) throw new Error(`Unknown role type: ${k}`);
+    const n = level(v, 0, 2, ROLE_FAMILIES[k].label);
+    if (n) roles[k] = n;
+  }
+  return {
+    roles,
+    size: level(input.size, -2, 2, "Company size"),
+    topCity: level(input.topCity, 0, 2, "Top city"),
+    seniority: level(input.seniority, 0, 2, "Seniority"),
+    programs: level(input.programs, 0, 2, "Programs"),
+    freshness: level(input.freshness, 0, 2, "Freshness"),
+    dream: names(input.dream, "dream companies"),
+    avoid: names(input.avoid, "companies to avoid")
+  };
+}
+
+export function readScoring(dataDir) {
+  const prefs = readJson(path.join(dataDir, "preferences.json"), {});
+  const profile = fs.existsSync(path.join(dataDir, "profile.md")) ? fs.readFileSync(path.join(dataDir, "profile.md"), "utf8") : "";
+  return { weights: cleanWeights(prefs.weights || {}), lookingFor: lookingForText(profile), context: scoringContext(prefs) };
+}
+
+// Saves the dials. "What I'm looking for" is rewritten only if it changed, since that means every role is
+// scored again on the next check.
+export function saveScoring(input = {}, dataDir) {
+  const prefsPath = path.join(dataDir, "preferences.json");
+  const prefs = readJson(prefsPath, {});
+  prefs.weights = cleanWeights(input.weights || {});
+  const lookingFor = typeof input.lookingFor === "string" ? input.lookingFor.trim() : "";
+  if (lookingFor.length > MAX_LOOKING_FOR) throw new Error(`Keep "What I'm looking for" under ${MAX_LOOKING_FOR} characters.`);
+  fs.writeFileSync(prefsPath, JSON.stringify(prefs, null, 2) + "\n");
+  const profilePath = path.join(dataDir, "profile.md");
+  const profile = fs.existsSync(profilePath) ? fs.readFileSync(profilePath, "utf8") : "";
+  const changed = Boolean(lookingFor) && lookingFor !== lookingForText(profile);
+  if (changed) fs.writeFileSync(profilePath, withLookingFor(profile, lookingFor));
+  return { ...readScoring(dataDir), lookingForChanged: changed };
+}
