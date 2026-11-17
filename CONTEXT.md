@@ -16,7 +16,7 @@ This repository is public. Never put resume content, keys, emails or anything fr
 
 - Build 1 shipped Nov 9. Build 2 was submitted for Nov 16 with PostHog evidence, PRD v2 and the Build 2 log. The professor liked the Big Board design, so it stays.
 - Build 3 (due Nov 23) is the data roadmap below, then a move to Vercel and Supabase.
-- 119 tests (one skips on purpose; it only runs on Node older than 22).
+- 125 tests (one skips on purpose; it only runs on Node older than 22).
 - A static demo for classmates lives at `docs/demo/` on GitHub Pages.
 - OpenRouter spend: about $0.62 through Build 2, plus $0.0673 for the demo snapshot on Nov 17.
 
@@ -79,10 +79,14 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Asked:** this file.
 - **Asked:** a Workday workaround: split searches by facets so each stays under Workday's 2,000-result cap. One request confirmed the cap and the facets (job category, job type such as "New College Graduate", location by country). Enumerating every facet combination would mean thousands of requests and worse throttling, so the plan is facet targeting (only US roles in matching categories and graduate job types) plus a 12-hour Workday cache. The comparison on NVIDIA, Adobe and Boeing could not run because Workday was still refusing requests; rerun it later.
 - **Asked:** a static demo for classmates with a sample MBA resume (4 years as a Microsoft PM) and drag and drop off. Built `docs/demo/` from a real check against a new fictional resume (Taylor Brooks), $0.0673. Decisions in the demo stay in the visitor's browser; PostHog tags its events `app: static_demo`.
+- **Asked:** open the demo to visitors' own resumes. A static page can only rank them by shared words (AI scoring would expose the OpenRouter key), so Jordan chose to wait for the Vercel and Supabase site.
+- **Asked:** more Workday workarounds. Found that every Workday site publishes `siteMap.xml` with its newest 100 jobs. Jordan's point that roles older than about 14 days are too late to apply to made it enough: Workday v2 reads the sitemap, fetches details only for new matching roles, caches results, and searches at most once a day for fast posters. Setup gained a 7, 14 or 30 day choice; Jordan's window is now 14 days. Ruled out: pretending to be a browser or switching addresses to dodge limits.
+- **Asked:** auto-apply, since Greenhouse has autofill. Advised against submitting for the user: there is no applicant-side way to submit through Greenhouse, form answers (work authorization, custom questions) must be his, it hurts targeted off-cycle recruiting, and the PRD's Out of Scope #1 rules it out. Proposed "Apply assist" instead: show a role's application questions in advance, drafted answers to copy, the sites' own autofill, and one-click Applied tracking for the season tracker. Not yet added to the roadmap.
 
 ## Open questions
 
 - **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, where each user's OpenRouter key lives, and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
+- **Apply assist:** add it to the roadmap next to the season tracker? Drafted answers would touch the "no cover letters" non-goal.
 - **Workday from the cloud:** Workday limits requests per visitor, and cloud servers share addresses, so cloud checks may be throttled more than a laptop.
 - **Learning model:** needs about 50 decisions with some long shots before it can be judged.
 - **Rename:** still open if Jordan wants it later.

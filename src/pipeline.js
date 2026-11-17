@@ -42,7 +42,9 @@ export function paths(demo) {
     explore: path.join(dataDir, "explore.json"),
     exploreScores: path.join(dataDir, "scores.explore.json"),
     exploreSeen: path.join(dataDir, "explore-seen.json"),
-    exploreDead: path.join(dataDir, "explore-dead.json")
+    exploreDead: path.join(dataDir, "explore-dead.json"),
+    // What each Workday company's sitemap and searches have shown, so a check asks Workday as little as possible.
+    workdayCache: path.join(dataDir, "workday-cache.json")
   };
 }
 
@@ -124,11 +126,15 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
     const earlier = new Date(now - 3 * 86400000).toISOString();
     for (const id of fx.seenBefore) state.seen[id] = earlier;
   } else {
+    const workdayStore = readJson(p.workdayCache, {});
     fetched = await fetchAll(watchlist, fetchImpl, 8, {
       searches: prefs.workdaySearch,
       maxPerSearch: prefs.workdayMaxPerSearch,
-      now
+      now,
+      prefs,
+      workdayCache: { get: (key) => workdayStore[key], set: (key, value) => { workdayStore[key] = value; } }
     });
+    fs.writeFileSync(p.workdayCache, JSON.stringify(workdayStore));
   }
   const all = fetched.flatMap((r) => r.postings);
   const errors = fetched.filter((r) => r.error).map((r) => ({ company: r.entry.company, error: r.error }));

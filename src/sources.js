@@ -3,6 +3,7 @@
 // I fetch each board and reshape every posting into one common format so the rest of the app
 // never has to care which ATS a job came from.
 import { pool } from "./pool.js";
+import { prefilter } from "./filter.js";
 
 // For Greenhouse I list jobs WITHOUT descriptions (much smaller), then fetch the full text only for
 // the postings that are about to be scored. With 100+ companies that keeps a check fast and light.
@@ -160,31 +161,40 @@ export function retryAfterMs(res) {
 // Once this many Workday companies are refused in one check, the rest are skipped with the same message,
 // so a check never crawls through minutes of waiting while Workday is limiting us.
 export const WORKDAY_GIVE_UP_AFTER = 3;
+const isThrottled = (res) => res.status === 429 || res.status === 503;
 
-async function fetchWorkday(entry, fetchImpl, { searches = WORKDAY_DEFAULT_SEARCHES, maxPerSearch = 40, now = Date.now(), wait = sleep, pauseMs = 250, workdayGate = null } = {}) {
+// Every Workday request for one company goes through this: a short pause between requests keeps a check under
+// Workday's limit, and a 429 or 503 is waited out and retried.
+function workdayRequester(fetchImpl, { wait = sleep, pauseMs = 250 } = {}) {
+  let requests = 0;
+  return async (url, init = {}) => {
+    for (let attempt = 0; ; attempt++) {
+      if (requests++ > 0 && pauseMs) await wait(pauseMs);
+      const base = requestOptions();
+      const res = await fetchImpl(url, { ...base, ...init, headers: { ...base.headers, ...(init.headers || {}) } });
+      if (!isThrottled(res) || attempt >= WORKDAY_RETRY_WAITS_MS.length) return res;
+      await wait(retryAfterMs(res) ?? WORKDAY_RETRY_WAITS_MS[attempt]);
+    }
+  };
+}
+
+// With a cache from the pipeline, Workday is read sitemap first (below); without one (tests, npm run check),
+// with the keyword searches.
+async function fetchWorkday(entry, fetchImpl, opts = {}) {
   const wd = parseWorkdayUrl(entry.url || "");
   if (!wd) return { entry, postings: [], error: "Workday entry needs a careers link like https://company.wd5.myworkdayjobs.com/SiteName" };
+  return opts.workdayCache ? sitemapWorkday(entry, fetchImpl, wd, opts) : searchWorkday(entry, fetchImpl, wd, opts);
+}
+
+// The keyword searches: each search term in turn, 20 results a page, up to maxPerSearch.
+async function searchWorkday(entry, fetchImpl, wd, { searches = WORKDAY_DEFAULT_SEARCHES, maxPerSearch = 40, now = Date.now(), wait = sleep, pauseMs = 250, workdayGate = null } = {}) {
   if (workdayGate && workdayGate.refused >= WORKDAY_GIVE_UP_AFTER) return { entry, postings: [], error: WORKDAY_THROTTLED };
   const api = `https://${wd.host}/wday/cxs/${wd.tenant}/${wd.site}/jobs`;
   const found = new Map();
   let anyOk = false;
   let throttled = false;
-  let requests = 0;
-
-  const search = async (body) => {
-    for (let attempt = 0; ; attempt++) {
-      // A short pause between this company's requests keeps the check under Workday's limit.
-      if (requests++ > 0 && pauseMs) await wait(pauseMs);
-      const res = await fetchImpl(api, {
-        ...requestOptions(),
-        method: "POST",
-        headers: { "Accept": "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      if ((res.status !== 429 && res.status !== 503) || attempt >= WORKDAY_RETRY_WAITS_MS.length) return res;
-      await wait(retryAfterMs(res) ?? WORKDAY_RETRY_WAITS_MS[attempt]);
-    }
-  };
+  const request = workdayRequester(fetchImpl, { wait, pauseMs });
+  const search = (body) => request(api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
   try {
     searching: for (const searchText of searches) {
@@ -208,6 +218,151 @@ async function fetchWorkday(entry, fetchImpl, { searches = WORKDAY_DEFAULT_SEARC
   if (!anyOk && throttled && workdayGate) workdayGate.refused++;
   if (!anyOk) return { entry, postings: [], error: throttled ? WORKDAY_THROTTLED : "Workday did not answer any search" };
   return { entry, postings: normalizeWorkday([...found.values()], entry, wd, now), error: null };
+}
+
+// ---------- Workday, sitemap first ----------
+// Every Workday careers site publishes siteMap.xml: its newest 100 jobs, each link carrying the location and title.
+// With the pipeline's cache (data/workday-cache.json) a check reads the sitemap (1 request), fetches details only
+// for new roles that pass the title and location rules, and runs the keyword searches above at most once a day,
+// and only when the newest 100 jobs do not reach back as far as maxAgeDays.
+const SITEMAP_SIZE = 100;
+const DAY_MS = 86400000;
+// Detail requests per company per check; any others wait for the next check.
+export const WORKDAY_DETAILS_PER_CHECK = 25;
+
+// "/job/US-CA-Santa-Clara/Corporate-Development-MBA-Intern---Summer-2027_JR2029532-1" becomes
+// title "Corporate Development MBA Intern - Summer 2027" and location "US CA Santa Clara".
+export function parseWorkdaySitemap(xml) {
+  const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+  const jobs = [];
+  for (const m of String(xml).matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)) {
+    const at = m[1].indexOf("/job/");
+    if (at < 0) continue;
+    const externalPath = m[1].slice(at);
+    const parts = externalPath.split("/").filter(Boolean);
+    if (parts.length < 2) continue;
+    const slug = decode(parts[parts.length - 1]).replace(/_[^_]*$/, "").replace(/^XMLNAME-*/i, "");
+    const title = slug.replace(/-{3,}/g, "\u0000").replace(/-+/g, " ").replace(/\u0000/g, " - ").replace(/\s+/g, " ").trim();
+    const location = parts.length >= 3 ? decode(parts[parts.length - 2]).replace(/-+/g, " ").trim() : "";
+    jobs.push({ externalPath, title, location });
+  }
+  return jobs;
+}
+
+function workdayPosting(entry, wd, externalPath, job) {
+  return {
+    id: `workday:${wd.tenant}/${wd.site}:${externalPath}`,
+    company: entry.company,
+    title: job.title || "",
+    location: job.location || "",
+    url: `${wd.base}${externalPath}`,
+    detailUrl: `https://${wd.host}/wday/cxs/${wd.tenant}/${wd.site}${externalPath}`,
+    postedAt: job.postedAt || null,
+    department: "",
+    text: job.text || "",
+    source: "workday"
+  };
+}
+
+// A job's detail page: real title, every location, the posting date and the description.
+async function workdayDetail(request, wd, externalPath, now) {
+  const res = await request(`https://${wd.host}/wday/cxs/${wd.tenant}/${wd.site}${externalPath}`);
+  if (isThrottled(res)) return { throttled: true };
+  if (res.status === 404) return { gone: true };
+  if (!res.ok) return null;
+  const info = (await res.json()).jobPostingInfo || {};
+  const start = info.startDate ? Date.parse(info.startDate) : NaN;
+  const age = workdayAgeDays(info.postedOn);
+  const out = {
+    title: info.title,
+    location: [info.location, ...(info.additionalLocations || [])].filter(Boolean).join("; "),
+    postedAt: Number.isFinite(start) ? new Date(start).toISOString() : age === null ? null : new Date(now - age * DAY_MS).toISOString(),
+    text: htmlToText(info.jobDescription).slice(0, 8000)
+  };
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined && v !== ""));
+}
+
+async function sitemapWorkday(entry, fetchImpl, wd, opts) {
+  const { now = Date.now(), workdayCache: cache, prefs = {}, workdayGate = null } = opts;
+  const key = `${wd.tenant}/${wd.site}`;
+  const store = cache.get(key) || { jobs: {} };
+  const seenAt = new Date(now).toISOString();
+  const maxAge = prefs.maxAgeDays || 14;
+  // Roles listed on the sitemap or found by a search in the last two days are on the board.
+  const current = () => Object.entries(store.jobs)
+    .filter(([, j]) => now - Date.parse(j.seenAt) <= 2 * DAY_MS)
+    .map(([path, j]) => workdayPosting(entry, wd, path, j));
+  const finish = (error = null) => {
+    for (const [path, j] of Object.entries(store.jobs)) if (now - Date.parse(j.seenAt) > 7 * DAY_MS) delete store.jobs[path];
+    cache.set(key, store);
+    return { entry, postings: error ? [] : current(), error };
+  };
+  // While Workday is refusing this check, show what is already known instead of asking again.
+  const refused = () => {
+    if (workdayGate) workdayGate.refused++;
+    return Object.keys(store.jobs).length ? finish() : { entry, postings: [], error: WORKDAY_THROTTLED };
+  };
+  if (workdayGate && workdayGate.refused >= WORKDAY_GIVE_UP_AFTER) return Object.keys(store.jobs).length ? finish() : { entry, postings: [], error: WORKDAY_THROTTLED };
+
+  const request = workdayRequester(fetchImpl, opts);
+  let listed = null;
+  try {
+    const res = await request(`${wd.base}/siteMap.xml`, { headers: { Accept: "application/xml" } });
+    if (isThrottled(res)) return refused();
+    if (res.ok) listed = parseWorkdaySitemap(await res.text());
+  } catch {
+    listed = null;
+  }
+  // No sitemap on this site: the keyword searches, as before.
+  if (!listed || !listed.length) return searchWorkday(entry, fetchImpl, wd, opts);
+
+  for (const job of listed) {
+    const known = store.jobs[job.externalPath];
+    store.jobs[job.externalPath] = known ? { ...known, seenAt } : { title: job.title, location: job.location, seenAt };
+  }
+
+  // Details only for new roles that pass the title and location rules (their age is not known yet).
+  let throttled = false;
+  let details = 0;
+  const passes = (path) => prefilter(workdayPosting(entry, wd, path, store.jobs[path]), { ...prefs, maxAgeDays: 0 }, now).keep;
+  const fillIn = async (path) => {
+    const info = await workdayDetail(request, wd, path, now);
+    if (info?.throttled) { throttled = true; return; }
+    if (info?.gone) { delete store.jobs[path]; return; }
+    if (info) Object.assign(store.jobs[path], info, { detailedAt: seenAt });
+  };
+  for (const job of listed) {
+    if (throttled || details >= WORKDAY_DETAILS_PER_CHECK) break;
+    const j = store.jobs[job.externalPath];
+    if (!j || j.detailedAt || !passes(job.externalPath)) continue;
+    details++;
+    await fillIn(job.externalPath);
+  }
+
+  // Do the newest 100 reach back maxAgeDays? Fewer than 100 listed means the sitemap is the whole site;
+  // otherwise the oldest listed job's date answers it.
+  if (listed.length < SITEMAP_SIZE) {
+    store.coverDays = null;
+  } else if (!throttled) {
+    const last = listed[listed.length - 1].externalPath;
+    if (store.jobs[last] && !store.jobs[last].postedAt) await fillIn(last);
+    const at = store.jobs[last]?.postedAt;
+    store.coverDays = at ? Math.floor((now - Date.parse(at)) / DAY_MS) : store.coverDays ?? null;
+  }
+  const dueForSearch = !store.searchedAt || now - Date.parse(store.searchedAt) > DAY_MS;
+  if (listed.length >= SITEMAP_SIZE && !throttled && store.coverDays !== null && store.coverDays < maxAge && dueForSearch) {
+    const found = await searchWorkday(entry, fetchImpl, wd, opts);
+    if (!found.error) {
+      const prefix = `workday:${key}:`;
+      for (const p of found.postings) {
+        const path = p.id.slice(prefix.length);
+        store.jobs[path] = { ...(store.jobs[path] || {}), title: p.title, location: store.jobs[path]?.location || p.location, postedAt: store.jobs[path]?.postedAt || p.postedAt, seenAt };
+      }
+      store.searchedAt = seenAt;
+    }
+  }
+  store.checkedAt = seenAt;
+  return finish();
 }
 
 // ---------- SmartRecruiters ----------

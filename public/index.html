@@ -1199,14 +1199,23 @@
       $("schoolTokens").innerHTML = schools.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-i="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("");
     }
 
+    // How recent: 7, 14 or 30 days, plus the user's own setting if it is something else.
+    function ageOptions(s) {
+      const current = s.maxAgeDays ?? 14;
+      const notes = { 7: "Only the freshest roles.", 14: "Recommended for off-cycle recruiting.", 30: "A wider net." };
+      const choices = [...new Set([...(s.ageChoices || [7, 14, 30]), current])].sort((a, b) => a - b);
+      return choices.map((d) => `<label class="choice"><input type="radio" name="maxAgeDays" value="${d}"${d === current ? " checked" : ""} /><span class="t"><span class="box">${icon("check")}</span>Last ${d} days</span><small>${notes[d] || "Your current setting."}</small></label>`).join("");
+    }
+
     function renderSetup(s) {
       const sections = [
-        ["resume", "Your resume"], ["roles", "Kinds of roles"], ["cities", "Cities"], ["sectors", "Companies to watch"],
+        ["resume", "Your resume"], ["roles", "Kinds of roles"], ["cities", "Cities"], ["recent", "How recent"], ["sectors", "Companies to watch"],
         ["schools", "Your schools"], ["lookingFor", "What you are looking for"], ["scoring", "Scoring"]
       ];
       $("setupSteps").innerHTML = sections.map(([id, label]) => {
         const done = id === "resume" ? !s.sampleResume : Array.isArray(s[id]) ? s[id].length > 0 : id === "lookingFor" ? Boolean(s.lookingFor) : id === "scoring";
-        return `<li><a href="#setup" data-jump="q-${id}" class="${done ? "done" : ""}">${label}</a></li>`;
+        const finished = done || id === "recent";
+        return `<li><a href="#setup" data-jump="q-${id}" class="${finished ? "done" : ""}">${label}</a></li>`;
       }).join("");
       // AI scoring shows as chosen only when a key is saved, since without one every check falls back to keywords.
       const ai = s.scoring === "ai" && s.hasKey;
@@ -1226,6 +1235,10 @@
         <section class="q" id="q-cities"><h2>Cities</h2>
           <p class="help">Roles outside these cities are filtered out. Pick none to see every city.</p>
           ${choiceList("cities", s.options.cities, s.cities)}
+        </section>
+        <section class="q" id="q-recent"><h2>How recent</h2>
+          <p class="help">Only roles posted in this window reach your board, since older ones are usually too late to apply to. The rest show under Filtered out with the reason.</p>
+          <div class="modes">${ageOptions(s)}</div>
         </section>
         <section class="q" id="q-sectors"><h2>Companies to watch</h2>
           <p class="help">Start from a ready list of companies in each sector; the number is how many companies each adds. Unchecking a sector removes only its starter companies, never ones you added yourself.</p>
@@ -1328,6 +1341,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roles: picked("roles"), cities: picked("cities"), sectors: picked("sectors"), schools,
+            ...([7, 14, 30].includes(Number(form.querySelector('input[name="maxAgeDays"]:checked')?.value)) ? { maxAgeDays: Number(form.querySelector('input[name="maxAgeDays"]:checked').value) } : {}),
             lookingFor: form.querySelector('textarea[name="lookingFor"]').value, scoring, ...(apiKey ? { apiKey } : {})
           })
         });

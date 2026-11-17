@@ -32,6 +32,9 @@ export const ROLE_FAMILIES = {
 
 // Each city lists the place names job boards use for it. A posting passes if its location has any of them.
 // State codes are left out on purpose ("WA", "MA"), except NY and NJ, which boards use on their own.
+// How recent a role must be to reach the board. Older ones show under Filtered out with their reason.
+export const AGE_CHOICES = [7, 14, 30];
+
 export const CITIES = {
   newYork: { label: "New York", locations: ["New York", "NY", "New Jersey", "NJ", "Brooklyn", "Jersey City", "Stamford"] },
   bayArea: { label: "San Francisco Bay Area", locations: ["San Francisco", "Bay Area", "Palo Alto", "Mountain View", "Menlo Park", "Redwood City", "Santa Clara", "San Jose", "Sunnyvale", "Oakland"] },
@@ -68,7 +71,7 @@ const DEFAULTS = {
     "Senior Staff", "Staff ", "Principal", "Director", "Head of", "Vice President", "VP,", "Lead ", "Senior Manager", "Engineer",
     "Software", "Recruiter", "Counsel", "Technician"
   ],
-  maxAgeDays: 45,
+  maxAgeDays: 14,
   maxToScore: 40,
   workdayMaxPerSearch: 40
 };
@@ -84,12 +87,15 @@ function pick(keys, table, what) {
 
 // answers = { roles: ["strategy", ...], cities: ["newYork", ...], schools: ["NYU Stern", ...] }
 // No cities means no location filter. No roles means only the 2027 and MBA title words.
-// Setup owns titleInclude, locations, workdaySearch, networkSchools and scoring; everything else in `existing` is kept.
+// Setup owns titleInclude, locations, workdaySearch, networkSchools, scoring and (when sent) maxAgeDays;
+// everything else in `existing` is kept.
 export function buildPreferences(answers = {}, existing = {}) {
   const roles = pick(answers.roles, ROLE_FAMILIES, "role type");
   const cities = pick(answers.cities, CITIES, "city");
   // "ai" scores with a model through OpenRouter (needs a key); "keywords" is free and needs nothing.
   const scoring = answers.scoring === undefined ? (existing.scoring || "ai") : answers.scoring;
+  if (answers.maxAgeDays !== undefined && !AGE_CHOICES.includes(Number(answers.maxAgeDays))) throw new Error(`Pick ${AGE_CHOICES.join(", ")} days`);
+  const age = answers.maxAgeDays === undefined ? {} : { maxAgeDays: Number(answers.maxAgeDays) };
   if (!["ai", "keywords"].includes(scoring)) throw new Error(`Unknown scoring: ${scoring}`);
   const schools = unique((Array.isArray(answers.schools) ? answers.schools : [])
     .map((s) => String(s).trim().slice(0, 80))
@@ -103,6 +109,7 @@ export function buildPreferences(answers = {}, existing = {}) {
     workdaySearch: unique([...BASE_SEARCHES, ...roles.flatMap((r) => ROLE_FAMILIES[r].searches)]),
     networkSchools: schools,
     scoring,
+    ...age,
     // The choices themselves, so the setup screen can show them again later.
     setup: { roles, cities }
   };
@@ -203,6 +210,9 @@ export function readSetup(dataDir, starter = readStarter()) {
     watchlistCount: watchlist.length,
     // Whether a key is saved, never the key itself.
     scoring: prefs.scoring || "ai",
+    // A fresh install starts at 14 days; anyone else sees their own setting, even one not offered here.
+    maxAgeDays: fresh ? 14 : (prefs.maxAgeDays ?? 14),
+    ageChoices: AGE_CHOICES,
     hasKey: hasRealKey(),
     options: {
       roles: Object.entries(ROLE_FAMILIES).map(([key, r]) => ({ key, label: r.label })),
