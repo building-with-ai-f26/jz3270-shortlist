@@ -379,8 +379,35 @@
     .start .step-title { font-size: clamp(42px, 5.6vw, 72px); }
     .start h1:focus, .start .step-title:focus { outline: none; }
     .start .lede { margin: 18px 0 30px; font-size: 18px; color: var(--ink-2); max-width: 58ch; }
-    .hero-drop { display: grid; justify-items: center; align-content: center; gap: 12px; min-height: 340px; padding: 36px 24px; text-align: center; background: var(--strip); border: 2px dashed var(--ink-3); cursor: pointer; transition: border-color 160ms var(--ease), background 160ms var(--ease); }
-    .hero-drop:hover { border-color: var(--ink); }
+    .hero-drop { position: relative; display: grid; justify-items: center; align-content: center; gap: 12px; min-height: 340px; padding: 36px 24px; text-align: center; background: var(--strip); border: 2px dashed var(--ink-3); cursor: pointer; transition: border-color 160ms var(--ease), background 160ms var(--ease); }
+    /* Hover or drag a file over it, and the dashed border starts marching. */
+    .hero-drop .ants { position: absolute; inset: -2px; width: calc(100% + 4px); height: calc(100% + 4px); pointer-events: none; display: none; }
+    .hero-drop .ants rect { fill: none; stroke: var(--ink); stroke-width: 4; stroke-dasharray: 10 8; animation: ants 600ms linear infinite; }
+    .hero-drop:hover, .hero-drop.over { border-color: transparent; }
+    .hero-drop:hover .ants, .hero-drop.over .ants { display: block; }
+    .hero-drop.over { background: var(--board-deep); }
+    .hero-drop.ready .ants rect { stroke: var(--strip); }
+    .hero-drop.ready.over { background: var(--ink); }
+    .hero-drop .go, .hero-drop.over .idle { display: none; }
+    .hero-drop.over .go { display: block; }
+    @keyframes ants { to { stroke-dashoffset: -18; } }
+    /* A rubber stamp that lands on the drop zone once a resume is in. */
+    .stamp { position: absolute; top: 18px; right: 18px; padding: 6px 10px 5px; border: 3px solid currentColor; font-family: var(--display); font-weight: 900; font-size: 22px; line-height: 0.9; letter-spacing: 0.04em; text-transform: uppercase; transform: rotate(-8deg); pointer-events: none; }
+    .stamp small { display: block; margin-top: 3px; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-align: center; }
+    .stamp.thunk { animation: thunk 340ms cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+    @keyframes thunk { from { opacity: 0; transform: scale(1.9) rotate(-18deg); } to { opacity: 1; transform: scale(1) rotate(-8deg); } }
+    /* A departure board of true facts across the top of the first step. */
+    .ticker { overflow: hidden; background: var(--ink); color: var(--strip); }
+    .ticker-track { display: flex; width: max-content; animation: ticker 70s linear infinite; }
+    .ticker:hover .ticker-track { animation-play-state: paused; }
+    .ticker span { display: inline-flex; align-items: center; gap: 14px; padding: 9px 28px 8px 0; font-family: var(--display); font-weight: 800; font-size: 15px; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+    .ticker span::before { content: ""; width: 7px; height: 7px; background: #c9cdc8; }
+    @keyframes ticker { to { transform: translateX(-50%); } }
+    /* Three made-up roles that re-rank as the dials move. */
+    .start-step[data-step="2"] { max-width: 1160px; }
+    .matters { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 36px; align-items: start; }
+    .matters .preview .why { margin-top: 4px; font-size: 11px; color: var(--ink-3); }
+    .matters .preview .empty-note { border-top: 1px solid var(--rule-soft); }
     .hero-drop .icon { width: 46px; height: 46px; stroke-width: 1.4; }
     .hero-drop .big { font-family: var(--display); font-weight: 900; font-size: clamp(36px, 4.6vw, 60px); line-height: 0.92; text-transform: uppercase; }
     .hero-drop p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 52ch; }
@@ -413,6 +440,7 @@
     @media (prefers-reduced-motion: reduce) {
       .loading { animation: none; }
       .run[disabled] .icon { animation: none; }
+      .ticker-track, .hero-drop .ants rect, .stamp.thunk { animation: none; }
       * { transition-duration: 0ms !important; }
     }
 
@@ -429,6 +457,8 @@
       .keys { display: none; }
       .hero { grid-template-columns: 1fr; gap: 24px; }
       .hero-drop { min-height: 260px; }
+      .matters { grid-template-columns: 1fr; gap: 20px; }
+      .matters .preview { position: static; order: -1; }
     }
     @media (max-width: 680px) {
       body { font-size: 14px; }
@@ -580,6 +610,7 @@
 
   <!-- Start, at /#start: the first-run home page. Resume first, then what you want, your dials, then where to look. -->
   <div id="startView" hidden>
+    <div class="ticker" id="startTicker" aria-hidden="true"></div>
     <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
     <main class="wrap start">
       <ol class="rail" id="startRail" aria-label="Setup steps"></ol>
@@ -1143,16 +1174,24 @@
       if (!hasFile(e)) return;
       e.preventDefault();
       dragDepth++;
+      // On the start page's first step the drop zone itself lights up. Everywhere else a full-page overlay appears.
+      if (!$("startView").hidden && start?.step === 0 && $("heroDrop")) return $("heroDrop").classList.add("over");
       $("dropTitle").textContent = $("startView").hidden ? "Drop your resume to rescore every role" : "Drop your resume to start";
       $("drop").hidden = false;
     });
     window.addEventListener("dragover", (e) => { if (hasFile(e)) e.preventDefault(); });
-    window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").hidden = true; });
+    window.addEventListener("dragleave", () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth) return;
+      $("drop").hidden = true;
+      $("heroDrop")?.classList.remove("over");
+    });
     window.addEventListener("drop", (e) => {
       if (!hasFile(e)) return;
       e.preventDefault();
       dragDepth = 0;
       $("drop").hidden = true;
+      $("heroDrop")?.classList.remove("over");
       if (!$("startView").hidden) startUpload(e.dataTransfer.files[0]);
       else if (!$("setupView").hidden) setupUpload(e.dataTransfer.files[0]);
       else if (!$("app").hidden) uploadResume(e.dataTransfer.files[0]);
@@ -1660,10 +1699,65 @@
     }
     const startPicked = (name) => [...$("startForm").querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
 
-    function heroDropHtml(s) {
-      if (s.sampleResume) return `${icon("up")}<div class="big">Drop your resume here</div><p>PDF, Word or text.</p><button type="button" class="btn solid">Choose a file</button>`;
+    // The drop zone. "justNow" makes the Received stamp land with a thunk right after an upload.
+    function heroDropHtml(s, justNow = false) {
+      const ants = `<svg class="ants" aria-hidden="true"><rect width="100%" height="100%" /></svg>`;
+      if (s.sampleResume) return `${ants}${icon("up")}<div class="big idle">Drop your resume here</div><div class="big go">Let go</div><p>PDF, Word or text.</p><button type="button" class="btn solid">Choose a file</button>`;
       const r = st?.resume;
-      return `${icon("check")}<div class="big">Resume ready</div><p>${r ? `${esc(r.fileName)}, added ${ago(r.uploadedAt)}.` : "Using the resume in data/profile.md."} Drop another file to replace it.</p><button type="button" class="btn">Choose another file</button>`;
+      const day = r ? new Date(r.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+      const stamp = `<span class="stamp${justNow ? " thunk" : ""}" aria-hidden="true">Received${day ? `<small>${esc(day)}</small>` : ""}</span>`;
+      return `${ants}${stamp}${icon("check")}<div class="big idle">Resume ready</div><div class="big go">Let go to replace it</div><p>${r ? `${esc(r.fileName)}, added ${ago(r.uploadedAt)}.` : "Using the resume in data/profile.md."} Drop another file to replace it.</p><button type="button" class="btn">Choose another file</button>`;
+    }
+
+    // True facts for the ticker across the top of the first step.
+    function renderTicker(s) {
+      const starter = s.options.sectors.reduce((a, x) => a + x.count, 0);
+      const facts = [
+        `${n(starter)} starter companies in ${s.options.sectors.length} sectors`,
+        "Greenhouse, Lever, Ashby, Workday and SmartRecruiters",
+        "About 10,000 more companies through Explore",
+        "Every role filtered out keeps its reason",
+        "Each role is paid for once",
+        "Keyword scoring costs $0",
+        "Email, phone and links removed before scoring",
+        "Reach out links find alumni at each company"
+      ];
+      // Two copies side by side, so the band loops without a seam.
+      $("startTicker").innerHTML = `<div class="ticker-track">${[...facts, ...facts].map((f) => `<span>${esc(f)}</span>`).join("")}</div>`;
+    }
+
+    // Three made-up roles that show what the dials do before there are any real ones. Each dial moves at
+    // least one of them: a senior role at a large company, a fresh 2027 role at a startup in your top city,
+    // and a startup role at your first dream company.
+    function startSampleRoles() {
+      const city = start.setup.options.cities.find((c) => startPicked("cities").includes(c.key));
+      return {
+        context: { families: [], topCity: city ? { label: city.label, words: [city.label] } : null },
+        roles: [
+          { key: "a", id: "workday:sample:a", title: "Senior Strategy Manager", company: "A large company", location: "Chicago", ageDays: 12, cohort: "Open now", fit: 70 },
+          { key: "b", id: "greenhouse:sample:b", title: "Strategy Associate, MBA 2027", company: "A seed-stage startup", location: city ? city.label : "New York", ageDays: 2, cohort: "2027 grad", fit: 62 },
+          { key: "c", id: "ashby:sample:c", title: "Product Operations Manager", company: start.weights.dream[0] || "A growth-stage startup", location: "Remote, US", ageDays: 6, cohort: "Open now", fit: 64 }
+        ]
+      };
+    }
+    function renderStartSample() {
+      const box = $("startSample");
+      if (!box) return;
+      if (!scoreLib) { box.closest("aside").hidden = true; return; }
+      const { roles, context } = startSampleRoles();
+      const ranked = roles.map((r) => ({ ...r, ...scoreLib.yourScore(r, start.weights, context) })).sort((a, b) => b.score - a.score);
+      const before = new Map([...box.querySelectorAll("li")].map((li) => [li.dataset.key, { top: li.getBoundingClientRect().top, score: li.dataset.score }]));
+      const tierOf = (fit) => (fit >= 75 ? "b-strong" : fit >= 50 ? "b-possible" : "");
+      box.innerHTML = `<ol>${ranked.map((r) => `<li data-key="${r.key}" data-score="${r.score}"><span class="mini ${tierOf(r.score)}">${r.score}</span><div><p class="t">${esc(r.title)}</p><p class="c">${esc(r.company)} · ${esc(r.location)} · posted ${r.ageDays} days ago</p><p class="c why tnum">AI fit ${r.fit}${r.parts.map((p) => ` · ${esc(p.label)} ${signed(p.points)}`).join("")}${r.capped ? " (dials add at most 25)" : ""}</p></div></li>`).join("")}</ol>`;
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      // Slide each role from where it was to where it is now, and bump a score that changed.
+      box.querySelectorAll("li").forEach((li) => {
+        const old = before.get(li.dataset.key);
+        if (!old) return;
+        const dy = old.top - li.getBoundingClientRect().top;
+        if (dy) li.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 360, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
+        if (old.score !== li.dataset.score) li.querySelector(".mini").animate([{ transform: "scale(1.3)" }, { transform: "none" }], { duration: 280, easing: "cubic-bezier(0.2, 1.6, 0.4, 1)" });
+      });
     }
 
     function renderStart() {
@@ -1705,7 +1799,10 @@
           <h2 class="step-title" tabindex="-1">What matters to you</h2>
           <p class="lede">The AI reads each role against your resume and your words, and gives it a fit from 0 to 100. Your dials then add or take away points, so the board ranks roles the way you would. Dials cost nothing, and you can change them any time in Your scoring.</p>
           <p class="score-eq"><span>AI fit<small>0 to 100, from your resume</small></span><span class="op" aria-hidden="true">+</span><span>Your dials<small>at most 25 either way</small></span><span class="op" aria-hidden="true">=</span><span class="total">Your score<small>on every role, with the math</small></span></p>
-          <div id="startDials"></div>
+          <div class="matters">
+            <div id="startDials"></div>
+            <aside class="preview" aria-live="polite"><h2>Try it on three roles</h2><div id="startSample"></div><p class="empty-note">Made up, to show what your dials do. Press a dial and watch them move.</p></aside>
+          </div>
         </section>
         <section class="start-step" data-step="3" hidden>
           <h2 class="step-title" tabindex="-1">Where to look</h2>
@@ -1743,6 +1840,7 @@
           <p class="help">Each one gains 10 points. Press Enter after each. Companies to avoid and points for each kind of role are in Your scoring.</p>
           <div class="chips-in">${w.dream.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-start-remove="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("")}<input type="text" id="startDream" maxlength="60" placeholder="Add a company" aria-label="Add a dream company" /></div>
         </section>`;
+      renderStartSample();
     }
 
     function updateStartBar() {
@@ -1764,6 +1862,7 @@
         if (!sec.hidden) current = sec;
       });
       if (i === 2) renderStartDials();
+      $("startTicker").hidden = i !== 0;
       $("startRail").innerHTML = START_STEPS.map((label, j) => `<li class="${j < i ? "done" : j === i ? "now" : ""}"${j === i ? ' aria-current="step"' : ""}>${label}</li>`).join("");
       startMsg("");
       updateStartBar();
@@ -1782,6 +1881,7 @@
         return startMsg("Could not load setup. Is npm start still running?", true);
       }
       renderStart();
+      renderTicker(start.setup);
       showStartStep(0);
     }
 
@@ -1799,7 +1899,7 @@
         await refreshStatus();
         start.setup.sampleResume = false;
         zone.classList.add("ready");
-        zone.innerHTML = heroDropHtml(start.setup);
+        zone.innerHTML = heroDropHtml(start.setup, true);
         startMsg(`Read ${n(json.chars)} characters from ${json.fileName}.`);
       } catch (err) {
         startMsg(`Could not use that resume: ${err.message}`, true);
@@ -1876,7 +1976,7 @@
       if (dial) {
         start.weights[dial.dataset.dial] = Number(dial.dataset.value);
         dial.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === dial)));
-        return;
+        return renderStartSample();
       }
       const remove = e.target.closest("[data-start-remove]");
       if (remove) { start.weights.dream.splice(Number(remove.dataset.startRemove), 1); renderStartDials(); $("startDream").focus(); }
