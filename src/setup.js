@@ -8,6 +8,7 @@ import { hasRealKey } from "./env.js";
 
 const CONFIG = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "config");
 const SAMPLE_PROFILE = path.join(CONFIG, "profile.example.md");
+const EXAMPLE_PREFERENCES = path.join(CONFIG, "preferences.example.json");
 const STARTER_FILE = path.join(CONFIG, "starter-watchlist.json");
 const MAX_LOOKING_FOR = 2000;
 
@@ -198,7 +199,9 @@ export function readSetup(dataDir, starter = readStarter()) {
   const sampleResume = !resumePart(profile) || resumePart(profile) === resumePart(sample);
   const lookingFor = lookingForText(profile);
   // On a fresh install the preferences and watchlist are the starter examples, which are not this user's choice.
-  const fresh = !prefs.setup && sampleResume;
+  // That stays true after a resume upload, since the start page asks for the resume before anything is saved.
+  const examplePrefs = JSON.stringify(prefs) === JSON.stringify(readJson(EXAMPLE_PREFERENCES, null));
+  const fresh = !prefs.setup && (sampleResume || examplePrefs);
   const chosen = prefs.setup || (fresh ? { roles: [], cities: [] } : inferChoices(prefs));
   return {
     roles: chosen.roles,

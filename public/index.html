@@ -364,6 +364,42 @@
     .savebar p.setup-msg:empty { display: none; }
     .savebar .run { width: auto; min-height: 50px; margin-left: auto; font-size: 22px; }
 
+    /* ---------- Start: the first-run home page at /#start ---------- */
+    #startView .wrap { max-width: 1200px; }
+    .start { padding-top: 4px; padding-bottom: 150px; }
+    .start-step:not(.hero) { max-width: 1000px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, 1fr); gap: 48px; align-items: start; }
+    .hero .lede { margin-bottom: 0; }
+    .rail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; list-style: none; margin: 0 0 40px; padding: 0; counter-reset: rail; }
+    .rail li { counter-increment: rail; padding-top: 10px; border-top: 6px solid var(--rule); font-size: 13px; font-weight: 700; color: var(--ink-3); transition: border-color 220ms var(--ease), color 220ms var(--ease); }
+    .rail li::before { content: counter(rail, decimal-leading-zero); margin-right: 8px; font-family: var(--display); font-weight: 800; font-size: 18px; }
+    .rail li.done, .rail li.now { border-top-color: var(--ink); color: var(--ink); }
+    .start h1, .start .step-title { margin: 0; font-family: var(--display); font-weight: 900; line-height: 0.86; text-transform: uppercase; }
+    .start h1 { font-size: clamp(52px, 6.6vw, 108px); }
+    .start .step-title { font-size: clamp(42px, 5.6vw, 72px); }
+    .start h1:focus, .start .step-title:focus { outline: none; }
+    .start .lede { margin: 18px 0 30px; font-size: 18px; color: var(--ink-2); max-width: 58ch; }
+    .hero-drop { display: grid; justify-items: center; align-content: center; gap: 12px; min-height: 340px; padding: 36px 24px; text-align: center; background: var(--strip); border: 2px dashed var(--ink-3); cursor: pointer; transition: border-color 160ms var(--ease), background 160ms var(--ease); }
+    .hero-drop:hover { border-color: var(--ink); }
+    .hero-drop .icon { width: 46px; height: 46px; stroke-width: 1.4; }
+    .hero-drop .big { font-family: var(--display); font-weight: 900; font-size: clamp(36px, 4.6vw, 60px); line-height: 0.92; text-transform: uppercase; }
+    .hero-drop p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 52ch; }
+    .hero-drop .btn { margin-top: 6px; padding: 11px 18px; font-size: 15px; }
+    .hero-drop.ready { background: var(--ink); border: 2px solid var(--ink); color: var(--strip); }
+    .hero-drop.ready p { color: #c9cdc8; }
+    .hero-drop.ready .btn { border-color: var(--strip); color: var(--strip); }
+    .hero-drop.ready .btn:hover { background: var(--strip); color: var(--ink); }
+    .hero-drop.busy { cursor: progress; border-style: solid; border-color: var(--ink); }
+    .fine { margin: 14px 0 0; font-size: 13px; color: var(--ink-2); max-width: 70ch; }
+    .score-eq { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; margin: 0 0 8px; border: 1px solid var(--ink); background: var(--strip); }
+    .score-eq > span:not(.op) { flex: 1 1 0; }
+    .score-eq > span { padding: 12px 16px; font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1; text-transform: uppercase; }
+    .score-eq small { display: block; margin-top: 4px; font-family: var(--text); font-size: 12px; font-weight: 600; text-transform: none; color: var(--ink-2); }
+    .score-eq .op { display: grid; place-items: center; padding: 12px 6px; color: var(--ink-3); }
+    .score-eq .total { background: var(--ink); color: var(--strip); }
+    .score-eq .total small { color: #c9cdc8; }
+    .savebar .back { min-height: 50px; padding: 0 18px; font-size: 15px; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes slide { to { background-position: -150% 0; } }
     @media (prefers-reduced-motion: no-preference) {
@@ -391,6 +427,8 @@
       .steps a { border: 0; padding: 0; grid-template-columns: 26px auto; gap: 6px; font-size: 13px; }
       .steps a::before { width: 26px; height: 26px; font-size: 15px; }
       .keys { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 24px; }
+      .hero-drop { min-height: 260px; }
     }
     @media (max-width: 680px) {
       body { font-size: 14px; }
@@ -433,6 +471,15 @@
       .drop strong { font-size: 36px; }
       .drop .frame { padding: 40px 24px; }
       .setup h1 { font-size: 42px; }
+      .rail { margin-bottom: 28px; }
+      .rail li { font-size: 0; }
+      #startView .savebar .wrap { flex-direction: row; flex-wrap: wrap; }
+      #startView .savebar p { flex-basis: 100%; order: -1; }
+      #startView .savebar .run { flex: 1; width: auto; }
+      .start h1 { font-size: 44px; }
+      .start .lede { font-size: 16px; }
+      .hero-drop { min-height: 240px; }
+      .score-eq > span { font-size: 20px; padding: 10px 12px; }
       .scoring-layout { grid-template-columns: 1fr; gap: 20px; }
       .scoring-layout h1 { font-size: 42px; }
       .preview { position: static; }
@@ -531,6 +578,21 @@
     </main>
   </div>
 
+  <!-- Start, at /#start: the first-run home page. Resume first, then what you want, your dials, then where to look. -->
+  <div id="startView" hidden>
+    <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
+    <main class="wrap start">
+      <ol class="rail" id="startRail" aria-label="Setup steps"></ol>
+      <form id="startForm" novalidate></form>
+    </main>
+    <div class="savebar"><div class="wrap">
+      <button class="btn back" id="startBack" type="button" hidden>Back</button>
+      <p id="startSummary"></p>
+      <p class="setup-msg" id="startMsg" role="status" aria-live="polite"></p>
+      <button class="run" id="startNext" type="button"><span id="startNextLabel">Next</span></button>
+    </div></div>
+  </div>
+
   <!-- Setup, at /#setup. It opens by itself on a fresh install and from Settings after that. Demo mode shows a preview that does not save. -->
   <!-- Your scoring, at /#scoring: how each score is made, and the dials that adjust the AI fit into your score. -->
   <div id="scoringView" hidden>
@@ -563,7 +625,7 @@
 
   <div class="drop" id="drop" hidden aria-hidden="true">
     <div class="frame">
-      <strong>Drop your resume to rescore every role</strong>
+      <strong id="dropTitle">Drop your resume to rescore every role</strong>
       <span>PDF, Word or text. Contact details are removed before anything is scored.</span>
     </div>
   </div>
@@ -862,7 +924,7 @@
       rule_added: [],
       scoring_saved: ["dials_set", "companies_listed"],
       company_added: ["from"],
-      setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time"]
+      setup_saved: ["roles_count", "cities_count", "sectors_count", "schools_count", "scoring", "first_time", "from"]
     };
     function startAnalytics(cfg) {
       if (!cfg?.key || window.posthog?.__loaded) return;
@@ -970,7 +1032,8 @@
     $("fileInput").addEventListener("change", (e) => {
       const file = e.target.files[0];
       e.target.value = "";
-      if ($("setupView").hidden) uploadResume(file); else setupUpload(file);
+      if (!$("startView").hidden) startUpload(file);
+      else if ($("setupView").hidden) uploadResume(file); else setupUpload(file);
     });
     $("tracks").addEventListener("click", (e) => {
       const b = e.target.closest("button");
@@ -1050,7 +1113,7 @@
 
     // Keyboard triage: J and K move between roles, O opens the posting, Enter opens a folded long shot.
     document.addEventListener("keydown", (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || !$("setupView").hidden || !$("scoringView").hidden) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || !$("setupView").hidden || !$("scoringView").hidden || !$("startView").hidden) return;
       if (e.target.closest("input, textarea, select, [contenteditable]")) return;
       const strips = [...document.querySelectorAll("#boards .strip")];
       if (!strips.length) return;
@@ -1076,7 +1139,13 @@
     // Drag a file anywhere on the page to replace the resume. Off in demo modes, where there is nothing to replace.
     let dragDepth = 0;
     const hasFile = (e) => [...(e.dataTransfer?.types || [])].includes("Files") && !st?.demo;
-    window.addEventListener("dragenter", (e) => { if (!hasFile(e)) return; e.preventDefault(); dragDepth++; $("drop").hidden = false; });
+    window.addEventListener("dragenter", (e) => {
+      if (!hasFile(e)) return;
+      e.preventDefault();
+      dragDepth++;
+      $("dropTitle").textContent = $("startView").hidden ? "Drop your resume to rescore every role" : "Drop your resume to start";
+      $("drop").hidden = false;
+    });
     window.addEventListener("dragover", (e) => { if (hasFile(e)) e.preventDefault(); });
     window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").hidden = true; });
     window.addEventListener("drop", (e) => {
@@ -1084,7 +1153,8 @@
       e.preventDefault();
       dragDepth = 0;
       $("drop").hidden = true;
-      if (!$("setupView").hidden) setupUpload(e.dataTransfer.files[0]);
+      if (!$("startView").hidden) startUpload(e.dataTransfer.files[0]);
+      else if (!$("setupView").hidden) setupUpload(e.dataTransfer.files[0]);
       else if (!$("app").hidden) uploadResume(e.dataTransfer.files[0]);
     });
 
@@ -1222,6 +1292,7 @@
     let scoringDraft = null;
     const LEVELS = [[0, "Ignore"], [1, "A little"], [2, "A lot"]];
     const SIZE_LEVELS = [[-2, "Prefer large"], [-1, "Lean large"], [0, "No preference"], [1, "Lean startups"], [2, "Prefer startups"]];
+    const dialCount = (w) => Object.values(w.roles).filter(Boolean).length + ["size", "topCity", "seniority", "programs", "freshness"].filter((k) => w[k]).length;
     function dialHtml(key, label, help, value, levels = LEVELS) {
       return `<div class="dial"><div><p class="dial-name">${label}</p>${help ? `<p class="dial-help">${help}</p>` : ""}</div><span class="seg sm" role="group" aria-label="${esc(label)}">${levels.map(([v, l]) => `<button type="button" data-dial="${key}" data-value="${v}" aria-pressed="${value === v}">${l}</button>`).join("")}</span></div>`;
     }
@@ -1268,7 +1339,7 @@
       $("scoringPreview").innerHTML = top.length
         ? `<ol>${top.map((r) => `<li><span class="mini ${tierOf(r.fit ?? 0)}">${esc(r.fit ?? "?")}</span><div><p class="t">${esc(r.title)}</p><p class="c">${esc(r.company)}${r.scoreParts.length ? ` · ${r.scoreParts.map((p) => `${esc(p.label)} ${signed(p.points)}`).join(", ")}` : ""}</p></div></li>`).join("")}</ol>`
         : `<p class="empty-note">Run Check my list to see your top roles here.</p>`;
-      const set = Object.values(w.roles).filter(Boolean).length + ["size", "topCity", "seniority", "programs", "freshness"].filter((k) => w[k]).length;
+      const set = dialCount(w);
       $("scoringSummary").innerHTML = `<b class="tnum">${set}</b> dial${set === 1 ? "" : "s"} set, ${w.dream.length + w.avoid.length} compan${w.dream.length + w.avoid.length === 1 ? "y" : "ies"} listed.`;
     }
     async function openScoring() {
@@ -1319,7 +1390,7 @@
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
         const w = json.weights;
-        const dialsSet = Object.values(w.roles).filter(Boolean).length + ["size", "topCity", "seniority", "programs", "freshness"].filter((k) => w[k]).length;
+        const dialsSet = dialCount(w);
         const listed = w.dream.length + w.avoid.length;
         track("scoring_saved", { dials_set: dialsSet, companies_listed: listed });
         if (data) { data.scoring = { weights: json.weights, context: json.context }; if (json.accuracy) data.accuracy = json.accuracy; }
@@ -1474,10 +1545,12 @@
       } catch {
         setup = null;
       }
-      $("setupNote").hidden = Boolean(st?.needsSetup) && !demo;
+      $("setupNote").hidden = false;
       $("setupNoteText").innerHTML = demo
         ? 'Preview of the setup screen. It saves in live mode (npm start). <a href="#">Back to the board</a>'
-        : 'Changes apply when you save. <a href="#">Back to the board</a> without saving.';
+        : st?.needsSetup
+          ? 'Prefer one step at a time? <a href="#start">Use the guided start</a>.'
+          : 'Changes apply when you save. <a href="#">Back to the board</a> without saving.';
       if (!setup?.options) return setupMsg("Could not load setup. Is npm start still running?", true);
       renderSetup(setup);
     }
@@ -1519,7 +1592,8 @@
       const scoring = form.querySelector('input[name="scoring"]:checked')?.value || "keywords";
       const apiKey = $("orKey").value.trim();
       if (setup.sampleResume) return setupMsg("Add your resume first. Shortlist ranks every role against it.", true);
-      if (!picked("sectors").length && !setup.watchlistCount) return setupMsg("Pick at least one sector so there are companies to check.", true);
+      // A fresh install's watchlist is the example list, which saving without sectors would empty.
+      if (!picked("sectors").length && (st?.needsSetup || !setup.watchlistCount)) return setupMsg("Pick at least one sector so there are companies to check.", true);
       if (scoring === "ai" && !setup.hasKey && !apiKey) return setupMsg("Paste your OpenRouter key, or choose keyword scoring.", true);
       const btn = $("setupSave");
       btn.disabled = true;
@@ -1539,7 +1613,7 @@
         // Counts and the scoring choice only, never which roles, cities, sectors or schools.
         track("setup_saved", {
           roles_count: picked("roles").length, cities_count: picked("cities").length, sectors_count: picked("sectors").length,
-          schools_count: schools.length, scoring, first_time: Boolean(st?.needsSetup)
+          schools_count: schools.length, scoring, first_time: Boolean(st?.needsSetup), from: "settings"
         });
         $("orKey").value = "";
         setup = json;
@@ -1573,16 +1647,270 @@
     });
     $("setupSave").addEventListener("click", saveSetup);
 
+    // ---------- Start: the first-run home page ----------
+    // A fresh install lands here instead of the long Settings form: the resume first, then what you want, then
+    // your dials, then where to look. It saves what Settings saves (POST /api/setup) plus the dials
+    // (POST /api/scoring), then runs the first check. Demo modes never show it.
+    const START_STEPS = ["Your resume", "What you want", "What matters", "Where to look"];
+    let start = null;
+
+    function startMsg(text, bad) {
+      $("startMsg").textContent = text || "";
+      $("startMsg").classList.toggle("bad", Boolean(bad));
+    }
+    const startPicked = (name) => [...$("startForm").querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
+
+    function heroDropHtml(s) {
+      if (s.sampleResume) return `${icon("up")}<div class="big">Drop your resume here</div><p>PDF, Word or text.</p><button type="button" class="btn solid">Choose a file</button>`;
+      const r = st?.resume;
+      return `${icon("check")}<div class="big">Resume ready</div><p>${r ? `${esc(r.fileName)}, added ${ago(r.uploadedAt)}.` : "Using the resume in data/profile.md."} Drop another file to replace it.</p><button type="button" class="btn">Choose another file</button>`;
+    }
+
+    function renderStart() {
+      const s = start.setup;
+      const ai = s.scoring === "ai" && s.hasKey;
+      $("startForm").innerHTML = `
+        <section class="start-step hero" data-step="0">
+          <div>
+            <h1 tabindex="-1">Off-cycle roles, ranked against you</h1>
+            <p class="lede">Shortlist checks the job boards of the companies you care about, cuts the roles that do not fit your rules, and ranks the rest against your resume, with the reason for every score. It starts with your resume.</p>
+          </div>
+          <div>
+            <div class="hero-drop${s.sampleResume ? "" : " ready"}" id="heroDrop">${heroDropHtml(s)}</div>
+            <p class="fine">Shortlist removes your email, phone and links before anything is saved or scored, and the file itself is not kept. Prefer one long form? <a href="#setup">See every setting on one page</a>.</p>
+          </div>
+        </section>
+        <section class="start-step" data-step="1" hidden>
+          <h2 class="step-title" tabindex="-1">What you want</h2>
+          <p class="lede">Your words and these choices decide which roles reach your board. You can change any of it later in Settings.</p>
+          <section class="q"><h2>In your own words</h2>
+            <p class="help">What makes a role great for you? The AI reads this next to your resume for every role. A few sentences is plenty.</p>
+            <textarea class="field" name="lookingFor" maxlength="${LOOKING_FOR_MAX}" placeholder="For example: Strategy or operations roles at a growth stage company in New York. Open to rotational programs. Not interested in pure sales.">${esc(s.lookingFor)}</textarea>
+            <p class="count-line tnum"><span id="startLfCount">${s.lookingFor.length}</span> of ${n(LOOKING_FOR_MAX)} characters</p>
+          </section>
+          <section class="q"><h2>Kinds of roles</h2>
+            <p class="help">Pick every kind you would apply to. MBA 2027 and new grad titles are always included.</p>
+            ${choiceList("roles", s.options.roles, s.roles)}
+          </section>
+          <section class="q"><h2>Cities</h2>
+            <p class="help">Roles outside these cities are filtered out. Pick none to see every city.</p>
+            ${choiceList("cities", s.options.cities, s.cities)}
+          </section>
+          <section class="q"><h2>How recent</h2>
+            <p class="help">Older roles are usually too late to apply to. They show under Filtered out with the reason.</p>
+            <div class="modes">${ageOptions(s)}</div>
+          </section>
+        </section>
+        <section class="start-step" data-step="2" hidden>
+          <h2 class="step-title" tabindex="-1">What matters to you</h2>
+          <p class="lede">The AI reads each role against your resume and your words, and gives it a fit from 0 to 100. Your dials then add or take away points, so the board ranks roles the way you would. Dials cost nothing, and you can change them any time in Your scoring.</p>
+          <p class="score-eq"><span>AI fit<small>0 to 100, from your resume</small></span><span class="op" aria-hidden="true">+</span><span>Your dials<small>at most 25 either way</small></span><span class="op" aria-hidden="true">=</span><span class="total">Your score<small>on every role, with the math</small></span></p>
+          <div id="startDials"></div>
+        </section>
+        <section class="start-step" data-step="3" hidden>
+          <h2 class="step-title" tabindex="-1">Where to look</h2>
+          <p class="lede">Start from a ready list of companies in each sector. You can add any company later, and Explore looks beyond your list.</p>
+          <section class="q"><h2>Companies to watch</h2>
+            <p class="help">The number is how many companies each sector adds.</p>
+            ${choiceList("sectors", s.options.sectors, s.sectors)}
+          </section>
+          <section class="q"><h2>Scoring</h2>
+            <p class="help">Keyword scoring is free and works right away. AI scoring reads each role against your resume and explains the fit and the gap. Each role is paid for once.</p>
+            <div class="modes">
+              <label class="choice"><input type="radio" name="scoring" value="keywords"${ai ? "" : " checked"} /><span class="t"><span class="box">${icon("check")}</span>Keyword scoring</span><small>Free. No account needed.</small></label>
+              <label class="choice"><input type="radio" name="scoring" value="ai"${ai ? " checked" : ""} /><span class="t"><span class="box">${icon("check")}</span>AI scoring with OpenRouter</span><small>Needs an OpenRouter key. Cost shows after every check.</small></label>
+            </div>
+            <div class="key-row" id="startKeyRow" hidden><label for="startKey">OpenRouter key</label><input class="field" id="startKey" type="password" autocomplete="off" placeholder="${s.hasKey ? "A key is saved. Paste a new one only to replace it." : "Paste your key from openrouter.ai/keys. It stays on this computer."}" /></div>
+          </section>
+        </section>`;
+    }
+
+    // The dials step is drawn when it opens, so "Your top city" follows the cities picked one step earlier.
+    function renderStartDials() {
+      const w = start.weights;
+      const city = start.setup.options.cities.find((c) => startPicked("cities").includes(c.key));
+      $("startDials").innerHTML = `
+        <section class="q"><h2>Company and place</h2>
+          ${dialHtml("size", "Startups or large companies", "Approximate: guessed from the job system each company uses.", w.size, SIZE_LEVELS)}
+          ${city ? dialHtml("topCity", `Your top city: ${esc(city.label)}`, "The first city you picked.", w.topCity) : ""}
+        </section>
+        <section class="q"><h2>The role itself</h2>
+          ${dialHtml("seniority", "Avoid senior titles", "Senior, Lead, Principal, Director, Head of and similar titles lose points.", w.seniority)}
+          ${dialHtml("programs", "2027 and new grad roles", "Roles in the 2027 and new grad column gain points.", w.programs)}
+          ${dialHtml("freshness", "Newly posted", "Roles posted this week gain points, the last 3 days most.", w.freshness)}
+        </section>
+        <section class="q"><h2>Dream companies</h2>
+          <p class="help">Each one gains 10 points. Press Enter after each. Companies to avoid and points for each kind of role are in Your scoring.</p>
+          <div class="chips-in">${w.dream.map((x, i) => `<span class="token">${esc(x)}<button type="button" data-start-remove="${i}" aria-label="Remove ${esc(x)}">${icon("x")}</button></span>`).join("")}<input type="text" id="startDream" maxlength="60" placeholder="Add a company" aria-label="Add a dream company" /></div>
+        </section>`;
+    }
+
+    function updateStartBar() {
+      if (!start) return;
+      const last = start.step === START_STEPS.length - 1;
+      $("startBack").hidden = start.step === 0;
+      $("startNextLabel").textContent = last ? "Save and check my list" : `Next: ${START_STEPS[start.step + 1]}`;
+      const companies = start.setup.options.sectors.filter((x) => startPicked("sectors").includes(x.key)).reduce((a, x) => a + x.count, 0);
+      $("startSummary").innerHTML = last ? `<b class="tnum">${n(companies)}</b> starter companies to watch.` : `Step ${start.step + 1} of ${START_STEPS.length}`;
+      $("startKeyRow").hidden = $("startForm").querySelector('input[name="scoring"]:checked')?.value !== "ai";
+    }
+
+    function showStartStep(i) {
+      if (start.step === 2) keepStartDream();
+      start.step = i;
+      let current = null;
+      $("startForm").querySelectorAll(".start-step").forEach((sec) => {
+        sec.hidden = Number(sec.dataset.step) !== i;
+        if (!sec.hidden) current = sec;
+      });
+      if (i === 2) renderStartDials();
+      $("startRail").innerHTML = START_STEPS.map((label, j) => `<li class="${j < i ? "done" : j === i ? "now" : ""}"${j === i ? ' aria-current="step"' : ""}>${label}</li>`).join("");
+      startMsg("");
+      updateStartBar();
+      window.scrollTo(0, 0);
+      current?.querySelector("h1, .step-title")?.focus({ preventScroll: true });
+    }
+
+    async function openStart() {
+      startMsg("");
+      try {
+        const [s, scoring] = await Promise.all([fetch("/api/setup").then((r) => r.json()), fetch("/api/scoring").then((r) => r.json())]);
+        if (!s?.options || !scoring?.weights) throw new Error("no setup");
+        start = { step: 0, setup: s, weights: scoring.weights };
+      } catch {
+        start = null;
+        return startMsg("Could not load setup. Is npm start still running?", true);
+      }
+      renderStart();
+      showStartStep(0);
+    }
+
+    async function startUpload(file) {
+      if (!file || !start) return;
+      if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) return startMsg("Use a PDF, Word (.docx) or text file.", true);
+      const zone = $("heroDrop");
+      zone.classList.add("busy");
+      startMsg(`Reading ${file.name}...`);
+      try {
+        const res = await fetch("/api/resume", { method: "POST", headers: { "X-Filename": encodeURIComponent(file.name) }, body: file });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        track("resume_uploaded", { file_type: fileType(json.fileName), from: "start" });
+        await refreshStatus();
+        start.setup.sampleResume = false;
+        zone.classList.add("ready");
+        zone.innerHTML = heroDropHtml(start.setup);
+        startMsg(`Read ${n(json.chars)} characters from ${json.fileName}.`);
+      } catch (err) {
+        startMsg(`Could not use that resume: ${err.message}`, true);
+      } finally {
+        zone.classList.remove("busy");
+      }
+    }
+
+    // Keeps a company typed into the box even if Enter was never pressed.
+    function keepStartDream() {
+      const input = $("startDream");
+      const name = (input?.value || "").replace(/,/g, " ").trim();
+      const list = start.weights.dream;
+      if (name && !list.some((x) => x.toLowerCase() === name.toLowerCase())) list.push(name);
+      if (input) input.value = "";
+    }
+    function addStartDream() {
+      keepStartDream();
+      renderStartDials();
+      $("startDream").focus();
+    }
+
+    async function saveStart() {
+      const s = start.setup;
+      const form = $("startForm");
+      keepStartDream();
+      const scoring = form.querySelector('input[name="scoring"]:checked')?.value || "keywords";
+      const apiKey = $("startKey").value.trim();
+      if (s.sampleResume) { showStartStep(0); return startMsg("Add your resume first. Shortlist ranks every role against it.", true); }
+      // A fresh install's watchlist is the example list, which saving without sectors would empty.
+      if (!startPicked("sectors").length && (st?.needsSetup || !s.watchlistCount)) return startMsg("Pick at least one sector so there are companies to check.", true);
+      if (scoring === "ai" && !s.hasKey && !apiKey) return startMsg("Paste your OpenRouter key, or choose keyword scoring.", true);
+      const btn = $("startNext");
+      btn.disabled = true;
+      startMsg(apiKey ? "Checking your key with OpenRouter..." : "Saving...");
+      const post = async (url, body) => {
+        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        return json;
+      };
+      try {
+        const age = Number(form.querySelector('input[name="maxAgeDays"]:checked')?.value);
+        await post("/api/setup", {
+          roles: startPicked("roles"), cities: startPicked("cities"), sectors: startPicked("sectors"), schools: s.schools,
+          ...([7, 14, 30].includes(age) ? { maxAgeDays: age } : {}),
+          lookingFor: form.querySelector('textarea[name="lookingFor"]').value, scoring, ...(apiKey ? { apiKey } : {})
+        });
+        // The words were saved with setup just above, so the dials go alone.
+        const saved = await post("/api/scoring", { weights: start.weights });
+        // Counts and the scoring choice only, never which roles, cities, sectors, schools or companies.
+        track("setup_saved", {
+          roles_count: startPicked("roles").length, cities_count: startPicked("cities").length, sectors_count: startPicked("sectors").length,
+          schools_count: s.schools.length, scoring, first_time: Boolean(st?.needsSetup), from: "start"
+        });
+        const dialsSet = dialCount(saved.weights);
+        const listed = saved.weights.dream.length + saved.weights.avoid.length;
+        track("scoring_saved", { dials_set: dialsSet, companies_listed: listed });
+        $("startKey").value = "";
+        await refreshStatus();
+        location.hash = "";
+        runCheck();
+      } catch (err) {
+        startMsg(err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    $("startForm").addEventListener("submit", (e) => e.preventDefault());
+    $("startForm").addEventListener("click", (e) => {
+      if (e.target.closest("#heroDrop")) return $("fileInput").click();
+      const dial = e.target.closest("[data-dial]");
+      if (dial) {
+        start.weights[dial.dataset.dial] = Number(dial.dataset.value);
+        dial.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === dial)));
+        return;
+      }
+      const remove = e.target.closest("[data-start-remove]");
+      if (remove) { start.weights.dream.splice(Number(remove.dataset.startRemove), 1); renderStartDials(); $("startDream").focus(); }
+    });
+    $("startForm").addEventListener("keydown", (e) => {
+      if (e.target.id !== "startDream") return;
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addStartDream(); }
+      else if (e.key === "Backspace" && !e.target.value && start.weights.dream.length) { start.weights.dream.pop(); renderStartDials(); $("startDream").focus(); }
+    });
+    $("startForm").addEventListener("input", (e) => { if (e.target.name === "lookingFor") $("startLfCount").textContent = e.target.value.length; });
+    $("startForm").addEventListener("change", updateStartBar);
+    $("startBack").addEventListener("click", () => { if (start?.step > 0) showStartStep(start.step - 1); });
+    $("startNext").addEventListener("click", () => {
+      if (!start) return;
+      if (start.step === 0 && start.setup.sampleResume) return startMsg("Add your resume first. Shortlist ranks every role against it.", true);
+      if (start.step < START_STEPS.length - 1) return showStartStep(start.step + 1);
+      saveStart();
+    });
+
     function route() {
       if (st?.staticDemo && location.hash === "#setup") { location.hash = ""; return; }
+      // Demo modes have nothing to set up, so the start page is live mode only.
+      if (st?.demo && location.hash === "#start") { location.hash = ""; return; }
       const onSetup = location.hash === "#setup";
       const onScoring = location.hash === "#scoring";
-      $("app").hidden = onSetup || onScoring;
+      const onStart = location.hash === "#start";
+      $("app").hidden = onSetup || onScoring || onStart;
       $("setupView").hidden = !onSetup;
       $("scoringView").hidden = !onScoring;
+      $("startView").hidden = !onStart;
       if (onSetup) openSetup();
       if (onScoring) openScoring();
-      if (!onSetup && !onScoring && data) renderAll(false);
+      if (onStart) openStart();
+      if (!onSetup && !onScoring && !onStart && data) renderAll(false);
       window.scrollTo(0, 0);
     }
     window.addEventListener("hashchange", route);
@@ -1594,8 +1922,9 @@
       startAnalytics(st.analytics);
       renderAll(false);
       loadExplore();
-      // A fresh install goes straight to setup. Changing the hash runs route() through hashchange.
-      if (st.needsSetup && location.hash !== "#setup") location.hash = "#setup";
+      // A fresh install opens the start page, or the one-page Settings form if asked for by name.
+      // Changing the hash runs route() through hashchange.
+      if (st.needsSetup && location.hash !== "#setup" && location.hash !== "#start") location.hash = "#start";
       else route();
     })();
   </script>

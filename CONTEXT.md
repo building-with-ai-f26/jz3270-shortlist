@@ -12,11 +12,11 @@ This repository is public. Never put resume content, keys, emails or anything fr
 
 **Updating it:** at the end of each working session, add a dated entry to the log (what Jordan asked, what was decided, what shipped, key numbers), and update "Key decisions" and "Open questions" if anything changed.
 
-## Where things stand (Nov 17)
+## Where things stand (Nov 18)
 
 - Build 1 shipped Nov 9. Build 2 was submitted for Nov 16 with PostHog evidence, PRD v2 and the Build 2 log. The professor liked the Big Board design, so it stays.
 - Build 3 (due Nov 23) is the data roadmap below, then a move to Vercel and Supabase.
-- 132 tests (one skips on purpose; it only runs on Node older than 22).
+- 133 tests (one skips on purpose; it only runs on Node older than 22).
 - A static demo for classmates lives at `docs/demo/` on GitHub Pages.
 - OpenRouter spend: about $0.62 through Build 2, plus $0.0673 for the demo snapshot on Nov 17.
 
@@ -85,6 +85,11 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Asked:** auto-apply, since Greenhouse has autofill. Advised against submitting for the user: there is no applicant-side way to submit through Greenhouse, form answers (work authorization, custom questions) must be his, it hurts targeted off-cycle recruiting, and the PRD's Out of Scope #1 rules it out. Proposed "Apply assist" instead: show a role's application questions in advance, drafted answers to copy, the sites' own autofill, and one-click Applied tracking for the season tracker. Not yet added to the roadmap.
 - **Asked:** show how jobs are scored, and let people set their own scoring preferences, starting with their own words. Built "Your scoring": the AI fit stays the backbone, and dials (kinds of role, startups or large companies, top city, senior titles, 2027 programs, freshness, dream and avoid companies) add or take away at most 25 points, free and instant, with the math on every card. Decided the learning model will suggest dial changes instead of being a hidden model, so it stays explainable and in the user's control.
 - **Asked:** a home page that starts with the resume drop zone and these dials, and a percent-complete graphic during checks. Planned next, after Your scoring.
+
+### Nov 18: PostHog's GitHub request, the start page
+- **Asked:** why the professor got a PostHog GitHub app request for the class organization. It came from PostHog's onboarding step "Connect your data, GitHub", which sends an install request to the organization owners when the person clicking does not own it. Shortlist does not need it; the web snippet and the app's named events are enough.
+- **Asked:** the home page. Built a start page at `/#start` that a fresh install opens: the resume first, then what you want, then the dials, then where to look, then the first check. Kept the one-page Settings form for anyone who prefers it. Jordan liked the brutalist look.
+- **Found and fixed:** setup counted an install as fresh only while the sample resume was loaded, so after an upload it showed the example preferences (real estate, NYU Stern, 45 days) as the user's own. A fresh install now also means the preferences are still the untouched example file. A fresh install could also save with no sector, which emptied the example watchlist before the first check; both forms now ask for a sector.
 
 ## Open questions
 

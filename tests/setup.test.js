@@ -7,6 +7,7 @@ import { buildPreferences, readSetup, saveSetup, lookingForText, withLookingFor,
   ROLE_FAMILIES, CITIES, STARTER_SECTORS } from "../src/setup.js";
 import { prefilter } from "../src/filter.js";
 import { status, ensurePersonalFiles } from "../src/pipeline.js";
+import { saveResume } from "../src/resume.js";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "shortlist-setup-"));
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
@@ -91,6 +92,23 @@ test("a fresh install needs setup and shows an empty form, not the sample's choi
     const again = readSetup(dir);
     assert.deepEqual([again.roles, again.cities, again.schools, again.lookingFor],
       [["product"], ["chicago"], ["Booth"], "Product roles in Chicago."]);
+  } finally {
+    delete process.env.SHORTLIST_DATA_DIR;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a fresh install that adds a resume before saving setup still sees an empty form, not the example choices", async () => {
+  const dir = tmp();
+  process.env.SHORTLIST_DATA_DIR = dir;
+  try {
+    ensurePersonalFiles();
+    // The start page asks for the resume first, so the upload lands before setup is ever saved.
+    await saveResume(fs.readFileSync(new URL("../fixtures/resume-mba-pm.md", import.meta.url)), "resume.md", dir);
+    const s = readSetup(dir);
+    assert.equal(s.sampleResume, false);
+    assert.deepEqual([s.roles, s.cities, s.sectors, s.schools, s.maxAgeDays], [[], [], [], [], 14]);
+    assert.equal(status(false).needsSetup, true);
   } finally {
     delete process.env.SHORTLIST_DATA_DIR;
     fs.rmSync(dir, { recursive: true, force: true });
