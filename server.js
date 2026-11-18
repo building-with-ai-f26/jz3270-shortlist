@@ -27,6 +27,7 @@ function send(res, code, body, type = "application/json") {
 }
 
 let running = null;
+let runProgress = null;
 
 // A check's results as the page needs them: each role with the user's decision, plus any suggested rules.
 // Demo mode keeps its own decisions in data/demo and never suggests rules, since its preferences are the example file.
@@ -174,10 +175,17 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/latest") {
     return send(res, 200, forPage(readLatest(DEMO) || { summary: null, results: [], dropped: [], errors: [] }));
   }
+  // While a check runs, the page asks here once a second for the stage and percent.
+  if (req.method === "GET" && url.pathname === "/api/run") {
+    return send(res, 200, { running: Boolean(running), progress: running ? runProgress : null });
+  }
   if (req.method === "POST" && url.pathname === "/api/run") {
     // If someone double-clicks the button, both clicks share one run instead of paying twice.
     try {
-      running = running || runPipeline({ demo: DEMO });
+      if (!running) {
+        runProgress = null;
+        running = runPipeline({ demo: DEMO, onProgress: (p) => { runProgress = p; } });
+      }
       const latest = await running;
       return send(res, 200, forPage(latest));
     } catch (err) {

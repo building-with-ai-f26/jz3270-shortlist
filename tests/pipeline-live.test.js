@@ -136,3 +136,22 @@ test("switching to keyword-only and back keeps the AI scores already paid for", 
   assert.equal(back.summary.fromCache, 5, "the 5 roles scored before are reused, not paid for again");
   assert.ok(scoredTitles.length <= 3, "only roles never scored are sent to the model");
 });
+
+test("a check reports its stages in order, with a percent that only goes up and ends at 100", async () => {
+  // A new profile means every role is scored again, so the scoring stage has work to count.
+  fs.writeFileSync(path.join(dir, "profile.md"), "Sample profile D, for the progress graphic");
+  const seen = [];
+  const r = await runPipeline({ fetchImpl: fakeInternet(), now: NOW + 25200000, onProgress: (p) => seen.push(p) });
+  const order = seen.map((p) => p.stage).filter((s, i, all) => s !== all[i - 1]);
+  assert.deepEqual(order, ["boards", "details", "scoring", "saving", "done"]);
+  assert.deepEqual(seen[0].stages.map((s) => s.label), ["Job boards", "Role details", "AI scoring", "Saving"]);
+  const percents = seen.map((p) => p.percent);
+  assert.deepEqual(percents, [...percents].sort((a, b) => a - b), "the percent never goes backwards");
+  assert.ok(percents.slice(0, -1).every((x) => x <= 99), "it stays under 100 until the check has finished");
+  assert.equal(percents.at(-1), 100);
+  const boards = seen.filter((p) => p.stage === "boards").at(-1);
+  assert.deepEqual([boards.done, boards.total], [fixtures.boards.length, fixtures.boards.length]);
+  const scoring = seen.filter((p) => p.stage === "scoring").at(-1);
+  assert.deepEqual([scoring.done, scoring.total], [r.summary.scoredThisRun, r.summary.scoredThisRun]);
+  assert.equal(seen.find((p) => p.stage === "scoring").percent, 72, "boards and details are 80 of 110 points (72%), and scoring starts there");
+});

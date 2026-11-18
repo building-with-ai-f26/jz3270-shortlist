@@ -471,7 +471,14 @@ export async function fetchAll(watchlist, fetchImpl = fetch, concurrency = 8, op
   const indexed = watchlist.map((entry, i) => ({ entry, i }));
   const isWorkday = ({ entry }) => entry.ats === "workday";
   const shared = { ...opts, workdayGate: opts.workdayGate || { refused: 0 } };
-  const run = (list, n) => pool(list, n, ({ entry, i }) => fetchBoard(entry, fetchImpl, shared).then((r) => ({ r, i })));
+  // opts.onBoard(done, total) after each board, so the page can show how far a check has got.
+  let done = 0;
+  const finished = (r, i) => {
+    done++;
+    if (opts.onBoard) opts.onBoard(done, watchlist.length);
+    return { r, i };
+  };
+  const run = (list, n) => pool(list, n, ({ entry, i }) => fetchBoard(entry, fetchImpl, shared).then((r) => finished(r, i)));
   const [others, workday] = await Promise.all([
     run(indexed.filter((x) => !isWorkday(x)), concurrency),
     run(indexed.filter(isWorkday), opts.workdayConcurrency || WORKDAY_CONCURRENCY)
@@ -481,40 +488,49 @@ export async function fetchAll(watchlist, fetchImpl = fetch, concurrency = 8, op
 
 // Fills in the description for Greenhouse and Workday postings listed without one. If the detail
 // call fails, the posting keeps its title and location and gets scored on those alone.
-export async function fillDetails(postings, fetchImpl = fetch, concurrency = 8) {
+// onEach(done, total) runs after each posting, for the progress graphic.
+export async function fillDetails(postings, fetchImpl = fetch, concurrency = 8, onEach) {
+  let done = 0;
   return pool(postings, concurrency, async (p) => {
-    if (p.text) return p;
-    if (p.source === "workday" && p.detailUrl) {
-      try {
-        const res = await fetchImpl(p.detailUrl, requestOptions());
-        if (!res.ok) return p;
-        const info = (await res.json()).jobPostingInfo || {};
-        const loc = p.location || [info.location, ...(info.additionalLocations || [])].filter(Boolean).join("; ");
-        return { ...p, text: htmlToText(info.jobDescription), location: loc };
-      } catch {
-        return p;
-      }
-    }
-    if (p.source === "smartrecruiters" && p.detailUrl) {
-      try {
-        const res = await fetchImpl(p.detailUrl, requestOptions());
-        if (!res.ok) return p;
-        const sec = (await res.json()).jobAd?.sections || {};
-        const text = ["jobDescription", "qualifications", "additionalInformation"].map((k) => htmlToText(sec[k]?.text)).filter(Boolean).join("\n");
-        return { ...p, text };
-      } catch {
-        return p;
-      }
-    }
-    if (p.source !== "greenhouse") return p;
-    const [, board, jobId] = p.id.split(":");
+    const filled = await detailFor(p, fetchImpl);
+    done++;
+    if (onEach) onEach(done, postings.length);
+    return filled;
+  });
+}
+
+async function detailFor(p, fetchImpl) {
+  if (p.text) return p;
+  if (p.source === "workday" && p.detailUrl) {
     try {
-      const res = await fetchImpl(`https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}`, requestOptions());
+      const res = await fetchImpl(p.detailUrl, requestOptions());
       if (!res.ok) return p;
-      const job = await res.json();
-      return { ...p, text: htmlToText(job.content) };
+      const info = (await res.json()).jobPostingInfo || {};
+      const loc = p.location || [info.location, ...(info.additionalLocations || [])].filter(Boolean).join("; ");
+      return { ...p, text: htmlToText(info.jobDescription), location: loc };
     } catch {
       return p;
     }
-  });
+  }
+  if (p.source === "smartrecruiters" && p.detailUrl) {
+    try {
+      const res = await fetchImpl(p.detailUrl, requestOptions());
+      if (!res.ok) return p;
+      const sec = (await res.json()).jobAd?.sections || {};
+      const text = ["jobDescription", "qualifications", "additionalInformation"].map((k) => htmlToText(sec[k]?.text)).filter(Boolean).join("\n");
+      return { ...p, text };
+    } catch {
+      return p;
+    }
+  }
+  if (p.source !== "greenhouse") return p;
+  const [, board, jobId] = p.id.split(":");
+  try {
+    const res = await fetchImpl(`https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}`, requestOptions());
+    if (!res.ok) return p;
+    const job = await res.json();
+    return { ...p, text: htmlToText(job.content) };
+  } catch {
+    return p;
+  }
 }

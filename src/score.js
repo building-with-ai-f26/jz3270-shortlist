@@ -196,15 +196,21 @@ export async function scoreAll(profile, postings, opts = {}) {
   const skipped = postings.length - queue.length;
   const idf = useAI ? null : buildIdf(postings);
 
+  // opts.onEach(done, total) after each posting, for the progress graphic.
+  let done = 0;
   const scored = await pool(queue, 4, async (p) => {
+    let result;
     try {
       const s = useAI
         ? await scoreWithAI(profile, p, { fetchImpl, model, apiKey })
         : scoreWithKeywords(profile, p, idf);
-      return { ...p, ...s, track: s.track || p.track, text: undefined, error: null };
+      result = { ...p, ...s, track: s.track || p.track, text: undefined, error: null };
     } catch (err) {
-      return { ...p, fit: null, why: null, gap: null, dealbreaker: null, usage: err.usage || { tokensIn: 0, tokensOut: 0, costUsd: 0 }, text: undefined, error: err.message };
+      result = { ...p, fit: null, why: null, gap: null, dealbreaker: null, usage: err.usage || { tokensIn: 0, tokensOut: 0, costUsd: 0 }, text: undefined, error: err.message };
     }
+    done++;
+    if (opts.onEach) opts.onEach(done, queue.length);
+    return result;
   });
 
   const totals = scored.reduce((t, s) => ({

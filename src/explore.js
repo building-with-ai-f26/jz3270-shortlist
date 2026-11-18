@@ -13,6 +13,7 @@ import { hasRealKey } from "./env.js";
 import { peopleLinks } from "./people.js";
 import { normalizeName } from "./discover.js";
 import { ROOT, paths, readJson, reasonType, scoreCacheKey, ensurePersonalFiles } from "./pipeline.js";
+import { progressTracker } from "./progress.js";
 
 export const DIRECTORY_FILE = path.join(ROOT, "config", "ats-directory.csv");
 // A board that answered "not found" is skipped for this long, then tried once more in case it came back.
@@ -67,6 +68,18 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
   if (limit) todo = todo.slice(0, limit);
   const started = Date.now();
   const today = new Date(now).toISOString().slice(0, 10);
+  const useAI = !keywordsOnly && hasRealKey() && prefs.scoring !== "keywords";
+
+  // onProgress gets the stage, its count and one percent. The sweep is most of the time; AI scoring only
+  // happens for the top roles, and only when AI scoring is on.
+  const progress = progressTracker([
+    { key: "companies", label: "Companies", doing: "Checking companies", weight: 85 },
+    { key: "details", label: "Role details", doing: "Reading role details", weight: 8 },
+    { key: "ranking", label: "Ranking", doing: "Ranking for free", weight: 2 },
+    ...(useAI ? [{ key: "scoring", label: "AI scoring", doing: "Scoring the top roles with AI", weight: 10 }] : []),
+    { key: "saving", label: "Saving", doing: "Saving the results", weight: 2 }
+  ], onProgress);
+  progress.update("companies", 0, todo.length, { found: 0, passed: 0 });
 
   // 1. Fetch and filter each board as it arrives. A full sweep finds over 100,000 postings,
   // so only the ones that pass are kept; the rest become counts by reason.
@@ -95,12 +108,14 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
       kept.push(...f.kept);
       f.dropped.forEach(countDrop);
     }
-    if (onProgress && (done % 250 === 0 || done === todo.length)) onProgress({ done, total: todo.length, found, passed: kept.length });
+    // Every 25 boards is often enough for a page that asks every 2 seconds.
+    if (done % 25 === 0 || done === todo.length) progress.update("companies", done, todo.length, { found, passed: kept.length });
   });
 
   // 2. Greenhouse lists come without descriptions. Fetch them only for roles that passed, then filter
   // once more now that the text is known.
-  const filled = await fillDetails(kept, fetchImpl, concurrency);
+  progress.update("details", 0, kept.length);
+  const filled = await fillDetails(kept, fetchImpl, concurrency, (d, total) => progress.update("details", d, total));
   const ready = [];
   for (const x of filled) {
     const again = prefilter(x, prefs, now);
@@ -110,6 +125,7 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
 
   // 3. Rank every passing role for free: resume overlap plus whether the title names a kind of role the user chose.
   const textById = new Map(ready.map((r) => [r.id, r.text]));
+  progress.update("ranking", 0, ready.length);
   const { scored: overlap } = await scoreAll(profile, ready, { useAI: false, maxToScore: ready.length });
   const signals = rankSignals(prefs);
   const ranked = overlap.map((r) => ({ ...r, ...matchScore(r, signals) }));
@@ -119,7 +135,6 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
   const more = ranked.slice(cap, cap + 100);
 
   // 4. AI-score only the top roles, reusing explore's saved scores so no role is paid for twice.
-  const useAI = !keywordsOnly && hasRealKey() && prefs.scoring !== "keywords";
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
   let totals = { tokensIn: 0, tokensOut: 0, costUsd: 0 };
   let scoredThisRun = 0;
@@ -135,7 +150,8 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
       if (c) cached.push({ ...r, ...c, error: null, fromCache: true });
       else fresh.push({ ...r, text: textById.get(r.id) });
     }
-    const ai = await scoreAll(profile, fresh, { useAI: true, maxToScore: cap, fetchImpl, model });
+    progress.update("scoring", 0, fresh.length);
+    const ai = await scoreAll(profile, fresh, { useAI: true, maxToScore: cap, fetchImpl, model, onEach: (d, total) => progress.update("scoring", d, total) });
     const scoredAt = new Date(now).toISOString();
     for (const f of ai.scored) {
       if (f.newGrad) f.cohort = COHORTS.grad;
@@ -150,6 +166,8 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
     scoredThisRun = ai.scored.filter((x) => x.fit !== null).length;
     fromCache = cached.length;
   }
+
+  progress.update("saving");
 
   // 5. Mark what is new since the last sweep and add the Reach out links.
   const seen = readJson(p.exploreSeen, {});
@@ -190,6 +208,7 @@ export async function runExplore({ fetchImpl = fetch, now = Date.now(), director
   fs.writeFileSync(p.exploreDead, JSON.stringify(dead, null, 2));
   fs.writeFileSync(p.exploreSeen, JSON.stringify(seen));
   fs.writeFileSync(p.explore, JSON.stringify(out, null, 2));
+  progress.finish();
   return out;
 }
 

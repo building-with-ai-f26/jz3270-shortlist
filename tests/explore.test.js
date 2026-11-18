@@ -84,8 +84,12 @@ test("watchlist companies and recently dead boards are skipped; dead boards are 
 test("keyword-only explore costs nothing, filters, ranks, notes dead boards and leaves the watchlist alone", async () => {
   calls = [];
   const before = fs.readFileSync(path.join(dir, "watchlist.json"), "utf8");
-  const r = await runExplore({ directory: DIRECTORY, fetchImpl: fakeInternet(), now: NOW, keywordsOnly: true });
+  const stages = [];
+  const r = await runExplore({ directory: DIRECTORY, fetchImpl: fakeInternet(), now: NOW, keywordsOnly: true, onProgress: (p) => stages.push(p) });
   assert.equal(calls.filter((c) => c.includes("openrouter")).length, 0);
+  assert.deepEqual(stages.map((p) => p.stage).filter((x, i, all) => x !== all[i - 1]), ["companies", "details", "ranking", "saving", "done"], "no AI scoring stage");
+  const sweep = stages.filter((p) => p.stage === "companies").at(-1);
+  assert.deepEqual([sweep.done, sweep.total, sweep.found, sweep.passed], [4, 4, 4, 3], "the last sweep update counts every company");
   assert.ok(!calls.some((c) => c.includes("/mine")), "the watchlist company is left to Check my list");
   const s = r.summary;
   assert.deepEqual([s.checked, s.reachable, s.notFound, s.found, s.passedFilter, s.shown, s.costUsd], [4, 3, 1, 4, 3, 2, 0]);
@@ -100,7 +104,9 @@ test("keyword-only explore costs nothing, filters, ranks, notes dead boards and 
 
 test("with AI on, only the top roles are scored, and the next sweep pays for nothing", async () => {
   calls = [];
-  const first = await runExplore({ directory: DIRECTORY, fetchImpl: fakeInternet(), now: NOW + 3600000 });
+  const stages = [];
+  const first = await runExplore({ directory: DIRECTORY, fetchImpl: fakeInternet(), now: NOW + 3600000, onProgress: (p) => stages.push(p.stage) });
+  assert.deepEqual(stages.filter((x, i, all) => x !== all[i - 1]), ["companies", "details", "ranking", "scoring", "saving", "done"]);
   assert.equal(calls.filter((c) => c.startsWith("scored:")).length, 2, "maxToScore caps the paid calls");
   assert.equal(first.summary.method, "ai");
   assert.ok(Math.abs(first.summary.costUsd - 0.0004) < 1e-9, "the cost is the sum of what OpenRouter reported");

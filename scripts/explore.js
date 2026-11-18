@@ -15,11 +15,18 @@ const arg = (name) => {
 };
 
 console.log("\nExploring beyond your watchlist...\n");
+let lastStage = "";
 const { summary: s, results, more } = await runExplore({
   limit: arg("--limit"),
   topN: arg("--top"),
   keywordsOnly: process.argv.includes("--keywords"),
-  onProgress: ({ done, total, found, passed }) => console.log(`  ${done}/${total} boards, ${found.toLocaleString()} open roles, ${passed} pass your filters`)
+  // The sweep reports every 25 boards; the terminal prints every 250, then one line per later stage.
+  onProgress: ({ stage, doing, done, total, found, passed }) => {
+    if (stage === "companies") {
+      if (done && (done % 250 === 0 || done === total)) console.log(`  ${done}/${total} boards, ${found.toLocaleString()} open roles, ${passed} pass your filters`);
+    } else if (stage !== lastStage && stage !== "done") console.log(`  ${doing}...`);
+    lastStage = stage;
+  }
 });
 
 console.log(`\nChecked ${s.checked.toLocaleString()} companies in ${s.seconds} seconds (${s.skipped.toLocaleString()} skipped: on your watchlist or a board that recently closed).`);

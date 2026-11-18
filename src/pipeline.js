@@ -9,6 +9,7 @@ import { runFilter, prefilter, classifyCohort, COHORTS } from "./filter.js";
 import { scoreAll, DEFAULT_MODEL } from "./score.js";
 import { hasRealKey } from "./env.js";
 import { peopleLinks } from "./people.js";
+import { progressTracker } from "./progress.js";
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -106,7 +107,8 @@ function loadFixtures(now) {
   return { results, seenBefore };
 }
 
-export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = fetch } = {}) {
+// onProgress gets the stage, its count and one percent as the check goes, for the progress graphic.
+export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = fetch, onProgress } = {}) {
   const p = paths(demo);
   fs.mkdirSync(p.dataDir, { recursive: true });
   if (!demo) ensurePersonalFiles();
@@ -116,6 +118,19 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   const profile = fs.readFileSync(p.profile, "utf8");
   // Demo mode starts fresh every time so the demo looks the same on every run.
   const state = demo ? { seen: {}, runs: [] } : readJson(p.state, { seen: {}, runs: [] });
+  const useAI = !demo && hasRealKey() && prefs.scoring !== "keywords";
+
+  // Weights are each stage's usual share of a check's time. Fetching the boards is most of it; AI scoring
+  // takes longer than ranking by keywords.
+  const progress = progressTracker([
+    { key: "boards", label: "Job boards", doing: "Checking job boards", weight: 70 },
+    { key: "details", label: "Role details", doing: "Reading role details", weight: 10 },
+    useAI
+      ? { key: "scoring", label: "AI scoring", doing: "Scoring with AI", weight: 25 }
+      : { key: "scoring", label: "Ranking", doing: "Ranking by keywords", weight: 5 },
+    { key: "saving", label: "Saving", doing: "Saving your board", weight: 5 }
+  ], onProgress);
+  progress.update("boards", 0, watchlist.length);
 
   // 1. Fetch
   let fetched;
@@ -128,6 +143,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   } else {
     const workdayStore = readJson(p.workdayCache, {});
     fetched = await fetchAll(watchlist, fetchImpl, 8, {
+      onBoard: (done, total) => progress.update("boards", done, total),
       searches: prefs.workdaySearch,
       maxPerSearch: prefs.workdayMaxPerSearch,
       now,
@@ -136,6 +152,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
     });
     fs.writeFileSync(p.workdayCache, JSON.stringify(workdayStore));
   }
+  progress.update("boards", watchlist.length, watchlist.length);
   const all = fetched.flatMap((r) => r.postings);
   const errors = fetched.filter((r) => r.error).map((r) => ({ company: r.entry.company, error: r.error }));
 
@@ -144,7 +161,6 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
 
   // 3. Score (paid when AI is on). Scores are saved by posting ID, so a posting is only paid for once.
   // If the profile or the model changes, the saved scores no longer apply and I start over.
-  const useAI = !demo && hasRealKey() && prefs.scoring !== "keywords";
   const scoresFile = useAI ? p.scores : p.keywordScores;
   const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
   const cacheKey = scoreCacheKey(profile, useAI, model);
@@ -169,7 +185,8 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   const cap = prefs.maxToScore || 40;
   const queue = unscored.sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999)).slice(0, cap);
   const waiting = unscored.length - queue.length;
-  const filled = demo ? queue : await fillDetails(queue, fetchImpl);
+  progress.update("details", 0, queue.length);
+  const filled = demo ? queue : await fillDetails(queue, fetchImpl, 8, (done, total) => progress.update("details", done, total));
   // Some boards (Workday) only reveal the real location on the detail page, so I run the filter
   // once more now that it is known, and drop anything that fails before paying to score it.
   const lateDropped = [];
@@ -180,7 +197,11 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
     else lateDropped.push({ ...again.posting, reason: again.reason, text: undefined });
   }
   dropped.push(...lateDropped);
-  const { scored: fresh, totals, method } = await scoreAll(profile, withText, { useAI, maxToScore: cap, fetchImpl, model });
+  progress.update("scoring", 0, withText.length);
+  const { scored: fresh, totals, method } = await scoreAll(profile, withText, {
+    useAI, maxToScore: cap, fetchImpl, model, onEach: (done, total) => progress.update("scoring", done, total)
+  });
+  progress.update("saving");
   // The model reads the whole posting, so if it says the role is for new grads, I trust that too.
   for (const f of fresh) if (f.newGrad) f.cohort = COHORTS.grad;
 
@@ -241,6 +262,7 @@ export async function runPipeline({ demo = false, now = Date.now(), fetchImpl = 
   fs.writeFileSync(p.state, JSON.stringify(state, null, 2));
   fs.writeFileSync(p.latest, JSON.stringify(latest, null, 2));
   if (!demo) fs.writeFileSync(scoresFile, JSON.stringify(cache));
+  progress.finish();
   return latest;
 }
 

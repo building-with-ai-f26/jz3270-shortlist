@@ -125,7 +125,31 @@
     /* ---------- Boards ---------- */
     .notice { margin: 10px 0 0; padding: 11px 14px; background: var(--strip); border: 1px solid var(--ink); font-size: 14px; }
     .notice.bad { background: var(--stop-tint); border-color: var(--stop); color: #7a1c10; }
-    .loading { height: 3px; margin-top: 14px; background: linear-gradient(90deg, var(--board-deep) 0 40%, var(--ink) 40% 60%, var(--board-deep) 60%) 0 0 / 250% 100%; animation: slide 1.1s linear infinite; }
+    /* The progress wheel: a ring that fills clockwise, the percent in the middle, one line of what is happening.
+       A check covers the whole screen with the big one; explore shows a small one in its section. A short notch
+       circles the track so a slow board still looks alive. */
+    .checking { position: fixed; inset: 0; z-index: 30; display: grid; grid-template-rows: auto 1fr; overflow: auto; background: var(--board); }
+    .checking:focus { outline: none; }
+    .checking-body { display: grid; place-items: center; padding: 8px 16px 64px; }
+    .wheel-wrap { --size: min(62vmin, 420px); }
+    .wheel-wrap.big { display: grid; justify-items: center; gap: 22px; text-align: center; }
+    .wheel-wrap.small { --size: 76px; display: flex; align-items: center; gap: 18px; margin-top: 14px; padding: 14px 16px; background: var(--strip); border: 1px solid var(--ink); }
+    .wheel { position: relative; width: var(--size); aspect-ratio: 1; flex: none; }
+    .wheel svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
+    .wheel circle { fill: none; stroke-width: 9; }
+    .wh-track { stroke: var(--board-deep); }
+    .wh-sweep { stroke: var(--rule); stroke-dasharray: 3 97; transform-origin: 50px 50px; animation: spin 2.2s linear infinite; }
+    .wh-fill { stroke: var(--ink); stroke-dasharray: 0 100; transition: stroke-dasharray 600ms var(--ease); }
+    .wh-pct { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: calc(var(--size) * 0.3); line-height: 1; font-variant-numeric: tabular-nums; }
+    .wh-pct small { font-size: 0.45em; }
+    .wh-text p { margin: 0; }
+    .wh-now { font-size: 17px; color: var(--ink-2); }
+    .wh-now b { margin-left: 4px; white-space: nowrap; font-family: var(--display); font-size: 26px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .wh-more { display: block; margin-top: 2px; font-size: 13px; }
+    .wh-text .wh-time { margin-top: 4px; font-family: var(--display); font-size: 22px; font-weight: 800; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+    .wheel-wrap.small .wh-now { font-size: 14px; }
+    .wheel-wrap.small .wh-now b { font-size: 21px; }
+    .wheel-wrap.small .wh-time { font-size: 18px; }
     .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 16px 0 8px; }
     .board-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 8px; border-bottom: 3px solid var(--ink); }
     .board-head h2 { margin: 0; font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
@@ -431,6 +455,7 @@
     @keyframes slide { to { background-position: -150% 0; } }
     @media (prefers-reduced-motion: no-preference) {
       .drop { animation: fade 160ms ease-out; }
+      .checking { animation: fade 200ms ease-out; }
       .boards.fresh .strip { animation: settle 420ms var(--ease) both; }
       .boards.fresh .strip.is-new { animation-name: drop-in; }
       @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -438,7 +463,7 @@
       @keyframes drop-in { 0% { opacity: 0; transform: translateY(-10px); box-shadow: var(--lift); } 70% { opacity: 1; box-shadow: var(--lift); } 100% { transform: none; box-shadow: none; } }
     }
     @media (prefers-reduced-motion: reduce) {
-      .loading { animation: none; }
+      .wh-sweep { animation: none; display: none; }
       .run[disabled] .icon { animation: none; }
       .ticker-track, .hero-drop .ants rect, .stamp.thunk { animation: none; }
       * { transition-duration: 0ms !important; }
@@ -573,7 +598,6 @@
 
       <div id="notice"></div>
       <div id="rules"></div>
-      <div id="loading"></div>
       <div id="message"></div>
       <div class="boards" id="boards" hidden>
         <section aria-labelledby="gradHead">
@@ -596,6 +620,7 @@
           <button class="btn solid" id="exploreBtn" type="button">Explore</button>
           <p class="explore-status" id="exploreStatus" role="status" aria-live="polite"></p>
         </div>
+        <div id="exploreProgress"></div>
         <div id="exploreList"></div>
         <div id="exploreMore"></div>
       </section>
@@ -652,6 +677,12 @@
       <p class="setup-msg" id="setupMsg" role="status" aria-live="polite"></p>
       <button class="run" id="setupSave" type="button"><span>Save and check my list</span></button>
     </div></div>
+  </div>
+
+  <!-- While a check runs it covers the screen with the progress wheel, then drops you on the updated board. -->
+  <div class="checking" id="checking" role="dialog" aria-modal="true" aria-label="Checking your list" tabindex="-1" hidden>
+    <header class="top"><div class="wrap"><div class="brand"><p class="wordmark">Shortlist</p></div></div></header>
+    <div class="checking-body" id="checkingBody"></div>
   </div>
 
   <div class="drop" id="drop" hidden aria-hidden="true">
@@ -1000,6 +1031,51 @@
     $("explore").addEventListener("click", trackOpen);
     $("explore").addEventListener("auxclick", (e) => { if (e.button === 1) trackOpen(e); });
 
+    // ---------- Progress wheel ----------
+    // A ring that fills clockwise with the percent in the middle and one line of what is happening. A check
+    // covers the screen with the big one; explore shows a small one in its section. Drawn once per run and
+    // then updated in place, so the ring sweeps and the percent counts up instead of jumping.
+    const elapsed = (since) => {
+      const s = Math.max(0, Math.round((Date.now() - Date.parse(since)) / 1000));
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    };
+    function renderWheel(box, p, label, size = "big") {
+      if (!box.querySelector(".wheel-wrap")) {
+        box.innerHTML = `<div class="wheel-wrap ${size}" role="progressbar" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="100">
+          <div class="wheel">
+            <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="wh-track" cx="50" cy="50" r="42" /><circle class="wh-sweep" cx="50" cy="50" r="42" pathLength="100" /><circle class="wh-fill" cx="50" cy="50" r="42" pathLength="100" /></svg>
+            <span class="wh-pct"><span><span class="wh-n">0</span><small>%</small></span></span>
+          </div>
+          <div class="wh-text"><p class="wh-now"></p><p class="wh-time"></p></div>
+        </div>`;
+      }
+      const wrap = box.querySelector(".wheel-wrap");
+      const count = p.total ? `${n(p.done)} of ${n(p.total)}` : "";
+      const sweep = p.stage === "companies" && p.found !== undefined ? `${n(p.found)} open roles, ${n(p.passed)} pass your filters` : "";
+      wrap.setAttribute("aria-valuenow", p.percent);
+      wrap.setAttribute("aria-valuetext", `${p.percent} percent. ${p.doing}${count ? `, ${count}` : ""}`);
+      // pathLength is 100, so the dash length is the percent.
+      wrap.querySelector(".wh-fill").style.strokeDasharray = `${p.percent} 100`;
+      wrap.querySelector(".wh-now").innerHTML = `${esc(p.doing)}${count ? ` <b>${count}</b>` : ""}${sweep ? `<span class="wh-more">${esc(sweep)}</span>` : ""}`;
+      wrap.querySelector(".wh-time").textContent = p.startedAt ? elapsed(p.startedAt) : "";
+      countTo(wrap.querySelector(".wh-n"), p.percent);
+    }
+    function countTo(el, to) {
+      const from = Number(el.textContent) || 0;
+      el.dataset.to = to;
+      if (to <= from || matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = to; return; }
+      const t0 = performance.now();
+      const step = (t) => {
+        if (el.dataset.to !== String(to)) return;
+        const k = Math.min(1, (t - t0) / 500);
+        el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      // Animation frames pause in a background tab, so the number still lands on its value on time.
+      setTimeout(() => { if (el.dataset.to === String(to)) el.textContent = to; }, 520);
+    }
+
     // ---------- Actions ----------
     async function runCheck(label) {
       if (busy) return;
@@ -1007,11 +1083,34 @@
       const btn = $("run");
       btn.disabled = true;
       $("runLabel").textContent = label || `Checking ${n(st?.watchlistCount)} boards...`;
-      $("loading").innerHTML = `<div class="loading" role="progressbar" aria-label="Checking your list"></div>`;
+      // Every check covers the screen with the wheel until it is done. The check is one request; meanwhile the
+      // page asks GET /api/run once a second for the stage and percent. A check that ends within a quarter
+      // second (demo mode) never shows the wheel, so the screen does not flash.
+      const overlay = $("checking");
+      const box = $("checkingBody");
+      box.innerHTML = "";
+      renderWheel(box, { doing: "Starting", done: 0, total: 0, percent: 0 }, "Checking your list");
+      const show = setTimeout(() => { overlay.hidden = false; $("app").inert = true; overlay.focus(); }, 250);
+      let poll = null;
+      const watch = async () => {
+        try {
+          const j = await fetch("/api/run").then((r) => r.json());
+          if (busy && j.progress) renderWheel(box, j.progress, "Checking your list");
+        } catch {}
+        if (busy) poll = setTimeout(watch, 1000);
+      };
+      poll = setTimeout(watch, 400);
+      const t0 = Date.now();
       try {
         const res = await fetch("/api/run", { method: "POST" });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        clearTimeout(poll);
+        // A beat at 100% when the wheel is showing, so it visibly closes the circle.
+        if (!overlay.hidden) {
+          renderWheel(box, { doing: "Done", done: 0, total: 0, percent: 100, startedAt: new Date(t0).toISOString() }, "Checking your list");
+          await new Promise((r) => setTimeout(r, 650));
+        }
         data = json;
         await refreshStatus();
         notice("");
@@ -1022,9 +1121,13 @@
         return false;
       } finally {
         busy = false;
+        clearTimeout(show);
+        clearTimeout(poll);
+        overlay.hidden = true;
+        $("app").inert = false;
+        box.innerHTML = "";
         btn.disabled = false;
         $("runLabel").textContent = "Check my list";
-        $("loading").innerHTML = "";
       }
     }
 
@@ -1249,8 +1352,11 @@
       const cost = st.aiOn ? `AI scores the top ${explore?.top || 40} roles, about $0.03; roles it scored before are not paid for again.` : "Free keyword ranking, no AI cost.";
       $("exploreStatus").classList.toggle("bad", !running && Boolean(explore?.error));
       $("exploreStatus").textContent = running
-        ? (p?.total ? `Checked ${n(p.done)} of ${n(p.total)} companies: ${n(p.found)} open roles, ${n(p.passed)} pass your filters.` : "Starting...")
+        ? (p?.doing ? `${p.doing}...` : "Starting...")
         : explore?.error ? `The last explore stopped: ${explore.error}` : `${cost} A sweep takes a few minutes.`;
+
+      if (running && p?.doing) renderWheel($("exploreProgress"), p, "Exploring beyond your list", "small");
+      else $("exploreProgress").innerHTML = "";
 
       const results = (latest?.results || []).filter((r) => r.decision !== "passed");
       $("exploreList").innerHTML = (ai ? EXPLORE_TIERS.ai : EXPLORE_TIERS.keywords).map((t) => {
