@@ -73,7 +73,7 @@ Schema changes live in `supabase/migrations/` as plain SQL files, one per change
 
 | | Development | Production |
 | --- | --- | --- |
-| Supabase project | `shortlist-dev` | `shortlist-prod` |
+| Supabase project | `shortlist-dev` (`huvgdzobcgnvqhysfvlc.supabase.co`, created Nov 19) | `shortlist-prod` (`ohagjyhptkisbynowupl.supabase.co`, created Nov 19) |
 | Vercel | Every pull request gets a preview link automatically | `main` deploys automatically |
 | OpenRouter key | Small credit limit | Production limit |
 | Migrations | Applied to dev when a pull request opens | Applied to prod when it merges |
