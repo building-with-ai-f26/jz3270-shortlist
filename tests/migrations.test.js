@@ -50,6 +50,38 @@ test("signed-out visitors cannot reach any table", () => {
   for (const t of tables) for (const p of policiesOn(t)) assert.doesNotMatch(p, /to (anon|public)\b/, `${t}: no policy for anon`);
 });
 
+// Every "grant <privileges> on <tables> to <roles>" statement, as table -> role -> set of privileges.
+function grants() {
+  const out = {};
+  for (const [, privs, on, roles] of sql.matchAll(/grant ([a-z, ]+?) on ((?:public\.\w+(?:,\s*)?)+)\s+to ([a-z_, ]+);/g)) {
+    for (const t of [...on.matchAll(/public\.(\w+)/g)].map((m) => m[1])) {
+      for (const role of roles.split(",").map((r) => r.trim())) {
+        out[t] ??= {};
+        out[t][role] ??= new Set();
+        for (const p of privs.split(",").map((x) => x.trim())) out[t][role].add(p);
+      }
+    }
+  }
+  return out;
+}
+
+test("signed-in people get exactly the table access the privacy rules expect", () => {
+  const g = grants();
+  for (const t of ["profiles", "preferences", "watchlist", "decisions"]) {
+    for (const p of ["select", "insert", "update", "delete"]) assert.ok(g[t]?.authenticated?.has(p), `${t}: authenticated may ${p}`);
+  }
+  for (const t of SERVER_WRITES) {
+    assert.ok(g[t]?.authenticated?.has("select"), `${t}: authenticated may read`);
+    for (const p of ["insert", "update", "delete", "truncate", "all"]) assert.ok(!g[t]?.authenticated?.has(p), `${t}: authenticated may not ${p}`);
+  }
+  assert.ok(!g.site_spend?.authenticated, "site_spend: no access for signed-in people");
+  for (const t of tables) assert.ok(g[t]?.service_role?.has("select") && g[t]?.service_role?.has("insert"), `${t}: the server may read and write`);
+});
+
+test("no grant ever reaches signed-out visitors", () => {
+  assert.doesNotMatch(sql, /grant [^;]* to [^;]*\b(anon|public)\b[^;]*;/);
+});
+
 test("deleting a person deletes all of their rows", () => {
   for (const t of PERSONAL) {
     const body = sql.match(new RegExp(`create table public\\.${t} \\(([\\s\\S]*?)\\n\\);`))[1];
