@@ -1,0 +1,45 @@
+# Applies the database migrations in supabase/migrations with no dashboard clicks (CLOUD-PLAN.md, step 2):
+#   a pull request that changes them  -> the development database
+#   a push to main that changes them  -> the production database
+# Needs three repository secrets (Settings > Secrets and variables > Actions):
+#   SUPABASE_ACCESS_TOKEN       a Supabase personal access token
+#   SUPABASE_DB_PASSWORD_DEV    the development database password
+#   SUPABASE_DB_PASSWORD_PROD   the production database password
+# Project ids are not secret: they appear in the site's own requests.
+name: Database migrations
+
+on:
+  pull_request:
+    paths: ["supabase/migrations/**"]
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time per database, never cancelled halfway through a migration.
+concurrency:
+  group: supabase-migrations-${{ github.event_name == 'push' && 'prod' || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: ${{ github.event_name == 'push' && 'production' || 'development' }}
+      PROJECT_REF: ${{ github.event_name == 'push' && 'ohagjyhptkisbynowupl' || 'huvgdzobcgnvqhysfvlc' }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ github.event_name == 'push' && secrets.SUPABASE_DB_PASSWORD_PROD || secrets.SUPABASE_DB_PASSWORD_DEV }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.2.0
+      - name: Link the ${{ env.TARGET }} database
+        run: supabase link --project-ref "$PROJECT_REF"
+      - name: Show which migrations will run
+        run: supabase migration list
+      - name: Apply new migrations to the ${{ env.TARGET }} database
+        run: supabase db push

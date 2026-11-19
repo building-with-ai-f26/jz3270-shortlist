@@ -113,6 +113,8 @@ This repository is public. Never put resume content, keys, emails or anything fr
 
 - **Rollback rehearsed:** pushed a second release (`69fec5b`), rolled back to `4bac0a1` with Vercel's Instant Rollback (the health check confirmed the older commit, the page stayed up), then promoted `69fec5b` to roll forward. Lesson: after a rollback, Vercel holds new pushes back until a deployment is promoted.
 
+- **Step 2 built** on `cloud/step-2-database`. Design choices: people read and change only their own profile, preferences, watchlist and decisions; scores, runs and AI usage are read-only for them (the server writes them, so nobody can fake a score or reset their AI allowance); postings are readable by any signed-in person; site spending is server only; signed-out visitors reach no table. Deleting an account deletes every row. Supabase's newer keys (publishable and secret) go in the `apikey` header only.
+
 ## Open questions
 
 - **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, the numbers for the per-user and site-wide AI caps (the key itself is decided: Jordan's, server-side only), and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
