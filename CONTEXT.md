@@ -106,6 +106,9 @@ This repository is public. Never put resume content, keys, emails or anything fr
 
 - **Plans:** Jordan already pays for Vercel Pro and Supabase Pro. That lifts the free-plan limits the first draft planned around: scheduled jobs can run every few hours, functions up to 800 seconds, and per-pull-request preview databases are possible. Kept a shared dev project to start (about $10 a month extra on Supabase Pro), with preview databases later.
 
+- **Step 0:** Vercel's and Supabase's GitHub connections both showed "Request", because only an owner of the class GitHub organization can approve apps there. Jordan asked Christian to approve Vercel's. Supabase's is not needed (migrations run from a GitHub Action), so Jordan created the Supabase projects without it. Fallback if Vercel's approval does not come: deploy from a GitHub Action with a Vercel token saved as a repository secret.
+- **Step 1 prepared** on the branch `cloud/step-1-skeleton`: Vercel serves only a placeholder page from `site/` with security headers, plus a health check at `/api/health`; `.vercelignore` keeps `data/` and `.env` out of any upload.
+
 ## Open questions
 
 - **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, the numbers for the per-user and site-wide AI caps (the key itself is decided: Jordan's, server-side only), and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.

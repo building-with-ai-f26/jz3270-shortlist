@@ -1,0 +1,8 @@
+# Never upload personal data or secrets, even if someone deploys from a laptop with the Vercel command line tool.
+# (Deploys from GitHub only see committed files, and these are gitignored too.)
+data/
+.env
+.env.*
+.claude/
+node_modules/
+journal/

@@ -51,6 +51,7 @@
 | `docs/index.html` | Public Product Page, living PRD and build log (GitHub Pages) |
 | `docs/demo/` | Static demo for classmates, built by `scripts/build-demo.js`: the app page plus a small script that answers `/api/*` from a saved snapshot (`data.json`), and the fictional resume (`resume.html`). Upload, Settings, Explore and live checks are off; decisions stay in the visitor's browser; PostHog events are tagged `app: static_demo` |
 | `fixtures/resume-mba-pm.md` | The fictional MBA resume for the demo (Taylor Brooks, 4 years as a Microsoft PM) |
+| `vercel.json`, `site/`, `api/` | The hosted site on Vercel (CLOUD-PLAN.md, step 1). Vercel serves only `site/` (a placeholder page for now, no scripts) with security headers, and runs each file in `api/` as a function (`api/health.js` reports the environment and commit, never a secret). `.vercelignore` keeps `data/` and `.env` out of any upload. The local app (`npm start`) does not use these |
 | `CLOUD-PLAN.md` | The plan for the move to Vercel and Supabase: fetch boards once a day for everyone, rank per person, sign-in, row level security, encrypted resumes, AI caps with an "AI checks left" counter, dev and prod databases, migrations in Git, previews and rollback, in small steps |
 | `CONTEXT.md` | The running history: what Jordan asked each session, the decisions made and why, and open questions. No personal data |
 
