@@ -104,6 +104,8 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Asked:** an easy way to remove the resume or start over, instead of backing out of screens. In the plan as "Remove resume", "Start over" and "Delete my data".
 - **Name:** Jordan is still thinking of renaming Shortlist. Pick it before buying a domain; Vercel and Supabase project names can change later.
 
+- **Plans:** Jordan already pays for Vercel Pro and Supabase Pro. That lifts the free-plan limits the first draft planned around: scheduled jobs can run every few hours, functions up to 800 seconds, and per-pull-request preview databases are possible. Kept a shared dev project to start (about $10 a month extra on Supabase Pro), with preview databases later.
+
 ## Open questions
 
 - **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, the numbers for the per-user and site-wide AI caps (the key itself is decided: Jordan's, server-side only), and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.

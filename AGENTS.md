@@ -121,7 +121,7 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Next (Jordan, Nov 19): a simpler app.** A one-button front page where the AI reads the resume and picks the kinds of role, cities and sectors (shown in one line, changeable), then the wheel; and an Advanced panel of NBA 2K style sliders (left less, right more) that replaces the 4-step start page, the Your scoring tab and Settings. Defaults chosen while Jordan was away from the questions: sliders change your score and the search for free and are not written into the AI's prompt (that would re-pay every role on each change), the AI picks sectors (Explore stays separate), and the old screens are replaced. Plan in four commits: the model test (done), the simple page, the sliders, then cleanup. Also asked (Nov 19): one click to remove the resume or start over, instead of backing out of screens.
 
-**Now (Jordan, Nov 19): the move to Vercel and Supabase comes first,** as the site launch; the simple page and sliders are built on the hosted app (step 6 of `CLOUD-PLAN.md`). Users see how much AI scoring they have left ("3 AI checks left today"), with no paywall. The name may change before launch.
+**Now (Jordan, Nov 19): the move to Vercel and Supabase comes first,** as the site launch; the simple page and sliders are built on the hosted app (step 6 of `CLOUD-PLAN.md`). Users see how much AI scoring they have left ("3 AI checks left today"), with no paywall. The name may change before launch. Jordan already pays for Vercel Pro and Supabase Pro.
 
 **Then, in order (the data roadmap Jordan approved on Nov 17):**
 1. **More decisions,** especially on long shots under 50, so the accuracy check covers the whole range.

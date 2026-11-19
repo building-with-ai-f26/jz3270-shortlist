@@ -21,11 +21,11 @@ Jordan's requirements (Nov 17 and Nov 19):
 
 Today every check fetches every board on your list, which takes minutes and is what makes Workday angry. In the cloud, job boards are public and the same for everyone, so:
 
-- **A daily job fetches the boards once** for every company anyone watches, and saves the postings in the database. That includes Workday, paced gently once a day from one place instead of once per user.
+- **A scheduled job fetches the boards once** for every company anyone watches, and saves the postings in the database: Greenhouse, Lever, Ashby and SmartRecruiters every few hours, Workday once a day, paced gently from one place instead of once per user.
 - **"Check my list" becomes fast:** it reads today's postings for your companies from the database, filters them with your rules, and scores only the roles you have not paid for yet. Seconds instead of minutes.
 - **A company you just added** is fetched on the spot (not Workday, which waits for the daily job), so it shows up right away.
 
-This fits Vercel's limits on the free Hobby plan: a function can run for up to 300 seconds ([limits](https://vercel.com/docs/functions/limitations)), and scheduled jobs run once a day ([cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)). The daily fetch is split into several scheduled jobs, each taking a slice of the companies, so none comes near 300 seconds.
+Jordan has Vercel Pro, so a function can run for up to 800 seconds (300 by default) ([limits](https://vercel.com/docs/functions/limitations)) and scheduled jobs can run as often as every minute ([cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)). Each fetch is still split into slices of the company list, so no single job runs long.
 
 ## How the pieces fit
 
@@ -33,7 +33,7 @@ This fits Vercel's limits on the free Hobby plan: a function can run for up to 3
 | --- | --- | --- |
 | The page (`public/index.html`) | Vercel, as a static file | Same Big Board design, plus a sign-in screen |
 | The API (`/api/*`) | Vercel Functions in an `api/` folder | Plain Node, no framework. Same routes as `server.js`, split into one file per route |
-| Daily board fetch | Vercel scheduled jobs | Several slices of the company list, once a day each |
+| Board fetch | Vercel scheduled jobs | Slices of the company list; most boards every few hours, Workday once a day |
 | Database | Supabase Postgres | One project for development, one for production |
 | Sign-in | Supabase Auth | Google sign-in and an email link. No passwords to store |
 | AI scoring | OpenRouter, called only from Vercel Functions | Jordan's key, server-side only, hosts that keep no prompts |
@@ -81,12 +81,13 @@ Schema changes live in `supabase/migrations/` as plain SQL files, one per change
 - **Previews with no clicks:** Vercel's Git connection builds every pull request into its own preview link and posts it on the pull request.
 - **Migrations with no clicks:** a GitHub Action runs the Supabase command line tool: on a pull request it applies new migrations to dev, on merge to prod.
 - **Rollback:** Vercel's Instant Rollback puts the previous release back in seconds (`vercel rollback` or one click). Database changes are written so the previous release still works with the newer schema (add columns and tables first, remove old ones a release later), so rolling back the app never needs rolling back the database.
-- **Supabase preview branches** (a fresh database per pull request) need Supabase Pro at $25 a month ([branching](https://supabase.com/docs/guides/deployment/branching)). Two free projects cover dev and prod for now; branches can come later.
+- **Supabase preview branches** (a fresh database per pull request) are available on Jordan's Pro plan, at about $0.013 an hour per branch while its pull request is open ([pricing](https://supabase.com/pricing), [branching](https://supabase.com/docs/guides/deployment/branching)). Start with the shared dev project, which is simpler and reliable, and switch branches on later if previews start getting in each other's way. Supabase's Vercel integration, which points each preview at its branch, has reported problems syncing settings ([troubleshooting](https://supabase.com/docs/guides/troubleshooting/vercel-integration-environment-variables-not-syncing-for-persistent-git-branches-b9191e)), another reason to wait.
 
 ## Cost
 
-- Vercel Hobby: free, for personal, non-commercial projects. A class project fits.
-- Supabase Free: two projects (dev and prod). Free projects pause after a week with no activity, and the database holds 500 MB. Postings without descriptions are small; descriptions are fetched only for roles about to be scored.
+- Vercel Pro: Jordan already pays for it; this project fits within it.
+- Supabase Pro: Jordan already pays for it. The first project (prod) is included; a second always-on project (dev) adds about $10 a month in compute ([pricing](https://supabase.com/pricing)). To skip that, dev could live in a separate free Supabase organization, where it pauses after a week unused.
+- Postings without descriptions are small; descriptions are fetched only for roles about to be scored.
 - OpenRouter: capped per user, per day, and by each key's credit limit.
 
 ## New packages (need Jordan's approval, rule 2)
@@ -98,14 +99,14 @@ No framework (no Next.js): the page stays one HTML file and the API stays plain 
 
 ## Steps, each a small pull request
 
-0. **Accounts (Jordan, about 20 minutes, no code):** create Vercel and Supabase accounts, two Supabase projects, and a development OpenRouter key with a credit limit. Check whether the class organization lets Vercel's GitHub app see this repository. PostHog's GitHub app needed the organization owners' approval, so Vercel's likely does too. If not, the fallback is a GitHub Action that deploys with Vercel's command line tool and a token saved as a repository secret.
+0. **Setup (Jordan, about 15 minutes, no code):** in Jordan's paid Vercel team and Supabase organization, connect the repository and create two Supabase projects; create a development OpenRouter key with a credit limit. Check whether the class organization lets Vercel's GitHub app see this repository. PostHog's GitHub app needed the organization owners' approval, so Vercel's likely does too. If not, the fallback is a GitHub Action that deploys with Vercel's command line tool and a token saved as a repository secret.
 1. **Hosting skeleton:** the current page on Vercel with one health check function, previews on pull requests, production on `main`, and a rollback rehearsed once. No personal data yet.
 2. **Database and migrations:** the tables above with row level security, the GitHub Action for dev and prod, and tests that one user cannot read another's rows.
 3. **Sign-in and the resume:** Google and email sign-in, encrypted resume upload, "Remove resume" and "Delete my data".
 4. **Storage moves to Supabase:** watchlist, preferences, scores, decisions and runs, behind one small storage module, so the rest of the code barely changes. Tests keep running on an in-memory fake.
 5. **Checks in the cloud:** the daily fetch in slices, fast per-user checks, the AI caps and the "AI checks left" counter, and the progress wheel reading real progress.
 6. **The simple front page and Advanced sliders** (the Nov 19 plan), built on the hosted app, with "Start over" and "Remove resume" one click away.
-7. **Explore in the cloud, later:** a full sweep is about 10,000 boards and over 200,000 postings, too big to store whole on the free database. Options: keep only recent, relevant postings, or sweep per user in slices. Decide after step 5.
+7. **Explore in the cloud, later:** a full sweep is about 10,000 boards and over 200,000 postings. On Supabase Pro, keeping recent, relevant postings is feasible, and a shared sweep a few times a day would make explore instant for everyone. Decide after step 5.
 
 Build 3 is due Monday, Nov 23. Steps 0 to 2 fit before then; 3 to 5 are realistic for the week after.
 
