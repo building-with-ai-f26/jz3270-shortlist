@@ -74,7 +74,8 @@ async function callOpenRouter(messages, maxTokens, { fetchImpl, model, apiKey })
       "Content-Type": "application/json",
       "X-Title": "Shortlist (NYU Stern Building with AI)"
     },
-    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages })
+    // Every request carries the resume, so OpenRouter only routes it to hosts that do not keep or train on prompts.
+    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages, provider: { data_collection: "deny" } })
   });
 
   const json = await res.json().catch(() => ({}));

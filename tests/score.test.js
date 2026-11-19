@@ -42,6 +42,7 @@ test("reads token counts and dollar cost from OpenRouter's usage field", async (
   assert.equal(s.usage.costUsd, 0.00016);
   assert.equal(sentBody.model, "test/model");
   assert.equal(sentBody.temperature, 0);
+  assert.deepEqual(sentBody.provider, { data_collection: "deny" }, "the resume only goes to hosts that do not keep or train on prompts");
 });
 
 test("an API error on one posting is recorded, not fatal", async () => {

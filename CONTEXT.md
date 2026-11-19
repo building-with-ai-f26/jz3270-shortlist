@@ -17,6 +17,7 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - Build 1 shipped Nov 9. Build 2 was submitted for Nov 16 with PostHog evidence, PRD v2 and the Build 2 log. The professor liked the Big Board design, so it stays.
 - Build 3 (due Nov 23) is the data roadmap below, then a move to Vercel and Supabase.
 - 134 tests (one skips on purpose; it only runs on Node older than 22).
+- OpenRouter spend on Nov 19: $0.114 for the model comparison.
 - A static demo for classmates lives at `docs/demo/` on GitHub Pages.
 - OpenRouter spend: about $0.62 through Build 2, plus $0.0673 for the demo snapshot on Nov 17.
 
@@ -93,9 +94,14 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Asked:** something simpler: a full-screen wheel or a small 2D game while the percent ticks to 100. Jordan picked the big wheel, full screen on every check. Explore keeps a small wheel in its section, since a sweep takes minutes and should not block the board.
 - **Found and fixed:** setup counted an install as fresh only while the sample resume was loaded, so after an upload it showed the example preferences (real estate, NYU Stern, 45 days) as the user's own. A fresh install now also means the preferences are still the untouched example file. A fresh install could also save with no sector, which emptied the example watchlist before the first check; both forms now ask for a sector.
 
+### Nov 19: a simpler app, and a cheaper model
+- **Asked:** make the front page super simple and let the AI do most of the work (pick what to search, rank), with advanced settings behind an "Advanced" button as NBA 2K style sliders (left less, right more) that feed the model. Agreed a plan in four commits: test a cheaper model, a one-button front page where the AI picks the setup from the resume, the slider panel, then removing the old screens. Jordan skipped the four detail questions, so the recommended answers stand: sliders are free and stay out of the AI's prompt, the AI picks sectors, the old screens are replaced, and classmates will test AI scoring on Jordan's key once the app is hosted.
+- **Asked:** why not just share his own OpenRouter key. The concern is control, not price: a shared main key can spend the whole balance on any model, cannot be taken back from one person, leaks easily, and mixes everyone's usage. A separate key with a credit limit keeps the same account and caps the damage. Jordan's follow-up settled it: classmates should not hold the key at all. It stays in Jordan's own `.env` now and becomes a server-side secret on Vercel, so users never see it. Because anyone who can use the hosted site can still spend it, the move adds sign-in before scoring, a per-user daily cap, a site-wide daily spend cap, and a credit-limited key for preview and another for production.
+- **Asked:** a cheaper model such as DeepSeek. Compared on 40 decided roles: Haiku 5.5 AUC 0.60 at $0.00071 a role; DeepSeek V4.1 Flash AUC 0.57 with 9 failures and fits bunched near 70, at $0.00215 a role because it thinks at length before answering. Kept Haiku. Every scoring request now asks OpenRouter to skip hosts that keep or train on prompts. The test cost $0.114, above the 5 cent estimate.
+
 ## Open questions
 
-- **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, where each user's OpenRouter key lives, and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
+- **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, the numbers for the per-user and site-wide AI caps (the key itself is decided: Jordan's, server-side only), and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
 - **Apply assist:** add it to the roadmap next to the season tracker? Drafted answers would touch the "no cover letters" non-goal.
 - **Workday from the cloud:** Workday limits requests per visitor, and cloud servers share addresses, so cloud checks may be throttled more than a laptop.
 - **Learning model:** needs about 50 decisions with some long shots before it can be judged.
