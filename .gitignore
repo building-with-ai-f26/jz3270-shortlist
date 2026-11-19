@@ -30,3 +30,6 @@ out/
 *.log
 # Shortlist personal data: resume, watchlist, preferences, run history (NEVER COMMIT)
 data/
+
+# Vercel command line tool link (project and team ids)
+.vercel/

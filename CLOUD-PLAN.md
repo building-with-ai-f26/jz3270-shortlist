@@ -100,7 +100,7 @@ No framework (no Next.js): the page stays one HTML file and the API stays plain 
 ## Steps, each a small pull request
 
 0. **Setup (Jordan, about 15 minutes, no code):** in Jordan's paid Vercel team and Supabase organization, connect the repository and create two Supabase projects; create a development OpenRouter key with a credit limit. Check whether the class organization lets Vercel's GitHub app see this repository. PostHog's GitHub app needed the organization owners' approval, so Vercel's likely does too. If not, the fallback is a GitHub Action that deploys with Vercel's command line tool and a token saved as a repository secret.
-1. **Hosting skeleton:** the current page on Vercel with one health check function, previews on pull requests, production on `main`, and a rollback rehearsed once. No personal data yet.
+1. **Hosting skeleton:** a placeholder page on Vercel with one health check function, previews on pull requests, production on `main`, and a rollback rehearsed once. No personal data yet. Prepared Nov 19 on the branch `cloud/step-1-skeleton` (`vercel.json`, `site/index.html`, `api/health.js`, `.vercelignore`); it goes live once Vercel can see the repository. The local app's page is not served yet, since it needs the API that steps 2 to 5 build.
 2. **Database and migrations:** the tables above with row level security, the GitHub Action for dev and prod, and tests that one user cannot read another's rows.
 3. **Sign-in and the resume:** Google and email sign-in, encrypted resume upload, "Remove resume" and "Delete my data".
 4. **Storage moves to Supabase:** watchlist, preferences, scores, decisions and runs, behind one small storage module, so the rest of the code barely changes. Tests keep running on an in-memory fake.
