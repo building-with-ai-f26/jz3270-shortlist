@@ -127,6 +127,8 @@ Moved from chat to Claude Code on Nov 10. Update this section at the end of each
 
 **Done Nov 19: cloud step 1, the site is live** at https://jz3270-shortlist.vercel.app: a placeholder page with security headers and `/api/health`, deployed from `main` by Vercel's GitHub app (Christian approved it for this repository). Supabase projects: dev `huvgdzobcgnvqhysfvlc`, prod `ohagjyhptkisbynowupl`. Rollback rehearsed: Vercel's Instant Rollback put the previous release back, and Promote rolled forward (until you promote, new pushes do not go live). Next: step 2 (database and migrations) as the first pull request with a preview.
 
+**Done Nov 19: cloud step 2, the database** (pull request #1). Nine tables with row level security, plus a second migration granting Supabase's API roles table access (this project grants none by default). Migrations apply through a GitHub Action over Supabase's IPv4 session pooler using the database password secrets (`SUPABASE_DB_PASSWORD_DEV`, `SUPABASE_DB_PASSWORD_PROD`); no Supabase access token. Pull request previews work. `npm run check-rls` passed 34 of 34 on dev. Lessons: version 3 of the Supabase tool needs `--remote` to target a hosted database and `--yes` to change it; GitHub's machines cannot reach the IPv6-only direct database address.
+
 **Now (Jordan, Nov 19): the move to Vercel and Supabase comes first,** as the site launch; the simple page and sliders are built on the hosted app (step 6 of `CLOUD-PLAN.md`). Users see how much AI scoring they have left ("3 AI checks left today"), with no paywall. The name may change before launch. Jordan already pays for Vercel Pro and Supabase Pro.
 
 **Then, in order (the data roadmap Jordan approved on Nov 17):**
