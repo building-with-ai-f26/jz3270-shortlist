@@ -1,0 +1,52 @@
+# Applies the database migrations in supabase/migrations with no dashboard clicks (CLOUD-PLAN.md, step 2):
+#   a pull request that changes them  -> the development database
+#   a push to main that changes them  -> the production database
+# Needs two repository secrets (Settings > Secrets and variables > Actions):
+#   SUPABASE_DB_PASSWORD_DEV    the development database password
+#   SUPABASE_DB_PASSWORD_PROD   the production database password
+# It connects through Supabase's session pooler, because GitHub's machines only reach IPv4 addresses and each
+# database's direct address is IPv6 only. No Supabase access token is needed. Project ids and the pooler host
+# are not secret: they appear in the site's own requests and in the dashboard's connection strings.
+name: Database migrations
+
+on:
+  pull_request:
+    paths: ["supabase/migrations/**", ".github/workflows/supabase-migrations.yml"]
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**", ".github/workflows/supabase-migrations.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time per database, never cancelled halfway through a migration.
+concurrency:
+  group: supabase-migrations-${{ github.event_name == 'push' && 'prod' || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: ${{ github.event_name == 'push' && 'production' || 'development' }}
+      PROJECT_REF: ${{ github.event_name == 'push' && 'ohagjyhptkisbynowupl' || 'huvgdzobcgnvqhysfvlc' }}
+      POOLER_HOST: aws-1-us-east-1.pooler.supabase.com
+      SUPABASE_DB_PASSWORD: ${{ github.event_name == 'push' && secrets.SUPABASE_DB_PASSWORD_PROD || secrets.SUPABASE_DB_PASSWORD_DEV }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.2.0
+      # The password goes into the address percent-encoded, and the encoded form is hidden in the logs too.
+      - name: Build the ${{ env.TARGET }} database address
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then echo "The database password secret for $TARGET is missing."; exit 1; fi
+          ENCODED=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$ENCODED"
+          echo "DB_URL=postgresql://postgres.${PROJECT_REF}:${ENCODED}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
+      - name: Show which migrations will run
+        run: supabase migration list --remote="$DB_URL"
+      # Version 3 of the Supabase tool only changes a hosted database with an explicit --yes.
+      - name: Apply new migrations to the ${{ env.TARGET }} database
+        run: supabase db push --remote="$DB_URL" --yes
