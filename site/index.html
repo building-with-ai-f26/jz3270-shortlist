@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shortlist</title>
-  <meta name="description" content="Off-cycle roles, ranked against your resume. The hosted Shortlist opens soon." />
-  <!-- The hosted site's first page, while sign-in and the database are built (CLOUD-PLAN.md, step 1).
-       No scripts and nothing personal: it only proves that previews, production and rollback work. -->
+  <meta name="description" content="Off-cycle roles, ranked against your resume. Sign in to try the hosted Shortlist." />
+  <!-- The hosted site's front page (CLOUD-PLAN.md, step 3a): sign in with Google or an email link. All scripts load
+       from this site (Supabase's library is copied in at build time), so the strict security policy stays strict. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -17,26 +17,49 @@
       --ink: #141618;
       --ink-2: #464b51;
       --ink-3: #61666c;
+      --rule: #c5c9c3;
+      --stop: #c8321e;
       --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
       --text: "Public Sans", "Helvetica Neue", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body { margin: 0; min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: var(--board); color: var(--ink); font: 16px/1.55 var(--text); }
     ::selection { background: var(--ink); color: var(--strip); }
     a { color: inherit; text-underline-offset: 3px; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
     .wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 32px; }
     header { padding: 22px 0 18px; }
     .wordmark { margin: 0; font-family: var(--display); font-weight: 900; font-size: 44px; line-height: 0.9; text-transform: uppercase; }
-    main { display: grid; align-content: center; justify-items: start; padding-bottom: 48px; }
+    main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px); gap: 56px; align-items: center; padding-bottom: 48px; }
     .tag { display: inline-block; margin: 0 0 18px; padding: 4px 10px; background: var(--ink); color: var(--strip); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-    h1 { margin: 0; max-width: 12ch; font-family: var(--display); font-weight: 900; font-size: clamp(52px, 8vw, 112px); line-height: 0.86; text-transform: uppercase; }
-    .lede { margin: 20px 0 28px; max-width: 56ch; font-size: 18px; color: var(--ink-2); }
-    .links { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
-    .links a { display: inline-block; padding: 11px 18px; border: 1px solid var(--ink); font-weight: 700; text-decoration: none; }
-    .links a:hover, .links a:focus-visible { background: var(--ink); color: var(--strip); }
-    .links a.solid { background: var(--ink); color: var(--strip); }
-    :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    h1 { margin: 0; font-family: var(--display); font-weight: 900; font-size: clamp(52px, 7vw, 104px); line-height: 0.86; text-transform: uppercase; }
+    .lede { margin: 20px 0 24px; max-width: 54ch; font-size: 18px; color: var(--ink-2); }
+    .links { display: flex; flex-wrap: wrap; gap: 18px; margin: 0; padding: 0; list-style: none; font-weight: 700; }
+    .card { padding: 26px 24px 22px; background: var(--strip); border: 1px solid var(--ink); }
+    .card h2 { margin: 0 0 6px; font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; text-transform: uppercase; }
+    .card .help { margin: 0 0 18px; font-size: 14px; color: var(--ink-2); }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 16px; border: 1px solid var(--ink); background: transparent; font-weight: 700; }
+    .btn:hover { background: var(--ink); color: var(--strip); }
+    .btn.solid { background: var(--ink); color: var(--strip); }
+    .btn[disabled] { opacity: 0.6; cursor: progress; }
+    .or { display: flex; align-items: center; gap: 12px; margin: 16px 0; font-size: 13px; color: var(--ink-3); }
+    .or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--rule); }
+    label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input[type="email"] { width: 100%; min-height: 46px; margin-bottom: 8px; padding: 0 12px; background: var(--strip); border: 1px solid var(--rule); outline: none; }
+    input[type="email"]:focus { border-color: var(--ink); }
+    .msg { min-height: 1.4em; margin: 14px 0 0; font-size: 14px; font-weight: 600; }
+    .msg.bad { color: var(--stop); }
+    .fine { margin: 14px 0 0; font-size: 12px; color: var(--ink-3); }
+    .who { margin: 0 0 14px; font-size: 15px; overflow-wrap: anywhere; }
+    .who b { font-weight: 700; }
+    .next { margin: 0 0 18px; padding: 12px 14px; border-left: 3px solid var(--ink); background: var(--board); font-size: 14px; }
     footer { padding: 16px 0 22px; border-top: 3px solid var(--ink); font-size: 13px; color: var(--ink-3); }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; gap: 28px; align-items: start; padding-top: 8px; }
+    }
     @media (max-width: 680px) {
       .wrap { padding: 0 16px; }
       .wordmark { font-size: 36px; }
@@ -47,14 +70,52 @@
 <body>
   <header><div class="wrap"><p class="wordmark">Shortlist</p></div></header>
   <main class="wrap">
-    <p class="tag">Opening soon</p>
-    <h1>Off-cycle roles, ranked against you</h1>
-    <p class="lede">Shortlist checks the job boards of the companies you care about, cuts the roles that do not fit your rules, and ranks the rest against your resume, with the reason for every score. The hosted version, with sign-in, is on its way.</p>
-    <ul class="links">
-      <li><a class="solid" href="https://building-with-ai-f26.github.io/jz3270-shortlist/demo/">Try the demo</a></li>
-      <li><a href="https://building-with-ai-f26.github.io/jz3270-shortlist/">How it works</a></li>
-    </ul>
+    <section>
+      <p class="tag">Early access</p>
+      <h1>Off-cycle roles, ranked against you</h1>
+      <p class="lede">Shortlist checks the job boards of the companies you care about, cuts the roles that do not fit your rules, and ranks the rest against your resume, with the reason for every score.</p>
+      <ul class="links">
+        <li><a href="https://building-with-ai-f26.github.io/jz3270-shortlist/demo/">Try the demo</a></li>
+        <li><a href="https://building-with-ai-f26.github.io/jz3270-shortlist/">How it works</a></li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="cardTitle">
+      <div id="loading">
+        <h2 id="cardTitle">Sign in</h2>
+        <p class="help">Checking whether you are signed in...</p>
+      </div>
+
+      <div id="signedOut" hidden>
+        <h2>Sign in</h2>
+        <p class="help">Your resume and choices stay private to your account.</p>
+        <button class="btn solid" id="google" type="button">Continue with Google</button>
+        <p class="or">or use your email</p>
+        <form id="emailForm" novalidate>
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" maxlength="254" placeholder="you@school.edu" />
+          <button class="btn" id="emailBtn" type="submit">Email me a sign-in link</button>
+        </form>
+        <p class="fine">Open the link in this same browser. During early access, email links reach only a few addresses; Google works for everyone.</p>
+      </div>
+
+      <div id="signedIn" hidden>
+        <h2>You are in</h2>
+        <p class="who">Signed in as <b id="who"></b></p>
+        <p class="next" id="resumeState"></p>
+        <button class="btn" id="signOut" type="button">Sign out</button>
+      </div>
+
+      <div id="unavailable" hidden>
+        <h2>Opening soon</h2>
+        <p class="help" id="unavailableText">Sign-in is not switched on here yet.</p>
+      </div>
+
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </section>
   </main>
   <footer><div class="wrap">Built for MBA students recruiting off-cycle.</div></footer>
+  <script src="/vendor/supabase.js" defer></script>
+  <script src="/app.js" defer></script>
 </body>
 </html>
