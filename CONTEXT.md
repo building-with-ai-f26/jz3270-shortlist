@@ -109,6 +109,8 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Step 0:** Vercel's and Supabase's GitHub connections both showed "Request", because only an owner of the class GitHub organization can approve apps there. Jordan asked Christian to approve Vercel's. Supabase's is not needed (migrations run from a GitHub Action), so Jordan created the Supabase projects without it. Fallback if Vercel's approval does not come: deploy from a GitHub Action with a Vercel token saved as a repository secret.
 - **Step 1 prepared** on the branch `cloud/step-1-skeleton`: Vercel serves only a placeholder page from `site/` with security headers, plus a health check at `/api/health`; `.vercelignore` keeps `data/` and `.env` out of any upload.
 
+- **Step 1 live:** Christian approved Vercel's GitHub app, and the site went live at https://jz3270-shortlist.vercel.app. The import screen had picked the Node preset, which would have tried to run the laptop server on Vercel, so the preset was switched to Other, and step 1 was merged into main first so the very first production deploy was the placeholder page.
+
 ## Open questions
 
 - **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, the numbers for the per-user and site-wide AI caps (the key itself is decided: Jordan's, server-side only), and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
