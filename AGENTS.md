@@ -22,6 +22,7 @@
 - **Run deterministic tests:** `npm test`
 - **Run the hosted site on this laptop:** `npm run dev-site`, then open http://localhost:3002 (the page in `site/`, the functions in `api/`, the security headers from `vercel.json`; uses the dev Supabase project in `.env` and refuses production)
 - **Check the database privacy rules on the dev database:** `npm run check-rls` (needs the dev project's `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` in `.env`; refuses production; creates two throwaway accounts and deletes them)
+- **Search for leaked secret keys:** `npm run check-secrets` (every tracked file, the whole Git history and the live sites, for `sb_secret_`, `sk-or-`, `sk-ant-`, `sk-proj-`, `sk_live_`, service_role keys and the real values in `.env`; hits are masked; exits 1 if anything turns up. `-- --site <preview url>` checks a preview instead of production)
 - **Add a database change:** `npx supabase migration new <name>`, write the SQL, open a pull request. The GitHub Action applies it to dev on the pull request and to prod on merge. Never edit a migration that has already run; add a new one
 - **Run model evals:** not built yet (Build 4, see `tests/README.md`)
 
@@ -56,6 +57,8 @@
 | `fixtures/resume-mba-pm.md` | The fictional MBA resume for the demo (Taylor Brooks, 4 years as a Microsoft PM) |
 | `vercel.json`, `site/`, `api/` | The hosted site on Vercel (CLOUD-PLAN.md, steps 1 and 3). Vercel serves only `site/` with security headers (scripts only from the site itself; the page may talk only to itself and the two Supabase projects), after `scripts/build-site.js` copies Supabase's browser library into `site/vendor/`. `site/app.js` signs people in with Google or an email link. Each file in `api/` is a function: `health.js` (environment and commit), `config.js` (the public Supabase address and publishable key, refusing anything that looks like a secret key), `me.js` (who is signed in, checked with Supabase, and whether a resume is on file, read under row level security). `src/cloud/supabase.js` holds the shared server helpers (plain fetch). `.vercelignore` keeps `data/` and `.env` out of any upload. The local app (`npm start`) does not use these |
 | `supabase/migrations/`, `.github/workflows/supabase-migrations.yml` | The hosted database, as SQL migrations in Git (CLOUD-PLAN.md, step 2): profiles (resume stored encrypted), preferences, watchlist, postings (public), scores, decisions, runs, ai_usage, site_spend. Row level security on every table: people reach only their own rows, the server alone writes postings, scores, runs and AI usage, and signed-out visitors reach nothing. `tests/migrations.test.js` checks these rules from the SQL; `scripts/check-rls.js` checks them on the real dev database |
+| `.github/workflows/tests.yml` | Runs `npm ci`, `npm test` and `npm audit --audit-level=high` on every pull request and every push to `main`. No secrets |
+| `src/secret-scan.js`, `scripts/check-secrets.js` | The secret search behind `npm run check-secrets`. Named `secret-scan` because `.gitignore` blocks any file called `secrets.*` |
 | `CLOUD-PLAN.md` | The plan for the move to Vercel and Supabase: fetch boards once a day for everyone, rank per person, sign-in, row level security, encrypted resumes, AI caps with an "AI checks left" counter, dev and prod databases, migrations in Git, previews and rollback, in small steps |
 | `CONTEXT.md` | The running history: what Jordan asked each session, the decisions made and why, and open questions. No personal data |
 
@@ -78,8 +81,32 @@
 8. **Pay for each posting once.** Scores are saved in `data/scores.json` by posting ID and reused until the profile or model changes. Do not re-score cached postings. A new resume changes the profile, so it correctly starts a fresh round of scoring, still capped by `maxToScore` per check.
 9. **Uploaded resumes are not kept as files.** The upload is read in memory; only the cleaned text goes into `data/profile.md`, with the file name and time in `data/resume.json`. Contact details (email, phone, links) are removed before anything is saved or sent to the model.
 10. **No scraping people.** "Reach out" is LinkedIn search links only, opened by the user while logged in. Never fetch, guess or store anyone's name or profile.
+11. **Never commit on `main`, and stage files by name** (from a real mistake, Nov 19). Run `git branch --show-current` before every commit, and `git add <file>` for each file, never `git add -A` or `git add .`. On Nov 19 the agent committed Supabase's temp folder (`supabase/.temp/cli-latest`) straight to `main`; it was caught before a push and undone with `git reset HEAD~1`.
+12. **Price a paid run with its thinking tokens before starting it** (from a real mistake, Nov 19). `npm run compare-models` was estimated at under 5 cents and cost $0.114, because DeepSeek spent about 2,800 hidden thinking tokens per answer. Estimate from a small sample run first, say the number, and ask before anything over 5 cents.
 
-## 6. Where things stand (keep this current)
+## 6. Shipping (the steps the agent follows)
+The agent runs the whole loop and stops at anything on the "Ask me first" list (section 7). Pushing and opening pull requests need the `gh` command line signed in as **jz3270** (`gh auth status`); until then Jordan pushes from GitHub Desktop and the agent does everything else.
+
+1. **Branch:** `git switch -c <area>/<short-name> main` (for stacked work, branch from the branch below it). One small change per branch.
+2. **Build and check locally:** `npm test` and `npm run check-secrets -- --no-live`. For the hosted site, `npm run dev-site` and open http://localhost:3002. For database rules, `npm run check-rls` (dev only).
+3. **Commit:** check the branch, stage files by name (rule 11), plain message ending with the Co-Authored-By line.
+4. **Push and open a pull request:** `git push -u origin <branch>`, then `gh pr create --base main` with what changed, why, what could break and how it was checked.
+5. **Wait for the checks:** `gh pr checks --watch`. Every pull request runs **Tests** (`npm test` and `npm audit`), **Vercel** (a preview deploy) and, when it changes `supabase/migrations/`, **Database migrations** (applied to the dev database). If one fails, fix it on the branch; after two failed fixes, stop and ask (rule 6).
+6. **Verify the preview:** open the preview link Vercel posts on the pull request, check `/api/health` shows the branch's commit and `environment: "preview"`, walk the changed screen, and run `npm run check-secrets -- --site <preview url> --no-history`.
+7. **Merge:** `gh pr merge --merge` once the checks pass, unless the pull request touches anything in section 7; then stop and ask Jordan, quoting what it changes. A merge to `main` deploys production and applies any migration to the production database.
+8. **Verify production:** wait for the deploy, then check https://jz3270-shortlist.vercel.app/api/health shows the merge commit and `environment: "production"`, open the site, and run `npm run check-secrets`.
+9. **If production is broken:** tell Jordan at once with what is wrong. He rolls back in Vercel (Deployments, the last good one, Instant Rollback), which takes seconds; after a rollback, new pushes stay off production until a deployment is promoted. A bad migration is never undone by editing it: write a new migration that reverses it, and ask first.
+10. **Record it:** a dated entry in `CONTEXT.md` and section 8 below.
+
+## 7. Ask me first
+Stop and ask Jordan in chat, and wait for a clear yes, before any of these. A yes covers that one action only.
+
+- **Deleting data or changing the database:** any new or changed migration, any command against the production database (the agent works only against dev; `check-rls` and `dev-site` refuse production), deleting users, rows, branches or files that are not the agent's own scratch work, `git push --force`, rewriting history, and restoring a backup.
+- **Keys, secrets and permissions:** adding, changing or removing environment variables in Vercel, GitHub secrets, `.env`, Supabase or Google sign-in settings, row level security policies or grants, GitHub or Vercel app permissions, and who can sign in.
+- **Anything that costs money:** OpenRouter calls outside the tests (a live AI check, explore with AI scoring, `npm run compare-models`), raising `maxToScore`, an AI cap or a spending limit, and any plan, add-on or domain purchase.
+- **Production itself:** merging a pull request that touches any item above, promoting or rolling back a deployment, and changing `vercel.json` security headers.
+
+## 8. Where things stand (keep this current)
 Moved from chat to Claude Code on Nov 10. Update this section at the end of each working session so the next session starts with the right context.
 
 **Build 1 (shipped Nov 9):** local prototype of the full workflow, about 300 companies across Greenhouse, Lever, Ashby, Workday and SmartRecruiters, two columns (2027 and new grad, and full-time open now), saved scores so each check only pays for unseen roles. Live spend through Nov 8 was $0.21 across 338 scoring calls.
