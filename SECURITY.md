@@ -80,11 +80,19 @@ Attacks 1, 2, 3, 6, 9, 10 and 11 ran against the real dev database through the s
 
 PostHog runs on the hosted site with nobody identified, click capture off, and session replay masking every piece of text and every input, so a replay shows layout and clicks only. Events carry counts and kinds only (for example `check_run` with how many roles were ranked), never resume text, titles, companies, schools or emails. A test reads the allowed properties and fails on anything that looks personal.
 
+## Checked on the live site (November 22, after the merge)
+
+- **Two accounts:** Jordan signed in with a personal Google account, signed out, and signed in with his school account. Each account saw only its own resume, choices and board.
+- **On a phone:** sign-in and the workflow worked on a phone.
+- **What the live site answers** (from outside, signed out): the API routes refuse anyone not signed in (401), the daily fetch refuses callers without the cron secret (401), and the source files, `.env`, `data/` and the migrations are not served (404). `/api/config` hands out only the production database's public address and publishable key, and the PostHog project key.
+- **Security headers** on every page: the content security policy (scripts only from the site and PostHog's loader; the page talks only to itself, the two Supabase projects and PostHog), `X-Frame-Options: DENY`, `nosniff`, a strict referrer policy, a permissions policy, and HSTS from Vercel.
+- **Leaked keys:** `npm run check-secrets` after the merge was clean on 122 tracked files, about 32,000 added lines of Git history, and 8 live pages and scripts.
+- **The daily fetch** ran on production from Vercel's cron page and filled the shared postings.
+
 ## Still to do (Jordan)
 
 - **OpenRouter credit limits:** a hard limit on each key in OpenRouter (Settings, Keys). Needed before AI scoring is switched on for the hosted site.
 - **Production backup:** Supabase Pro takes a daily backup and keeps 7 days. Download one from the production project (Database, Backups) and keep it off the repo.
-- **Live access check:** once sign-in is live, sign in as two Google accounts on the live site and confirm B sees none of A's data.
 - **Supabase sign-in settings, in both projects:** anonymous sign-ins off, email confirmation on, and the production redirect list holding only `https://jz3270-shortlist.vercel.app/**` (no `*.vercel.app` wildcard).
 
 ## Remaining issues
