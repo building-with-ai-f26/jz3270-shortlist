@@ -5,7 +5,7 @@
   "outputDirectory": "site",
   "cleanUrls": true,
   "functions": {
-    "api/check.js": { "maxDuration": 60 },
+    "api/check.js": { "maxDuration": 120 },
     "api/resume.js": { "maxDuration": 30 },
     "api/refresh-postings.js": { "maxDuration": 300 }
   },
