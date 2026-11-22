@@ -32,7 +32,13 @@ http.createServer(async (req, res) => {
       const handler = fs.existsSync(file) ? (await import(pathToFileURL(file).href))[req.method] : null;
       if (!handler) { res.writeHead(404, { "Content-Type": "application/json" }); return res.end('{"error":"Not found"}'); }
       const chunks = [];
-      for await (const chunk of req) chunks.push(chunk);
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        // Vercel refuses bodies over 4.5 MB, so this does too.
+        if (size > 4.5 * 1024 * 1024) { res.writeHead(413, { "Content-Type": "application/json" }); return res.end('{"error":"Too large"}'); }
+        chunks.push(chunk);
+      }
       const headers = new Headers();
       for (const [key, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(key, value);
       const request = new Request(url, { method: req.method, headers, body: ["GET", "HEAD"].includes(req.method) ? undefined : Buffer.concat(chunks) });
@@ -41,7 +47,7 @@ http.createServer(async (req, res) => {
       return res.end(Buffer.from(await response.arrayBuffer()));
     }
     let file = path.normalize(path.join(SITE, decodeURIComponent(url.pathname)));
-    if (!file.startsWith(SITE)) { res.writeHead(403); return res.end(); }
+    if (file !== SITE && !file.startsWith(SITE + path.sep)) { res.writeHead(403); return res.end(); }
     if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end("Not found"); }
     res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream" });
@@ -51,4 +57,5 @@ http.createServer(async (req, res) => {
     res.writeHead(500, { "Content-Type": "text/plain" });
     res.end("Something went wrong. The terminal running npm run dev-site has the details.");
   }
-}).listen(PORT, () => console.log(`The hosted site, on the development database: http://localhost:${PORT}`));
+// Only this laptop can reach it: the server holds the dev secret key, so it never listens on the local network.
+}).listen(PORT, "127.0.0.1", () => console.log(`The hosted site, on the development database: http://localhost:${PORT}`));

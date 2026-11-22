@@ -35,7 +35,9 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ github.event_name == 'push' && secrets.SUPABASE_DB_PASSWORD_PROD || secrets.SUPABASE_DB_PASSWORD_DEV }}
     steps:
       - uses: actions/checkout@v5
-      - uses: supabase/setup-cli@v1
+      # Pinned to the exact commit behind the v1 tag (Nov 22), since this job holds the production database
+      # password: a moved tag cannot change what runs here.
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
         with:
           version: 3.2.0
       # The password goes into the address percent-encoded, and the encoded form is hidden in the logs too.

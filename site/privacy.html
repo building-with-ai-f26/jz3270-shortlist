@@ -43,6 +43,7 @@
         <li><strong>Your choices:</strong> kinds of role, cities, how recent, sectors of companies, your school, and what you are looking for.</li>
         <li><strong>Your board:</strong> the score each role got against your resume and a record of each check you run.</li>
       </ul>
+      <p>Only the resume text is encrypted. The file name, what you are looking for, your choices and your board are stored as plain text so the page can load them quickly. A role's reason can quote a few words from your resume (for example "Keyword overlap: sourcing, logistics"). Start over deletes the scores and clears those boards.</p>
       <p>Job postings themselves come from companies' public job boards and are the same for everyone.</p>
     </section>
 
@@ -51,6 +52,7 @@
       <ul>
         <li><strong>Only you,</strong> through your signed-in account. Every table has row level security, so one account cannot read another's rows.</li>
         <li><strong>Services that run Shortlist:</strong> Supabase stores the data (United States), and Vercel runs the website. Neither may use it for anything else.</li>
+        <li><strong>Usage analytics:</strong> PostHog counts what people do, such as a check run or a posting opened, with counts and kinds only, never your resume, choices or email, and without identifying you. Its session replay records the layout and clicks with every piece of text masked and the board left out.</li>
         <li><strong>Ranking:</strong> today roles are ranked by matching words in your resume, on Shortlist's own server. If AI scoring is switched on later, your resume text (without contact details) is sent to the model through OpenRouter, only to hosts that do not keep or train on it, and this page will say so first.</li>
       </ul>
       <p>Shortlist does not sell, rent or share your data, does not show ads, and never contacts anyone on LinkedIn for you. The "Reach out" links are plain LinkedIn searches that you open yourself.</p>

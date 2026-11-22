@@ -6,7 +6,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { encryptResume, decryptResume, encryptionKey } from "../src/cloud/crypto.js";
-import { readUpload, safeFileName, looksLike } from "../src/cloud/resume.js";
+import zlib from "node:zlib";
+import { readUpload, safeFileName, looksLike, docxProblem } from "../src/cloud/resume.js";
+import { checkPrefs } from "../src/cloud/check.js";
+import { ok as okOrThrow } from "../src/cloud/supabase.js";
+import { buildPreferences } from "../src/setup.js";
 import { toRows, inList } from "../src/cloud/postings.js";
 import { POST as uploadResume, DELETE as removeResume } from "../api/resume.js";
 import { POST as runCheck } from "../api/check.js";
@@ -65,6 +69,11 @@ function fakeSupabase(state) {
       return reply(first ? state.postings : []);
     }
     if (method === "GET" && table === "scores") return reply(state.scores || []);
+    // A check reserves its run row first; the fake hands back an id and counts the row as a recent check.
+    if (method === "POST" && table === "runs") {
+      state.recentRuns = [...(state.recentRuns || []), { id: (state.recentRuns || []).length + 1 }];
+      return reply([{ id: state.recentRuns.length }], 201);
+    }
     if (["POST", "PATCH", "DELETE"].includes(method)) return reply(null, 201);
     if (u.pathname.startsWith("/auth/v1/admin/users/") && method === "DELETE") return reply({}, 200);
     throw new Error(`unexpected ${method} ${url}`);
@@ -128,7 +137,9 @@ test("removing the resume also removes the scores and checks made from it, only 
       const res = await removeResume(signedIn("/api/resume", { method: "DELETE" }));
       assert.equal(res.status, 200);
       const writes = calls.filter((c) => ["PATCH", "DELETE"].includes(c.method));
-      assert.deepEqual(writes.map((c) => `${c.method} ${c.path}`), ["PATCH /rest/v1/profiles", "DELETE /rest/v1/scores", "DELETE /rest/v1/runs"]);
+      assert.deepEqual(writes.map((c) => `${c.method} ${c.path}`), ["PATCH /rest/v1/profiles", "DELETE /rest/v1/scores", "PATCH /rest/v1/runs"]);
+      assert.ok(!("resume_uploaded_at" in writes[0].body), "the time of the last upload stays, so Start over does not reset the upload limit");
+      assert.deepEqual(writes[2].body, { summary: { status: "cleared" } }, "past checks stay counted, with their boards cleared");
       for (const w of writes) assert.match(w.query, new RegExp(`user_id=eq\\.${USER.id}$`), "scoped to the signed-in account");
     });
   });
@@ -171,15 +182,32 @@ test("a check reads shared postings as the person, ranks what passes, and saves 
       const scores = calls.find((c) => c.method === "POST" && c.path === "/rest/v1/scores");
       assert.equal(scores.key, ENV.SUPABASE_SECRET_KEY);
       assert.ok(scores.body.every((s) => s.user_id === USER.id && s.method === "keywords"));
-      const run = calls.find((c) => c.method === "POST" && c.path === "/rest/v1/runs");
-      assert.equal(run.body.user_id, USER.id);
-      assert.ok(!JSON.stringify(run.body).includes("Rivera"), "the saved board holds no resume text");
+      const reserved = calls.findIndex((c) => c.method === "POST" && c.path === "/rest/v1/runs");
+      const firstRead = calls.findIndex((c) => c.method === "GET" && c.path === "/rest/v1/profiles");
+      assert.ok(reserved >= 0 && reserved < firstRead, "the check's row is written before any work, so it always counts");
+      assert.equal(calls[reserved].body.user_id, USER.id);
+      const done = calls.find((c) => c.method === "PATCH" && c.path === "/rest/v1/runs");
+      assert.equal(done.body.summary.status, "done");
+      assert.ok(!JSON.stringify(done.body).includes("Rivera"), "the saved board holds no resume text");
     });
 
+    // Four earlier checks plus this one is five: allowed. A sixth is refused, and its row is marked refused.
     state.recentRuns = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
-    await withFetch(fakeSupabase(state).fake, async () => {
+    const sixth = fakeSupabase(state);
+    await withFetch(sixth.fake, async () => {
       const limited = await runCheck(signedIn("/api/check", { method: "POST" }));
       assert.equal(limited.status, 429, "five checks in ten minutes is the limit");
+      assert.equal(sixth.calls.find((c) => c.method === "PATCH" && c.path === "/rest/v1/runs").body.summary.status, "refused");
+    });
+
+    // A check that fails still counts: its row is marked failed rather than left out.
+    state.recentRuns = [];
+    state.profile = null;
+    const failing = fakeSupabase(state);
+    await withFetch(failing.fake, async () => {
+      const res = await runCheck(signedIn("/api/check", { method: "POST" }));
+      assert.equal(res.status, 400);
+      assert.equal(failing.calls.find((c) => c.method === "PATCH" && c.path === "/rest/v1/runs").body.summary.status, "failed");
     });
   });
 });
@@ -195,7 +223,7 @@ test("setup only accepts known choices, and needs a sector", async () => {
       const good = await saveSetup(signedIn("/api/setup", { method: "POST", body: JSON.stringify({ roles: ["strategy"], cities: ["newYork"], sectors: ["ai"], maxAgeDays: 14, school: "NYU Stern" }) }));
       assert.equal(good.status, 200, await good.clone().text());
       const saved = calls.find((c) => c.method === "POST" && c.path === "/rest/v1/preferences");
-      assert.equal(saved.asUserToken, "Bearer good-token", "saved as the person, under row level security");
+      assert.equal(saved.key, ENV.SUPABASE_SECRET_KEY, "saved by the server, after every choice was checked");
       assert.deepEqual(saved.body.prefs.setup.sectors, ["ai"]);
       assert.deepEqual(saved.body.prefs.networkSchools, ["NYU Stern"]);
     });
@@ -249,4 +277,59 @@ test("the cron and every function's time limit point at real files", () => {
   const vercel = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
   for (const file of Object.keys(vercel.functions)) assert.ok(fs.existsSync(new URL(`../${file}`, import.meta.url)), file);
   for (const cron of vercel.crons) assert.ok(fs.existsSync(new URL(`..${cron.path}.js`, import.meta.url)), cron.path);
+});
+
+// A minimal zip with one deflated entry, for the Word file checks.
+function zipOf(name, content) {
+  const packed = zlib.deflateRawSync(content);
+  const n = Buffer.from(name);
+  const local = Buffer.alloc(30); local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(8, 8); local.writeUInt32LE(packed.length, 18); local.writeUInt32LE(content.length, 22); local.writeUInt16LE(n.length, 26);
+  const entry = Buffer.alloc(46); entry.writeUInt32LE(0x02014b50, 0); entry.writeUInt16LE(8, 10); entry.writeUInt32LE(packed.length, 20); entry.writeUInt32LE(1000, 24); entry.writeUInt16LE(n.length, 28); entry.writeUInt32LE(0, 42);
+  const dirAt = 30 + n.length + packed.length;
+  const end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(1, 8); end.writeUInt16LE(1, 10); end.writeUInt32LE(46 + n.length, 12); end.writeUInt32LE(dirAt, 16);
+  return Buffer.concat([local, n, packed, entry, n, end]);
+}
+
+test("a Word file that expands too far is refused before the Word reader runs, whatever sizes it claims", async () => {
+  const bomb = zipOf("word/document.xml", Buffer.alloc(60 * 1024 * 1024));
+  assert.ok(bomb.length < 200 * 1024, "small on the wire");
+  assert.match(docxProblem(bomb), /expand too far/, "the claimed size (1,000 bytes) is ignored; real bytes are counted");
+  await assert.rejects(readUpload(bomb, "resume.docx"), /expand too far/);
+  assert.equal(docxProblem(zipOf("word/document.xml", Buffer.from("<w:document/>"))), null);
+  assert.equal(docxProblem(fs.readFileSync(new URL("../fixtures/resume-sample.docx", import.meta.url))), null, "a real resume passes");
+  await assert.rejects(readUpload(Buffer.alloc(300 * 1024, 97), "resume.txt"), /over 200 KB/);
+});
+
+test("choices are checked strictly: no built-in names, no damaged saved lists, and only full encryption tags", () => {
+  for (const sneaky of ["toString", "constructor", "__proto__"]) {
+    assert.throws(() => buildPreferences({ roles: [sneaky] }), /Unknown role type/, sneaky);
+    assert.throws(() => buildPreferences({ cities: [sneaky] }), /Unknown city/, sneaky);
+  }
+  assert.throws(() => checkPrefs({ titleExclude: Array(50000).fill("x"), setup: { sectors: ["ai"] } }), /damaged/);
+  assert.throws(() => checkPrefs({ locations: [{ evil: true }], setup: { sectors: ["ai"] } }), /damaged/);
+  assert.throws(() => checkPrefs({ maxAgeDays: 9999, setup: { sectors: ["ai"] } }), /damaged/);
+  assert.ok(checkPrefs({ titleExclude: ["Director"], maxAgeDays: 14, setup: { sectors: ["ai"] } }));
+  const key = encryptionKey({ RESUME_ENCRYPTION_KEY: KEY_B64 });
+  const [v, iv, tag, data] = encryptResume(RESUME, USER.id, key).split(":");
+  const short = [v, iv, Buffer.from(tag, "base64").subarray(0, 4).toString("base64"), data].join(":");
+  assert.throws(() => decryptResume(short, USER.id, key), /not in a format/, "a 4-byte tag is refused");
+});
+
+test("a failed database call never puts the failing row into an error or a log", async () => {
+  const res = { ok: false, status: 400, json: async () => ({ code: "23514", message: "violates check", details: "Failing row contains (Sam Rivera resume.pdf, Strategy roles in New York)" }) };
+  await assert.rejects(okOrThrow(res, "Saving"), (err) => err.message === "Saving failed (HTTP 400, code 23514)" && !err.message.includes("Rivera"));
+});
+
+test("saving choices repairs damaged saved settings instead of carrying them forward", async () => {
+  await withEnv(ENV, async () => {
+    const state = { prefs: { titleExclude: Array(5000).fill("x"), setup: { sectors: ["ai"] } } };
+    const { fake, calls } = fakeSupabase(state);
+    await withFetch(fake, async () => {
+      const res = await saveSetup(signedIn("/api/setup", { method: "POST", body: JSON.stringify({ roles: ["strategy"], sectors: ["ai"] }) }));
+      assert.equal(res.status, 200, await res.clone().text());
+      const saved = calls.find((c) => c.method === "POST" && c.path === "/rest/v1/preferences");
+      assert.equal(saved.key, ENV.SUPABASE_SECRET_KEY, "the server saves choices, only after checking them");
+      assert.ok(saved.body.prefs.titleExclude.length < 50, "the damaged list was replaced by the defaults");
+    });
+  });
 });

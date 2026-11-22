@@ -34,17 +34,43 @@ export function boardsFor(prefs = {}) {
   return hostedStarter().filter((c) => sectors.includes(c.sector));
 }
 
+// Every check, finished or not, has a row in runs. The row is written before any work and counted after, so
+// checks sent all at once, checks that fail, and refused checks all count; Start over clears a row's board but
+// keeps the row; and people cannot delete their own runs (row level security lets them only read them).
 export async function recentChecks(user, { env, fetchImpl, now = Date.now() } = {}) {
   const since = new Date(now - WINDOW_MINUTES * 60000).toISOString();
   const res = await ok(await asUser(user, `/rest/v1/runs?select=id&user_id=eq.${q(user.id)}&run_at=gte.${q(since)}`, { env, fetchImpl }), "Reading recent checks");
   return (await res.json()).length;
 }
 
+async function reserveRun(user, runAt, { env, fetchImpl }) {
+  const res = await ok(await asServer("/rest/v1/runs?select=id", {
+    method: "POST", body: { user_id: user.id, run_at: runAt, summary: { status: "running" } }, prefer: "return=representation", env, fetchImpl
+  }), "Starting the check");
+  return (await res.json())[0]?.id;
+}
+
+function finishRun(id, summary, { env, fetchImpl }) {
+  return asServer(`/rest/v1/runs?id=eq.${q(id)}`, { method: "PATCH", body: { summary }, prefer: "return=minimal", env, fetchImpl });
+}
+
+// Saved choices are written by /api/setup after validation, but they are checked again here, so damaged or
+// hand-made choices (huge word lists, wrong types) cannot slow every check or break it.
+const SHORT_LISTS = ["titleInclude", "titleExclude", "locations", "tracks", "networkSchools", "workdaySearch"];
+export function checkPrefs(prefs) {
+  const shortList = (v) => Array.isArray(v) && v.length <= 200 && v.every((x) => typeof x === "string" && x.length <= 100);
+  const bad = SHORT_LISTS.some((k) => prefs[k] !== undefined && !shortList(prefs[k])) ||
+    !shortList(prefs.setup?.sectors || []) ||
+    (prefs.maxAgeDays !== undefined && !(Number.isInteger(prefs.maxAgeDays) && prefs.maxAgeDays >= 1 && prefs.maxAgeDays <= 30));
+  if (bad) throw new HttpError("Your saved choices look damaged. Open What you want, check them, and save again.");
+  return prefs;
+}
+
 async function readInputs(user, { env, fetchImpl }) {
   const [profileRes, prefsRes, lastRes] = await Promise.all([
     asUser(user, `/rest/v1/profiles?select=resume_ciphertext,looking_for&user_id=eq.${q(user.id)}`, { env, fetchImpl }),
     asUser(user, `/rest/v1/preferences?select=prefs&user_id=eq.${q(user.id)}`, { env, fetchImpl }),
-    asUser(user, `/rest/v1/runs?select=run_at&user_id=eq.${q(user.id)}&order=run_at.desc&limit=1`, { env, fetchImpl })
+    asUser(user, `/rest/v1/runs?select=run_at&user_id=eq.${q(user.id)}&summary->>status=eq.done&order=run_at.desc&limit=1`, { env, fetchImpl })
   ]);
   for (const [res, what] of [[profileRes, "Reading your profile"], [prefsRes, "Reading your choices"], [lastRes, "Reading your last check"]]) await ok(res, what);
   const profile = (await profileRes.json())[0];
@@ -52,6 +78,7 @@ async function readInputs(user, { env, fetchImpl }) {
   const lastRunAt = (await lastRes.json())[0]?.run_at || null;
   if (!profile?.resume_ciphertext) throw new HttpError("Upload your resume first.");
   if (!prefs?.setup?.sectors?.length) throw new HttpError("Pick at least one sector of companies first.");
+  checkPrefs(prefs);
   const resume = decryptResume(profile.resume_ciphertext, user.id, encryptionKey(env));
   return { profile: profileText(resume, profile.looking_for), prefs, lastRunAt };
 }
@@ -87,9 +114,22 @@ async function readDescriptions(user, ids, { env, fetchImpl }) {
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : "");
 
 export async function runCloudCheck(user, { env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
-  if (await recentChecks(user, { env, fetchImpl, now }) >= CHECKS_PER_WINDOW) {
+  const runId = await reserveRun(user, new Date(now).toISOString(), { env, fetchImpl });
+  if (await recentChecks(user, { env, fetchImpl, now }) > CHECKS_PER_WINDOW) {
+    await finishRun(runId, { status: "refused" }, { env, fetchImpl });
     throw new HttpError(`That is ${CHECKS_PER_WINDOW} checks in ${WINDOW_MINUTES} minutes. Job boards update about once a day, so try again later.`, 429);
   }
+  try {
+    const latest = await check(user, { env, fetchImpl, now });
+    await ok(await finishRun(runId, { ...latest, status: "done" }, { env, fetchImpl }), "Saving the check");
+    return latest;
+  } catch (err) {
+    await finishRun(runId, { status: "failed" }, { env, fetchImpl }).catch(() => {});
+    throw err;
+  }
+}
+
+async function check(user, { env, fetchImpl, now }) {
   const { profile, prefs, lastRunAt } = await readInputs(user, { env, fetchImpl });
   const boards = boardsFor(prefs);
   const maxAge = prefs.maxAgeDays || 14;
@@ -179,15 +219,11 @@ export async function runCloudCheck(user, { env = process.env, fetchImpl = fetch
     tokensOut: 0,
     costUsd: 0
   };
-  const latest = { summary, results: results.slice(0, RESULTS_KEPT), droppedByReason };
-  await ok(await asServer("/rest/v1/runs", {
-    method: "POST", body: { user_id: user.id, run_at: scoredAt, summary: latest }, prefer: "return=minimal", env, fetchImpl
-  }), "Saving the check");
-  return latest;
+  return { summary, results: results.slice(0, RESULTS_KEPT), droppedByReason };
 }
 
 // The last check's board, read as the person (row level security), or null before their first check.
 export async function latestCheck(user, { env = process.env, fetchImpl = fetch } = {}) {
-  const res = await ok(await asUser(user, `/rest/v1/runs?select=summary&user_id=eq.${q(user.id)}&order=run_at.desc&limit=1`, { env, fetchImpl }), "Reading your last check");
+  const res = await ok(await asUser(user, `/rest/v1/runs?select=summary&user_id=eq.${q(user.id)}&summary->>status=eq.done&order=run_at.desc&limit=1`, { env, fetchImpl }), "Reading your last check");
   return (await res.json())[0]?.summary || null;
 }

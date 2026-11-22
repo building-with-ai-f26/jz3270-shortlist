@@ -123,17 +123,24 @@ try {
   res = await site(a.token, "DELETE", "account", { body: JSON.stringify({ confirm: "yes" }) });
   check("deleting an account needs the exact confirmation", res.status === 400);
 
-  // The per-person rate limit: five checks in ten minutes.
-  let statuses = [];
-  for (let i = 0; i < 4; i++) statuses.push((await site(a.token, "POST", "check")).status);
-  check("the sixth check in ten minutes is refused", statuses.join(",") === "200,200,200,429", statuses.join(","));
+  // The per-person rate limit: five checks in ten minutes, counted from rows written before any work.
+  const burst = await Promise.all(Array.from({ length: 6 }, () => site(a.token, "POST", "check").then((r) => r.status)));
+  const ran = burst.filter((code) => code === 200).length;
+  check("6 checks sent at once do not get past the limit", ran <= 3 && burst.every((code) => code === 200 || code === 429), `${ran} ran, ${burst.length - ran} refused`);
+  res = await site(a.token, "POST", "check");
+  check("the next check is refused too", res.status === 429);
+  const wipe = await rest("DELETE", `/rest/v1/runs?user_id=eq.${a.id}`, { token: a.token, prefer: "return=representation" });
+  check("A cannot delete its own past checks to reset the limit", wipe.status === 401 || wipe.status === 403 || rows(wipe).length === 0, `HTTP ${wipe.status}`);
   res = await site(a.token, "POST", "resume", { body: pdf, headers: { "X-File-Name": "resume-sample.pdf" } });
   check("a second upload within 10 seconds is refused", res.status === 429);
 
   // Remove resume, then delete the account.
   res = await site(a.token, "DELETE", "resume");
-  const left = await Promise.all(["profiles?select=resume_ciphertext", "scores?select=posting_id", "runs?select=id"].map((t) => rest("GET", `/rest/v1/${t}&user_id=eq.${a.id}`, { key: SECRET })));
-  check("Remove resume removes the resume, its scores and checks", res.status === 200 && !rows(left[0])[0]?.resume_ciphertext && rows(left[1]).length === 0 && rows(left[2]).length === 0);
+  const left = await Promise.all(["profiles?select=resume_ciphertext", "scores?select=posting_id", "runs?select=summary"].map((t) => rest("GET", `/rest/v1/${t}&user_id=eq.${a.id}`, { key: SECRET })));
+  check("Start over removes the resume and its scores, and clears past boards", res.status === 200 && !rows(left[0])[0]?.resume_ciphertext && rows(left[1]).length === 0 &&
+    rows(left[2]).length > 0 && rows(left[2]).every((r) => !r.summary.results));
+  res = await site(a.token, "POST", "resume", { body: pdf, headers: { "X-File-Name": "resume-sample.pdf" } });
+  check("Start over does not reset the upload limit", res.status === 429);
   res = await site(a.token, "DELETE", "account", { body: JSON.stringify({ confirm: "delete my account" }) });
   const gone = await rest("GET", `/auth/v1/admin/users/${a.id}`, { key: SECRET });
   check("Delete my account removes the account", res.status === 200 && gone.status === 404, `HTTP ${gone.status}`);

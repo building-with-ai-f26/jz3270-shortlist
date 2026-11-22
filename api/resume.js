@@ -1,6 +1,7 @@
 // POST /api/resume: upload a resume (the file is the request body, its name in the X-File-Name header).
 // It is read in memory, cleaned of contact details, encrypted for this account, and stored; the file is not kept.
-// DELETE /api/resume: remove the resume and everything made from it (scores and past checks), to start over.
+// DELETE /api/resume: remove the resume and everything made from it (scores, and the boards of past checks), to
+// start over. The past checks' rows stay, emptied, because the check limit counts them.
 // Both act only for the signed-in person Supabase confirms; the user id never comes from the request.
 import { asServer, ok } from "../src/cloud/supabase.js";
 import { encryptResume, encryptionKey } from "../src/cloud/crypto.js";
@@ -14,6 +15,7 @@ export const POST = handle(async (request) => {
   const declared = Number(request.headers.get("content-length") || 0);
   if (declared > MAX_UPLOAD) throw new HttpError("That file is over 4 MB. Save a smaller PDF or the Word version.", 413);
 
+  // Start over keeps the time of the last upload, so removing a resume does not reset this limit.
   const last = await ok(await asServer(`/rest/v1/profiles?select=resume_uploaded_at&user_id=eq.${q(user.id)}`), "Reading your profile");
   const lastAt = (await last.json())[0]?.resume_uploaded_at;
   if (lastAt && Date.now() - Date.parse(lastAt) < UPLOAD_GAP_SECONDS * 1000) {
@@ -35,9 +37,9 @@ export const DELETE = handle(async (request) => {
   const user = await requireUser(request);
   const mine = `user_id=eq.${q(user.id)}`;
   await ok(await asServer(`/rest/v1/profiles?${mine}`, {
-    method: "PATCH", prefer: "return=minimal", body: { resume_ciphertext: null, resume_file_name: null, resume_uploaded_at: null }
+    method: "PATCH", prefer: "return=minimal", body: { resume_ciphertext: null, resume_file_name: null }
   }), "Removing your resume");
   await ok(await asServer(`/rest/v1/scores?${mine}`, { method: "DELETE", prefer: "return=minimal" }), "Removing your scores");
-  await ok(await asServer(`/rest/v1/runs?${mine}`, { method: "DELETE", prefer: "return=minimal" }), "Removing your past checks");
+  await ok(await asServer(`/rest/v1/runs?${mine}`, { method: "PATCH", body: { summary: { status: "cleared" } }, prefer: "return=minimal" }), "Clearing your past checks");
   return json({ removed: true });
 });

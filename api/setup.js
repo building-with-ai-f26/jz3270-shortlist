@@ -1,9 +1,11 @@
 // GET /api/setup: the choices on offer (kinds of role, cities, how recent, sectors of companies) and this
 // person's picks. POST /api/setup: save their picks. The same choices as the laptop app's setup (src/setup.js),
-// turned into the same preferences the filter reads. Saved as the person, so row level security applies.
-import { asUser, ok } from "../src/cloud/supabase.js";
+// turned into the same preferences the filter reads. Read as the person (row level security); saved by the server
+// only after every choice is checked, so the saved preferences are always ones this route built.
+import { asUser, asServer, ok } from "../src/cloud/supabase.js";
 import { ROLE_FAMILIES, CITIES, AGE_CHOICES, STARTER_SECTORS, buildPreferences } from "../src/setup.js";
 import { hostedStarter } from "../src/cloud/postings.js";
+import { checkPrefs } from "../src/cloud/check.js";
 import { handle, json, requireUser, readJsonBody, HttpError } from "../src/cloud/http.js";
 
 const q = encodeURIComponent;
@@ -58,7 +60,11 @@ export const POST = handle(async (request) => {
   const lookingFor = String(body.lookingFor || "").trim();
   if (lookingFor.length > MAX_LOOKING_FOR) throw new HttpError(`Keep "What I'm looking for" under ${MAX_LOOKING_FOR} characters.`);
 
-  const { prefs: existing, updatedAt } = await current(user);
+  const { prefs: saved, updatedAt, lookingFor: savedLookingFor } = await current(user);
+  // Saved settings this screen does not ask about are kept, unless they fail the check's own rules; then saving
+  // starts clean, so damaged choices are repaired by saving again.
+  let existing = {};
+  try { existing = checkPrefs(saved || {}); } catch { existing = {}; }
   if (updatedAt && Date.now() - Date.parse(updatedAt) < SAVE_GAP_MS) throw new HttpError("Saving too fast. Wait a moment and try again.", 429);
 
   let prefs;
@@ -69,18 +75,20 @@ export const POST = handle(async (request) => {
       maxAgeDays: body.maxAgeDays ?? 14,
       schools: body.school ? [String(body.school)] : [],
       scoring: "keywords"
-    }, existing || {});
+    }, existing);
   } catch (err) {
     throw new HttpError(err.message);
   }
   prefs.setup = { ...prefs.setup, sectors };
 
-  await ok(await asUser(user, "/rest/v1/preferences?on_conflict=user_id", {
+  await ok(await asServer("/rest/v1/preferences?on_conflict=user_id", {
     method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: { user_id: user.id, prefs }
   }), "Saving your choices");
-  await ok(await asUser(user, "/rest/v1/profiles?on_conflict=user_id", {
-    method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: { user_id: user.id, looking_for: lookingFor }
-  }), "Saving what you are looking for");
+  if (lookingFor !== savedLookingFor) {
+    await ok(await asServer("/rest/v1/profiles?on_conflict=user_id", {
+      method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: { user_id: user.id, looking_for: lookingFor }
+    }), "Saving what you are looking for");
+  }
   const companies = hostedStarter().filter((c) => sectors.includes(c.sector)).length;
   return json({ saved: true, companies });
 });

@@ -92,9 +92,11 @@ export async function readAll(call, path, { pageSize = 1000, max = 50000 } = {})
   return rows;
 }
 
-// Throws with the database's own message, so a failed write is never silent.
+// Throws when a request failed, so a failed write is never silent. The message keeps only the database's error
+// code, never its "details", which can quote the failing row (a file name, or what someone is looking for).
 export async function ok(res, what) {
   if (res.ok) return res;
-  const detail = await res.text().catch(() => "");
-  throw new Error(`${what} failed (HTTP ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""})`);
+  const body = await res.json().catch(() => null);
+  const code = typeof body?.code === "string" ? body.code.slice(0, 20) : "";
+  throw new Error(`${what} failed (HTTP ${res.status}${code ? `, code ${code}` : ""})`);
 }

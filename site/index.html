@@ -173,7 +173,7 @@
   <header>
     <div class="wrap">
       <p class="wordmark">Shortlist</p>
-      <div class="account" id="account" hidden><b id="who"></b><button class="linkish" id="signOut" type="button">Sign out</button></div>
+      <div class="account ph-no-capture" id="account" hidden><b id="who"></b><button class="linkish" id="signOut" type="button">Sign out</button></div>
     </div>
   </header>
 
@@ -262,7 +262,9 @@
       <p id="checkHint"></p>
     </div>
 
-    <section id="board" hidden aria-label="Your board">
+    <!-- ph-no-capture: session replay leaves the board out entirely, links and all (their addresses name companies
+         and schools). Everything else in a replay has its text masked (site/analytics.js). -->
+    <section id="board" class="ph-no-capture" hidden aria-label="Your board">
       <div class="counts" id="counts"></div>
       <p class="note" id="methodNote"></p>
       <div class="cols">
