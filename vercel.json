@@ -4,6 +4,12 @@
   "buildCommand": "node scripts/build-site.js",
   "outputDirectory": "site",
   "cleanUrls": true,
+  "functions": {
+    "api/check.js": { "maxDuration": 60 },
+    "api/resume.js": { "maxDuration": 30 },
+    "api/refresh-postings.js": { "maxDuration": 300 }
+  },
+  "crons": [{ "path": "/api/refresh-postings", "schedule": "0 10 * * *" }],
   "headers": [
     {
       "source": "/(.*)",
