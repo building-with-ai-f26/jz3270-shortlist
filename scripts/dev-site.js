@@ -1,6 +1,9 @@
 // `npm run dev-site` runs the hosted site on this laptop at http://localhost:3002, the way Vercel runs it: the page
 // in site/, each file in api/ as a function, and the security headers from vercel.json. It uses the development
 // Supabase project from .env and refuses production. The laptop app is still npm start.
+//
+// AI scoring uses a fake OpenRouter (made-up fits, $0), so clicking Check my list here never spends Jordan's key.
+// `npm run dev-site -- --real-ai` uses the key in .env instead: a paid run, so ask Jordan first (AGENTS.md section 7).
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,12 +11,19 @@ import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 import { loadEnv } from "../src/env.js";
 import { ROOT } from "../src/pipeline.js";
+import { useFakeOpenRouter } from "./fake-openrouter.js";
 
 loadEnv(ROOT);
 const PORT = 3002;
 if ((process.env.SUPABASE_URL || "").includes("ohagjyhptkisbynowupl")) {
   console.error("This runs against the development database only. Point SUPABASE_URL in .env at the dev project.");
   process.exit(1);
+}
+if (process.argv.includes("--real-ai")) {
+  console.log("AI scoring uses the OpenRouter key in .env: each check can spend up to about $0.03.");
+} else {
+  useFakeOpenRouter();
+  console.log("AI scoring uses a fake OpenRouter: made-up fits, nothing spent. Add -- --real-ai for the real one (paid).");
 }
 execFileSync(process.execPath, [path.join(ROOT, "scripts", "build-site.js")], { stdio: "inherit" });
 
