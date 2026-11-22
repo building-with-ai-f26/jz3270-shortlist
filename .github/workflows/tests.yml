@@ -1,0 +1,33 @@
+# Runs the deterministic tests on every pull request and on every push to main, and fails on any high or
+# critical npm advisory (Build 3, advanced lane). It needs no secrets: the tests replace fetch with a fake,
+# so nothing here reaches OpenRouter, Supabase or a job board.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exactly what package-lock.json lists
+        run: npm ci
+      - name: Run the tests
+        run: npm test
+      - name: Check dependencies for high or critical advisories
+        run: npm audit --audit-level=high
