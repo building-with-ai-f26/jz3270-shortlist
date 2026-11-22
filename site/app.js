@@ -12,6 +12,10 @@
   const say = (text, bad = false) => { $("msg").textContent = text || ""; $("msg").classList.toggle("bad", bad); };
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const GRAD = "2027 grad";
+  // Product analytics (site/analytics.js): counts and kinds only, never resume text, titles or choices.
+  const track = (event, props) => window.shortlistAnalytics?.track(event, props);
+  const fileType = (name) => (/\.pdf$/i.test(name) ? "pdf" : /\.docx$/i.test(name) ? "docx" : "text");
+  const linkType = (label) => (/alumni/i.test(label) ? "alumni" : /2nd-degree/i.test(label) ? "connections" : /recruit/i.test(label) ? "recruiters" : /MBAs/i.test(label) ? "mbas" : "team");
   const SHOW_FIRST = 20;
 
   let toastTimer;
@@ -132,6 +136,7 @@
       me = { ...me, hasResume: true, resumeFileName: r.resumeFileName, resumeUploadedAt: r.resumeUploadedAt };
       renderResume();
       updateGo();
+      track("resume_uploaded", { file_type: fileType(r.resumeFileName) });
       toast(`Got it: ${r.characters.toLocaleString("en-US")} characters of resume text, contact details removed, stored encrypted.`);
     } catch (err) {
       toast(err.message, true);
@@ -204,6 +209,7 @@
         school: $("school").value.trim(), lookingFor: $("lookingFor").value.trim()
       };
       const r = await api("/api/setup", { method: "POST", body });
+      track("setup_saved", { roles_count: body.roles.length, cities_count: body.cities.length, sectors_count: body.sectors.length, first_time: !setup.picked });
       setup.picked = { ...body };
       editing = false;
       renderWants();
@@ -238,6 +244,7 @@
     }, 250);
     try {
       board = await api("/api/check", { method: "POST" });
+      track("check_run", { ranked: board.summary.scored, new_count: board.summary.newCount, scoring: board.summary.method });
       renderBoard();
       $("board").scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
     } catch (err) {
@@ -280,10 +287,11 @@
       r.location ? el("span", { text: r.location }) : null,
       posted(r.ageDays) ? el("span", { text: posted(r.ageDays) }) : null);
     const people = (r.people || []).filter((p) => /^https:\/\//.test(p.url));
+    const column = r.cohort === GRAD ? "grad" : "open";
     const links = el("p", { className: "rlinks" },
-      r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener noreferrer", text: "Open posting ↗" }) : null,
+      r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener noreferrer", text: "Open posting ↗", onclick: () => track("posting_opened", { column }) }) : null,
       people.length ? el("span", { text: "Reach out:" }) : null,
-      people.map((p) => el("a", { href: p.url, target: "_blank", rel: "noopener noreferrer", text: p.label })));
+      people.map((p) => el("a", { href: p.url, target: "_blank", rel: "noopener noreferrer", text: p.label, onclick: () => track("people_link_opened", { link_type: linkType(p.label) }) })));
     return el("article", { className: "role" },
       el("div", { className: `fit ${t}`, "aria-label": `Keyword score ${r.fit}` }, el("b", { text: String(r.fit ?? 0) }), el("small", { text: "match" })),
       el("div", {},
@@ -345,6 +353,7 @@
     if (!window.confirm("Remove your resume and every score and check made from it? Your choices stay.")) return;
     try {
       await api("/api/resume", { method: "DELETE" });
+      track("resume_removed");
       me = { ...me, hasResume: false, resumeFileName: null, resumeUploadedAt: null };
       board = null;
       renderResume();
@@ -363,6 +372,8 @@
     if (typed.trim().toLowerCase() !== "delete my account") return toast("Not deleted: the words did not match.", true);
     try {
       await api("/api/account", { method: "DELETE", body: { confirm: "delete my account" } });
+      track("account_deleted");
+      window.posthog?.reset?.();
       await client.auth.signOut();
       say("Your account and all its data are deleted.");
     } catch (err) {
@@ -383,6 +394,8 @@
       return showCard("unavailable");
     }
 
+    window.shortlistAnalytics?.start(config.analytics);
+
     // PKCE: the sign-in comes back as a one-time code that only this browser can turn into a session.
     client = window.supabase.createClient(config.supabaseUrl, config.publishableKey, {
       auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
@@ -397,6 +410,7 @@
 
     $("google").addEventListener("click", async () => {
       say("Opening Google...");
+      track("sign_in_started", { method: "google" });
       const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}/` } });
       if (error) say(`Google sign-in did not start: ${error.message}`, true);
     });
@@ -410,7 +424,10 @@
       const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}/` } });
       $("emailBtn").disabled = false;
       if (error) say(`The link could not be sent: ${error.message}`, true);
-      else say(`Check ${email} for a sign-in link, and open it in this browser.`);
+      else {
+        track("sign_in_started", { method: "email" });
+        say(`Check ${email} for a sign-in link, and open it in this browser.`);
+      }
     });
 
     $("signOut").addEventListener("click", async () => {

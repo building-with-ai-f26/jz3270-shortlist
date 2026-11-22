@@ -27,12 +27,34 @@ test("the page is given only the public address and key, never a secret", async 
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("cache-control"), "no-store");
     const body = await res.json();
-    assert.deepEqual(body, { supabaseUrl: "https://dev-ref.supabase.co", publishableKey: "sb_publishable_test" });
+    assert.deepEqual(body, { supabaseUrl: "https://dev-ref.supabase.co", publishableKey: "sb_publishable_test", analytics: null });
     assert.ok(!JSON.stringify(body).includes("secret"));
   });
   await withEnv({ SUPABASE_URL: undefined, SUPABASE_PUBLISHABLE_KEY: undefined }, async () => {
     assert.equal(config().status, 503, "not set up yet, said plainly");
   });
+  await withEnv({ ...DEV, POSTHOG_KEY: "phc_public_project_key", VERCEL_ENV: "preview" }, async () => {
+    assert.deepEqual((await config().json()).analytics, { key: "phc_public_project_key", host: "https://us.i.posthog.com", environment: "preview" });
+  });
+  await withEnv({ ...DEV, POSTHOG_KEY: "phx_personal_api_key_reads_everything" }, async () => {
+    assert.equal((await config().json()).analytics, null, "a PostHog personal API key is never sent to the page");
+  });
+});
+
+test("hosted analytics: only listed events and properties, nobody identified, every replay masked", () => {
+  const js = fs.readFileSync(new URL("../site/analytics.js", import.meta.url), "utf8");
+  for (const off of ["autocapture: false", "enable_heatmaps: false", "capture_performance: false", 'person_profiles: "identified_only"', "maskAllInputs: true", 'maskTextSelector: "*"']) {
+    assert.ok(js.includes(off), off);
+  }
+  assert.match(js, /before_send: \(event\) => \(event && \(EVENTS\[event\.event\] \|\| SYSTEM_EVENTS\.includes/);
+  assert.doesNotMatch(js, /identify\(/, "nobody is identified");
+  // track() sends only the properties in this list, so the list itself must hold only counts and kinds.
+  const allowed = [...js.matchAll(/^\s+([a-z_]+): \[([^\]]*)\],?$/gm)].flatMap(([, , props]) => props.match(/"[a-z_]+"/g) || []);
+  assert.ok(allowed.length >= 8, "the property list was read");
+  for (const prop of allowed) assert.doesNotMatch(prop, /title|company|email|school|resume|why|text|name|url/i, prop);
+  const app = fs.readFileSync(new URL("../site/app.js", import.meta.url), "utf8");
+  const events = [...app.matchAll(/track\("([a-z_]+)"/g)].map((m) => m[1]);
+  for (const e of events) assert.match(js, new RegExp(`^\\s+${e}: \\[`, "m"), `${e} is a listed event`);
 });
 
 test("a secret key pasted into the publishable setting is refused, not handed to the browser", async () => {
@@ -85,7 +107,7 @@ test("the page runs no inline scripts and builds nothing from server text as HTM
   const scripts = [...page.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
   assert.ok(scripts.length >= 2);
   for (const [, attrs, body] of scripts) {
-    assert.match(attrs, /src="\/(vendor\/supabase|app)\.js"/, "scripts come from this site");
+    assert.match(attrs, /src="\/(vendor\/supabase|analytics|app)\.js"/, "scripts come from this site");
     assert.equal(body.trim(), "", "no inline script");
   }
   assert.doesNotMatch(page, /\son[a-z]+="/i, "no inline event handlers");
@@ -96,11 +118,11 @@ test("the page runs no inline scripts and builds nothing from server text as HTM
   assert.match(page, /href="\/privacy"/, "the privacy page is linked from the front page");
 });
 
-test("the security policy lets the page talk only to itself and the two Supabase projects", () => {
+test("the security policy lets the page talk only to itself, the two Supabase projects and PostHog", () => {
   const vercel = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
   const csp = vercel.headers[0].headers.find((h) => h.key === "Content-Security-Policy").value;
   const connect = csp.match(/connect-src ([^;]+)/)[1].trim().split(/\s+/);
-  assert.deepEqual(connect, ["'self'", "https://huvgdzobcgnvqhysfvlc.supabase.co", "https://ohagjyhptkisbynowupl.supabase.co"]);
-  assert.match(csp, /script-src 'self';/, "scripts only from this site");
+  assert.deepEqual(connect, ["'self'", "https://huvgdzobcgnvqhysfvlc.supabase.co", "https://ohagjyhptkisbynowupl.supabase.co", "https://us.i.posthog.com", "https://us-assets.i.posthog.com"]);
+  assert.match(csp, /script-src 'self' https:\/\/us-assets\.i\.posthog\.com;/, "scripts only from this site and PostHog's loader");
   assert.equal(vercel.buildCommand, "node scripts/build-site.js");
 });
