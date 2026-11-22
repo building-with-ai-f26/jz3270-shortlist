@@ -42,7 +42,7 @@ A separate agent read the hosted code with no hints about what I thought was saf
 | --- | --- | --- |
 | The check limit could be bypassed: many checks sent at once all passed the count, failed checks never counted, and Start over deleted the checks the limit counts | Medium | Fixed. A check writes its row first and counts after; failed and refused checks keep their rows; Start over clears a check's board but keeps the row; people cannot delete their own checks. Verified live: 6 checks sent at once, 0 got past the limit |
 | One upload could stall a server function for 30 seconds (cleaning very long text is slow) or exhaust its memory (a Word "zip bomb") | Medium | Fixed. Text is trimmed before cleaning (worst case now about 0.65 seconds), text files are capped at 200 KB, PDFs at 20 pages, and Word files are unzipped first with a cap on real bytes, so a file that claims to be small but expands to 60 MB is refused |
-| The browser can write to its own preferences, profile and decisions directly through Supabase, skipping the site's checks | Low to medium | Partly fixed: the site now saves choices from the server after checking them, re-checks saved choices before every check, and repairs damaged ones when saved again. Revoking the direct writes needs a database migration, which is on the "Ask me first" list, so it waits for Jordan's yes |
+| The browser can write to its own preferences, profile and decisions directly through Supabase, skipping the site's checks | Low to medium | Fixed. The site saves choices from the server after checking them, re-checks saved choices before every check, and repairs damaged ones when saved again. Then, with Jordan's yes, a migration (`20261122201103_revoke_direct_writes.sql`) took away signed-in people's insert, update and delete on their own profile, preferences, watchlist and decisions. On dev, before the migration, a test account could add, change and delete its own rows directly (5 of 5 attempts worked); after it, all 5 were refused, `check-rls` passed 39 of 39 and `check-hosted` 25 of 25 |
 | "toString" or "constructor" passed as a kind of role or city | Low | Fixed with a strict check |
 | The encryption accepted shortened authentication tags | Low | Fixed: only a full 16-byte tag and a 12-byte nonce are accepted |
 | Some resume-derived text is stored as plain text (the file name, "What I'm looking for", a role's reason quoting a few resume words), and the privacy page did not mention PostHog | Low | The privacy page now says exactly what is encrypted and what is not, and names PostHog. Start over deletes the scores and clears past boards |
@@ -89,15 +89,19 @@ PostHog runs on the hosted site with nobody identified, click capture off, and s
 - **Leaked keys:** `npm run check-secrets` after the merge was clean on 122 tracked files, about 32,000 added lines of Git history, and 8 live pages and scripts.
 - **The daily fetch** ran on production from Vercel's cron page and filled the shared postings.
 
+## Spending caps and backups (done November 22)
+
+- **OpenRouter credit limits:** a hard limit on each key, $10 on the first key and $5 on the second, so even a bug cannot spend more.
+- **Production backups:** Supabase Pro backs up the production database every day (the free plan does not) and keeps 7 days. Four were listed on November 22, from November 19 to November 22 at 06:12 UTC. They are physical backups, which Supabase restores in place rather than offering as a download.
+
 ## Still to do (Jordan)
 
-- **OpenRouter credit limits:** a hard limit on each key in OpenRouter (Settings, Keys). Needed before AI scoring is switched on for the hosted site.
-- **Production backup:** Supabase Pro takes a daily backup and keeps 7 days. Download one from the production project (Database, Backups) and keep it off the repo.
 - **Supabase sign-in settings, in both projects:** anonymous sign-ins off, email confirmation on, and the production redirect list holding only `https://jz3270-shortlist.vercel.app/**` (no `*.vercel.app` wildcard).
 
 ## Remaining issues
 
-- **Direct writes to your own rows.** A signed-in person can still write to their own preferences, profile, watchlist and decisions straight through Supabase's database API with their own token, which skips the site's checks. They can only touch their own rows, and the check re-validates choices, but they could, for example, delete their profile row to reset the upload limit. Fix ready to build once Jordan approves the migration: revoke those writes, since the site now saves through the server.
+- **`main` takes direct pushes.** The direct-writes migration reached production by a push straight to `main` instead of a pull request (see the next point). The Tests and Database migrations Actions still ran and passed, and dev was then brought level by running the migrations Action by hand. A branch rule on GitHub that requires a pull request for `main` would stop this; it needs admin rights on the class repository.
+- **How that happened:** the agent made two branches from `origin/main`, so Git set them to follow `main`, and GitHub Desktop's push sent them there. AGENTS.md now has a rule against it (rule 13).
 - **The dev project's redirect list** allows the team's preview addresses with a wildcard, which a lookalike Vercel team name could match. Dev holds only test data; production allows only its exact address.
 - **Deleting and re-creating an account** (a new Google account) starts fresh limits. That is acceptable while checks are free; the AI allowance will also need a site-wide daily cap.
 - **Email sign-in** uses Supabase's built-in sender, which only reaches the project's team (about 2 emails an hour). Google is the way in until a custom sender is set up.
