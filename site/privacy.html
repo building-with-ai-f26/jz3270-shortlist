@@ -41,9 +41,10 @@
         <li><strong>Your account:</strong> your email address, from Google or from the email link you used to sign in. Shortlist never sees your Google password.</li>
         <li><strong>Your resume, as text:</strong> the file you upload is read in memory and not kept. Emails, phone numbers and web links are removed first, and the remaining text is stored encrypted, with a key the database does not hold, so it only opens for your account.</li>
         <li><strong>Your choices:</strong> kinds of role, cities, how recent, sectors of companies, your school, and what you are looking for.</li>
-        <li><strong>Your board:</strong> the score each role got against your resume and a record of each check you run.</li>
+        <li><strong>Your board:</strong> the score each role got against your resume (with the AI's one-sentence reason and biggest gap, when AI scored it) and a record of each check you run.</li>
+        <li><strong>Your AI allowance:</strong> how many roles AI scored for you each day, and what that cost, so the daily limit holds.</li>
       </ul>
-      <p>Only the resume text is encrypted. The file name, what you are looking for, your choices and your board are stored as plain text so the page can load them quickly. A role's reason can quote a few words from your resume (for example "Keyword overlap: sourcing, logistics"). Start over deletes the scores and clears those boards.</p>
+      <p>Only the resume text is encrypted. The file name, what you are looking for, your choices and your board are stored as plain text so the page can load them quickly. A role's reason can quote a few words from your resume (for example "Keyword overlap: sourcing, logistics", or an AI reason that names one of your projects). Start over deletes the scores and clears those boards. It keeps the count of AI scores you used, so starting over does not reset the daily allowance; Delete my account removes that too.</p>
       <p>Job postings themselves come from companies' public job boards and are the same for everyone.</p>
     </section>
 
@@ -51,9 +52,10 @@
       <h2>Who can see it</h2>
       <ul>
         <li><strong>Only you,</strong> through your signed-in account. Every table has row level security, so one account cannot read another's rows.</li>
-        <li><strong>Services that run Shortlist:</strong> Supabase stores the data (United States), and Vercel runs the website. Neither may use it for anything else.</li>
+        <li><strong>Services that run Shortlist:</strong> Supabase stores the data (United States), Vercel runs the website, and OpenRouter passes AI scoring requests to the model (see below). None may use it for anything else.</li>
         <li><strong>Usage analytics:</strong> PostHog counts what people do, such as a check run or a posting opened, with counts and kinds only, never your resume, choices or email, and without identifying you. Its session replay records the layout and clicks with every piece of text masked and the board left out.</li>
-        <li><strong>Ranking:</strong> today roles are ranked by matching words in your resume, on Shortlist's own server. If AI scoring is switched on later, your resume text (without contact details) is sent to the model through OpenRouter, only to hosts that do not keep or train on it, and this page will say so first.</li>
+        <li><strong>AI scoring:</strong> when you run a check, your resume text (without contact details) and what you are looking for are sent, with one job posting at a time, to an AI model (Claude Haiku 5.5, made by Anthropic) through OpenRouter, only to hosts that do not keep or train on it. That happens for up to 20 new roles a check and 60 a day. The model's answer (a score, its reason and the biggest gap) is stored on your board. Shortlist never writes your resume or these requests into its own logs.</li>
+        <li><strong>Ranking by words:</strong> every role is also ranked by matching words in your resume, on Shortlist's own server. That ranking decides which roles AI scores first, and it carries the rest of the board when the daily AI allowance is used up.</li>
       </ul>
       <p>Shortlist does not sell, rent or share your data, does not show ads, and never contacts anyone on LinkedIn for you. The "Reach out" links are plain LinkedIn searches that you open yourself.</p>
     </section>

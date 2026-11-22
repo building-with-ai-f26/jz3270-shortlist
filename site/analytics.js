@@ -11,7 +11,7 @@ window.shortlistAnalytics = (() => {
     sign_in_started: ["method"],
     resume_uploaded: ["file_type"],
     setup_saved: ["roles_count", "cities_count", "sectors_count", "first_time"],
-    check_run: ["ranked", "new_count", "scoring"],
+    check_run: ["ranked", "new_count", "scoring", "ai_scored", "ai_paused"],
     posting_opened: ["column"],
     people_link_opened: ["link_type"],
     resume_removed: [],
