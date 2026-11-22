@@ -23,6 +23,26 @@ test("classifies tracks from the title first", () => {
   assert.equal(classifyTrack("Real Estate Acquisitions Associate"), "Full-time");
 });
 
+// Found on Jordan's first live board (Nov 22): "Internships (Summer 2027) - General Interest" passed as full-time,
+// because the rule needed a word break right after "intern" or "internship".
+test("plural titles count too: internships, interns, fellows, co-ops", () => {
+  assert.equal(classifyTrack("Internships (Summer 2027) - General Interest"), "Internship");
+  assert.equal(classifyTrack("Business Operations Interns, Summer 2027"), "Internship");
+  assert.equal(classifyTrack("Spring Co-ops: Supply Chain"), "Internship");
+  assert.equal(classifyTrack("Climate Policy Fellows, 2027 Cohort"), "Fellowship");
+  assert.equal(classifyTrack("Fellowships in Urban Analytics"), "Fellowship");
+  const r = prefilter(posting({ title: "Internships (Summer 2027) - General Interest" }), { tracks: ["Full-time", "Program"] }, now);
+  assert.equal(r.keep, false);
+  assert.equal(r.reason, "Track is Internship", "the drop keeps its reason");
+});
+
+test("words that only start like intern or fellow stay full-time", () => {
+  assert.equal(classifyTrack("International Strategy Manager"), "Full-time");
+  assert.equal(classifyTrack("Internal Audit Associate"), "Full-time");
+  assert.equal(classifyTrack("Internet Platform Operations Lead"), "Full-time");
+  assert.equal(classifyTrack("Cooperative Partnerships Manager"), "Full-time");
+});
+
 test("a full-time title stays full-time even if the description mentions interns", () => {
   assert.equal(classifyTrack("Operations Associate", "You will manage two interns each summer."), "Full-time");
 });
