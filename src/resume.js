@@ -14,7 +14,8 @@ export function fileKind(filename = "") {
   return null;
 }
 
-export async function extractText(buffer, filename) {
+// opts.maxPages refuses longer PDFs before reading them (the hosted site passes it; the laptop app does not).
+export async function extractText(buffer, filename, opts = {}) {
   const kind = fileKind(filename);
   if (!kind) throw new Error("Use a PDF, Word (.docx) or text file.");
   if (kind === "text") return buffer.toString("utf8");
@@ -25,6 +26,7 @@ export async function extractText(buffer, filename) {
     if (major < 22) throw new Error(`Reading PDFs needs Node 22 or newer, and this computer has Node ${process.versions.node}. Install the current Node from nodejs.org, or upload the Word version.`);
     const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
     const pdf = await getDocumentProxy(new Uint8Array(buffer), { isEvalSupported: false });
+    if (opts.maxPages && pdf.numPages > opts.maxPages) throw new Error(`That PDF has ${pdf.numPages} pages; a resume should fit in ${opts.maxPages}.`);
     const { text } = await pdfText(pdf, { mergePages: true });
     return Array.isArray(text) ? text.join("\n") : text;
   }

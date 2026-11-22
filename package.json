@@ -15,6 +15,10 @@
     "accuracy": "node scripts/accuracy.js",
     "compare-models": "node scripts/compare-models.js",
     "check-rls": "node scripts/check-rls.js",
+    "check-hosted": "node scripts/check-hosted.js",
+    "check-secrets": "node scripts/check-secrets.js",
+    "dev-site": "node scripts/dev-site.js",
+    "refresh-postings": "node scripts/refresh-postings.js",
     "build-demo": "node scripts/build-demo.js",
     "test": "node --test tests/*.test.js"
   },
@@ -22,6 +26,7 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.119.0",
     "mammoth": "^1.13.0",
     "unpdf": "^1.9.1"
   }

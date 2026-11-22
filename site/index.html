@@ -4,57 +4,307 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shortlist</title>
-  <meta name="description" content="Off-cycle roles, ranked against your resume. The hosted Shortlist opens soon." />
-  <!-- The hosted site's first page, while sign-in and the database are built (CLOUD-PLAN.md, step 1).
-       No scripts and nothing personal: it only proves that previews, production and rollback work. -->
+  <meta name="description" content="Off-cycle roles, ranked against your resume. Sign in to try the hosted Shortlist." />
+  <!-- The hosted site (CLOUD-PLAN.md, steps 3 and 5): sign in, upload a resume, pick what you want, check. All
+       scripts load from this site (Supabase's library is copied in at build time), so the strict security policy
+       stays strict. Everything from the server or a job board goes in as text, never as HTML (site/app.js). -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --board: #e3e5e1;
+      --board-deep: #d5d8d3;
       --strip: #fbfbf9;
       --ink: #141618;
       --ink-2: #464b51;
       --ink-3: #61666c;
+      --rule: #c5c9c3;
+      --rule-soft: #dcdfda;
+      --strong: #0f7a4a;
+      --possible: #a26100;
+      --long: #6b7178;
+      --stop: #c8321e;
+      --new: #ffd60a;
       --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
       --text: "Public Sans", "Helvetica Neue", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body { margin: 0; min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: var(--board); color: var(--ink); font: 16px/1.55 var(--text); }
     ::selection { background: var(--ink); color: var(--strip); }
     a { color: inherit; text-underline-offset: 3px; }
-    .wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 32px; }
-    header { padding: 22px 0 18px; }
-    .wordmark { margin: 0; font-family: var(--display); font-weight: 900; font-size: 44px; line-height: 0.9; text-transform: uppercase; }
-    main { display: grid; align-content: center; justify-items: start; padding-bottom: 48px; }
-    .tag { display: inline-block; margin: 0 0 18px; padding: 4px 10px; background: var(--ink); color: var(--strip); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-    h1 { margin: 0; max-width: 12ch; font-family: var(--display); font-weight: 900; font-size: clamp(52px, 8vw, 112px); line-height: 0.86; text-transform: uppercase; }
-    .lede { margin: 20px 0 28px; max-width: 56ch; font-size: 18px; color: var(--ink-2); }
-    .links { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
-    .links a { display: inline-block; padding: 11px 18px; border: 1px solid var(--ink); font-weight: 700; text-decoration: none; }
-    .links a:hover, .links a:focus-visible { background: var(--ink); color: var(--strip); }
-    .links a.solid { background: var(--ink); color: var(--strip); }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
     :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    .wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 22px; padding-bottom: 18px; }
+    .wordmark { margin: 0; font-family: var(--display); font-weight: 900; font-size: 44px; line-height: 0.9; text-transform: uppercase; }
+    .account { display: flex; align-items: center; gap: 14px; font-size: 14px; color: var(--ink-2); min-width: 0; }
+    .account b { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
+    .linkish { padding: 0; border: 0; background: none; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+    /* Signed out: the pitch and the sign-in card. */
+    .landing { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px); gap: 56px; align-items: center; padding-bottom: 48px; }
+    .tag { display: inline-block; margin: 0 0 18px; padding: 4px 10px; background: var(--ink); color: var(--strip); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1 { margin: 0; font-family: var(--display); font-weight: 900; font-size: clamp(52px, 7vw, 104px); line-height: 0.86; text-transform: uppercase; }
+    .lede { margin: 20px 0 24px; max-width: 54ch; font-size: 18px; color: var(--ink-2); }
+    .links { display: flex; flex-wrap: wrap; gap: 18px; margin: 0; padding: 0; list-style: none; font-weight: 700; }
+    .card { padding: 26px 24px 22px; background: var(--strip); border: 1px solid var(--ink); }
+    .card h2 { margin: 0 0 6px; font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; text-transform: uppercase; }
+    .help { margin: 0 0 18px; font-size: 14px; color: var(--ink-2); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 0 18px; border: 1px solid var(--ink); background: transparent; font-weight: 700; text-decoration: none; }
+    .btn:hover { background: var(--ink); color: var(--strip); }
+    .btn.solid { background: var(--ink); color: var(--strip); }
+    .btn.solid:hover { background: #2e3236; }
+    .btn.wide { width: 100%; }
+    .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+    .btn.danger { border-color: var(--stop); color: var(--stop); }
+    .btn.danger:hover { background: var(--stop); color: var(--strip); }
+    .or { display: flex; align-items: center; gap: 12px; margin: 16px 0; font-size: 13px; color: var(--ink-3); }
+    .or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--rule); }
+    label.field { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input[type="email"], input[type="text"], textarea { width: 100%; min-height: 46px; margin-bottom: 8px; padding: 10px 12px; background: var(--strip); border: 1px solid var(--rule); outline: none; }
+    input:focus, textarea:focus { border-color: var(--ink); }
+    textarea { min-height: 84px; resize: vertical; }
+    .msg { min-height: 1.4em; margin: 14px 0 0; font-size: 14px; font-weight: 600; }
+    .msg.bad { color: var(--stop); }
+    .fine { margin: 12px 0 0; font-size: 12px; color: var(--ink-3); }
+
+    /* Signed in: three steps, then the board. */
+    .app { padding-bottom: 40px; }
+    .steps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 20px; align-items: start; }
+    .step { padding: 20px 22px 22px; background: var(--strip); border: 1px solid var(--ink); }
+    .step h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-family: var(--display); font-weight: 900; font-size: 30px; line-height: 1; text-transform: uppercase; }
+    .num { display: inline-grid; place-items: center; width: 30px; height: 30px; background: var(--ink); color: var(--strip); font-size: 20px; }
+    .step.done .num { background: var(--strong); }
+    .drop { display: grid; place-items: center; gap: 6px; min-height: 150px; padding: 18px; border: 2px dashed var(--ink-3); background: var(--board); text-align: center; cursor: pointer; }
+    .drop:hover, .drop.over { border-color: var(--ink); background: var(--board-deep); }
+    .drop b { font-family: var(--display); font-size: 26px; text-transform: uppercase; }
+    .drop span { font-size: 13px; color: var(--ink-2); }
+    .onfile { margin: 0 0 14px; font-size: 15px; overflow-wrap: anywhere; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; min-width: 0; }
+    legend { margin-bottom: 8px; padding: 0; font-size: 13px; font-weight: 700; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { min-height: 38px; padding: 0 12px; border: 1px solid var(--rule); background: var(--strip); font-size: 14px; font-weight: 600; }
+    .chip:hover { border-color: var(--ink); }
+    .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--strip); }
+    .chip small { font-weight: 400; opacity: 0.75; }
+    .summary-line { margin: 0 0 14px; font-size: 15px; color: var(--ink-2); }
+    .go { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 22px 0 10px; }
+    .check { display: inline-flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 28px; border: 0; background: var(--ink); color: var(--strip); font-family: var(--display); font-weight: 900; font-size: 30px; text-transform: uppercase; }
+    .check:hover:not([disabled]) { transform: translateY(-1px); }
+    .check[disabled] { opacity: 0.45; cursor: not-allowed; }
+    .go p { margin: 0; font-size: 14px; color: var(--ink-2); }
+
+    .counts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 18px 0 8px; border: 1px solid var(--rule); background: var(--strip); }
+    .count { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-left: 1px solid var(--rule-soft); }
+    .count:first-child { border-left: 0; }
+    .count b { font-family: var(--display); font-weight: 900; font-size: 38px; line-height: 1; }
+    .count span { font-size: 13px; color: var(--ink-2); }
+    .count.new { background: var(--new); }
+    .note { margin: 0 0 18px; font-size: 14px; color: var(--ink-2); }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .col h2 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 4px; padding-bottom: 8px; border-bottom: 3px solid var(--ink); font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; text-transform: uppercase; }
+    .col h2 span { color: var(--ink-3); font-size: 26px; }
+    .col > p { margin: 8px 0 14px; font-size: 14px; color: var(--ink-2); }
+    .tier { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; font-size: 13px; color: var(--ink-2); }
+    .tier b { font-family: var(--display); font-size: 20px; text-transform: uppercase; color: var(--ink); }
+    .tier i { width: 12px; height: 12px; background: var(--long); }
+    .tier.strong i { background: var(--strong); } .tier.possible i { background: var(--possible); }
+    .role { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; padding: 14px; background: var(--strip); border: 1px solid var(--rule-soft); border-top: 0; }
+    .tier + .role { border-top: 1px solid var(--rule-soft); }
+    .fit { display: grid; place-items: center; align-content: center; width: 64px; height: 64px; background: var(--long); color: var(--strip); }
+    .fit b { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 0.9; }
+    .fit small { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .fit.strong { background: var(--strong); } .fit.possible { background: var(--possible); }
+    .role h3 { margin: 0 0 4px; font-size: 16px; line-height: 1.3; }
+    .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 6px; font-size: 13px; color: var(--ink-2); }
+    .meta b { color: var(--ink); }
+    .newtag { padding: 1px 6px; background: var(--new); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+    .why { margin: 0 0 8px; font-size: 14px; }
+    .bar { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--stop); }
+    .rlinks { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
+    .rlinks a:first-child { font-weight: 700; }
+    .more { margin-top: 10px; }
+    details.filtered { margin-top: 26px; padding: 14px 18px; background: var(--strip); border: 1px solid var(--rule); }
+    details.filtered summary { font-weight: 700; cursor: pointer; }
+    details.filtered ul { margin: 10px 0 0; padding-left: 20px; font-size: 14px; }
+    .yourdata { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--rule); }
+    .yourdata h2 { margin: 0 0 6px; font-family: var(--display); font-weight: 900; font-size: 26px; text-transform: uppercase; }
+    .yourdata p { margin: 0 0 12px; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
+
+    .overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; align-content: center; gap: 18px; background: rgba(227, 229, 225, 0.96); text-align: center; }
+    .ring { width: 120px; height: 120px; border: 14px solid var(--rule); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.9s linear infinite; }
+    .overlay b { font-family: var(--display); font-weight: 900; font-size: 34px; text-transform: uppercase; }
+    .overlay span { font-size: 14px; color: var(--ink-2); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { position: fixed; left: 50%; bottom: 20px; z-index: 11; max-width: min(560px, calc(100% - 32px)); transform: translateX(-50%); padding: 12px 16px; background: var(--ink); color: var(--strip); font-size: 14px; font-weight: 600; }
+    .toast.bad { background: var(--stop); }
+
     footer { padding: 16px 0 22px; border-top: 3px solid var(--ink); font-size: 13px; color: var(--ink-3); }
+    @media (prefers-reduced-motion: reduce) { .ring { animation: none; border-top-color: var(--rule); border-color: var(--ink); } .check:hover:not([disabled]) { transform: none; } }
+    @media (max-width: 900px) {
+      .landing, .steps, .cols { grid-template-columns: 1fr; gap: 24px; }
+      .landing { align-items: start; padding-top: 8px; }
+      .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .count { border-left: 0; border-top: 1px solid var(--rule-soft); }
+      .count.new { grid-column: 1 / -1; }
+    }
     @media (max-width: 680px) {
       .wrap { padding: 0 16px; }
-      .wordmark { font-size: 36px; }
+      .wordmark { font-size: 34px; }
+      .account { font-size: 13px; gap: 10px; }
+      .account b { max-width: 16ch; }
       .lede { font-size: 16px; }
+      .check { width: 100%; justify-content: center; }
+      .count { flex-direction: column; gap: 2px; padding: 10px 14px; }
+      .count b { font-size: 32px; }
+      .role { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 12px; }
+      .fit { width: 52px; height: 52px; }
+      .fit b { font-size: 28px; }
     }
   </style>
 </head>
 <body>
-  <header><div class="wrap"><p class="wordmark">Shortlist</p></div></header>
-  <main class="wrap">
-    <p class="tag">Opening soon</p>
-    <h1>Off-cycle roles, ranked against you</h1>
-    <p class="lede">Shortlist checks the job boards of the companies you care about, cuts the roles that do not fit your rules, and ranks the rest against your resume, with the reason for every score. The hosted version, with sign-in, is on its way.</p>
-    <ul class="links">
-      <li><a class="solid" href="https://building-with-ai-f26.github.io/jz3270-shortlist/demo/">Try the demo</a></li>
-      <li><a href="https://building-with-ai-f26.github.io/jz3270-shortlist/">How it works</a></li>
-    </ul>
+  <header>
+    <div class="wrap">
+      <p class="wordmark">Shortlist</p>
+      <div class="account ph-no-capture" id="account" hidden><b id="who"></b><button class="linkish" id="signOut" type="button">Sign out</button></div>
+    </div>
+  </header>
+
+  <main class="wrap landing" id="landing">
+    <section>
+      <p class="tag">Early access</p>
+      <h1>Off-cycle roles, ranked against you</h1>
+      <p class="lede">Shortlist checks the job boards of the companies you care about, cuts the roles that do not fit your rules, and ranks the rest against your resume, with the reason for every score.</p>
+      <ul class="links">
+        <li><a href="https://building-with-ai-f26.github.io/jz3270-shortlist/demo/">Try the demo</a></li>
+        <li><a href="https://building-with-ai-f26.github.io/jz3270-shortlist/">How it works</a></li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="cardTitle">
+      <div id="loading">
+        <h2 id="cardTitle">Sign in</h2>
+        <p class="help">Checking whether you are signed in...</p>
+      </div>
+
+      <div id="signedOut" hidden>
+        <h2>Sign in</h2>
+        <p class="help">Your resume and choices stay private to your account.</p>
+        <button class="btn solid wide" id="google" type="button">Continue with Google</button>
+        <p class="or">or use your email</p>
+        <form id="emailForm" novalidate>
+          <label class="field" for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" maxlength="254" placeholder="you@school.edu" />
+          <button class="btn wide" id="emailBtn" type="submit">Email me a sign-in link</button>
+        </form>
+        <p class="fine">Open the link in this same browser. During early access, email links reach only a few addresses; Google works for everyone.</p>
+      </div>
+
+      <div id="unavailable" hidden>
+        <h2>Opening soon</h2>
+        <p class="help" id="unavailableText">Sign-in is not switched on here yet.</p>
+      </div>
+
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </section>
   </main>
-  <footer><div class="wrap">Built for MBA students recruiting off-cycle.</div></footer>
+
+  <main class="wrap app" id="app" hidden>
+    <div class="steps">
+      <section class="step" id="stepResume" aria-labelledby="resumeTitle">
+        <h2 id="resumeTitle"><span class="num">1</span> Your resume</h2>
+        <div id="resumeNone">
+          <label class="drop" id="drop" for="resumeFile">
+            <b>Drop your resume</b>
+            <span>or tap to choose a PDF, Word or text file</span>
+          </label>
+          <p class="fine">Read in memory, contact details removed, stored encrypted to your account. The file itself is not kept.</p>
+        </div>
+        <div id="resumeOnFile" hidden>
+          <p class="onfile">On file: <b id="resumeName"></b><br /><span id="resumeWhen"></span></p>
+          <div class="row">
+            <label class="btn" for="resumeFile">Replace</label>
+            <button class="btn danger" id="removeResume" type="button">Remove resume</button>
+          </div>
+        </div>
+        <input class="sr" id="resumeFile" type="file" accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" />
+      </section>
+
+      <section class="step" id="stepWants" aria-labelledby="wantsTitle">
+        <h2 id="wantsTitle"><span class="num">2</span> What you want</h2>
+        <div id="wantsSummary" hidden>
+          <p class="summary-line" id="wantsLine"></p>
+          <button class="btn" id="wantsEdit" type="button">Change</button>
+        </div>
+        <form id="wantsForm" novalidate>
+          <fieldset><legend>Kinds of role</legend><div class="chips" id="roles"></div></fieldset>
+          <fieldset><legend>Cities</legend><div class="chips" id="cities"></div></fieldset>
+          <fieldset><legend>Posted in the last</legend><div class="chips" id="ages"></div></fieldset>
+          <fieldset><legend>Sectors of companies (at least one)</legend><div class="chips" id="sectors"></div></fieldset>
+          <label class="field" for="school">Your school, for alumni links (optional)</label>
+          <input id="school" type="text" maxlength="80" placeholder="NYU Stern" autocomplete="organization" />
+          <label class="field" for="lookingFor">What I'm looking for (optional)</label>
+          <textarea id="lookingFor" maxlength="2000" placeholder="Strategy or operations at a growing company in New York; no sales roles."></textarea>
+          <button class="btn solid" id="saveWants" type="submit">Save</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="go">
+      <button class="check" id="checkBtn" type="button" disabled>Check my list</button>
+      <p id="checkHint"></p>
+    </div>
+
+    <!-- ph-no-capture: session replay leaves the board out entirely, links and all (their addresses name companies
+         and schools). Everything else in a replay has its text masked (site/analytics.js). -->
+    <section id="board" class="ph-no-capture" hidden aria-label="Your board">
+      <div class="counts" id="counts"></div>
+      <p class="note" id="methodNote"></p>
+      <div class="cols">
+        <section class="col" aria-labelledby="gradTitle">
+          <h2 id="gradTitle">2027 and new grad <span id="gradCount"></span></h2>
+          <p>New grad, campus, MBA 2027 and rotational programs.</p>
+          <div id="gradList"></div>
+        </section>
+        <section class="col" aria-labelledby="openTitle">
+          <h2 id="openTitle">Full-time, open now <span id="openCount"></span></h2>
+          <p>Other full-time roles that passed your filters.</p>
+          <div id="openList"></div>
+        </section>
+      </div>
+      <details class="filtered" id="filtered">
+        <summary id="filteredTitle">Filtered out</summary>
+        <ul id="filteredList"></ul>
+      </details>
+    </section>
+
+    <section class="yourdata" aria-labelledby="dataTitle">
+      <h2 id="dataTitle">Your data</h2>
+      <p>Start over removes your resume and every score and check made from it; your choices stay. Delete my account removes everything, at once and for good.</p>
+      <div class="row">
+        <button class="btn" id="startOver" type="button">Start over</button>
+        <button class="btn danger" id="deleteAccount" type="button">Delete my account</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="checking" hidden role="status" aria-live="polite">
+    <div class="ring" aria-hidden="true"></div>
+    <b>Checking your list</b>
+    <span id="checkingText"></span>
+  </div>
+  <p class="toast" id="toast" hidden role="status" aria-live="polite"></p>
+
+  <footer><div class="wrap">Built for MBA students recruiting off-cycle. · <a href="/privacy">Privacy</a></div></footer>
+  <script src="/vendor/supabase.js" defer></script>
+  <script src="/analytics.js" defer></script>
+  <script src="/app.js" defer></script>
 </body>
 </html>

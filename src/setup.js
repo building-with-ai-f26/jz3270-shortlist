@@ -81,7 +81,8 @@ const unique = (list) => [...new Set(list)];
 
 function pick(keys, table, what) {
   const list = Array.isArray(keys) ? keys : [];
-  const unknown = list.filter((k) => !(k in table));
+  // Object.hasOwn, not "in": "toString" or "constructor" are not choices.
+  const unknown = list.filter((k) => typeof k !== "string" || !Object.hasOwn(table, k));
   if (unknown.length) throw new Error(`Unknown ${what}: ${unknown.join(", ")}`);
   return unique(list);
 }

@@ -39,6 +39,8 @@ const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const patternCache = new Map();
 
 function wordPattern(word) {
+  // A long-running server sees many people's word lists, so the cache is emptied before it grows large.
+  if (patternCache.size > 5000) patternCache.clear();
   if (!patternCache.has(word)) {
     const core = word.trim().replace(/[\s,.;:]+$/, "");
     patternCache.set(word, core ? new RegExp(`(^|[^a-z0-9])${escapeRegex(core)}(s|es|ship|ships)?(?![a-z0-9])`, "i") : null);
