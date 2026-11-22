@@ -90,6 +90,10 @@ test("the page runs no inline scripts and builds nothing from server text as HTM
   }
   assert.doesNotMatch(page, /\son[a-z]+="/i, "no inline event handlers");
   assert.doesNotMatch(app, /innerHTML|insertAdjacentHTML|document\.write/, "text goes in with textContent");
+  assert.match(app, /if \(\/\^https:\\\/\\\/\/i\.test\(v\)\) node\.href = v;/, "a link is kept only when it starts with https://");
+  const privacy = fs.readFileSync(new URL("../site/privacy.html", import.meta.url), "utf8");
+  assert.doesNotMatch(privacy, /<script/i, "the privacy page runs no script");
+  assert.match(page, /href="\/privacy"/, "the privacy page is linked from the front page");
 });
 
 test("the security policy lets the page talk only to itself and the two Supabase projects", () => {

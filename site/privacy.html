@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy · Shortlist</title>
+  <meta name="description" content="What Shortlist stores about you, who can see it, and how to delete it." />
+  <!-- The privacy policy Google's sign-in setup links to. Keep it true to the code: update it whenever what the
+       hosted site stores, or who processes it, changes. Plain language, no em or en dashes. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --board: #e3e5e1; --strip: #fbfbf9; --ink: #141618; --ink-2: #464b51; --rule: #c5c9c3;
+      --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+      --text: "Public Sans", "Helvetica Neue", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--board); color: var(--ink); font: 16px/1.6 var(--text); }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
+    a { color: inherit; text-underline-offset: 3px; }
+    .home { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 0.9; text-transform: uppercase; text-decoration: none; }
+    h1 { margin: 24px 0 4px; font-family: var(--display); font-weight: 900; font-size: 64px; line-height: 0.9; text-transform: uppercase; }
+    h2 { margin: 30px 0 8px; font-size: 20px; }
+    .updated { margin: 0 0 18px; color: var(--ink-2); font-size: 14px; }
+    section { padding: 4px 22px 18px; margin-top: 16px; background: var(--strip); border: 1px solid var(--rule); }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="home" href="/">Shortlist</a>
+    <h1>Privacy</h1>
+    <p class="updated">Last updated November 22, 2026. Shortlist is a student project built for an NYU Stern course, in early access.</p>
+
+    <section>
+      <h2>What Shortlist stores</h2>
+      <ul>
+        <li><strong>Your account:</strong> your email address, from Google or from the email link you used to sign in. Shortlist never sees your Google password.</li>
+        <li><strong>Your resume, as text:</strong> the file you upload is read in memory and not kept. Emails, phone numbers and web links are removed first, and the remaining text is stored encrypted, with a key the database does not hold, so it only opens for your account.</li>
+        <li><strong>Your choices:</strong> kinds of role, cities, how recent, sectors of companies, your school, and what you are looking for.</li>
+        <li><strong>Your board:</strong> the score each role got against your resume and a record of each check you run.</li>
+      </ul>
+      <p>Job postings themselves come from companies' public job boards and are the same for everyone.</p>
+    </section>
+
+    <section>
+      <h2>Who can see it</h2>
+      <ul>
+        <li><strong>Only you,</strong> through your signed-in account. Every table has row level security, so one account cannot read another's rows.</li>
+        <li><strong>Services that run Shortlist:</strong> Supabase stores the data (United States), and Vercel runs the website. Neither may use it for anything else.</li>
+        <li><strong>Ranking:</strong> today roles are ranked by matching words in your resume, on Shortlist's own server. If AI scoring is switched on later, your resume text (without contact details) is sent to the model through OpenRouter, only to hosts that do not keep or train on it, and this page will say so first.</li>
+      </ul>
+      <p>Shortlist does not sell, rent or share your data, does not show ads, and never contacts anyone on LinkedIn for you. The "Reach out" links are plain LinkedIn searches that you open yourself.</p>
+    </section>
+
+    <section>
+      <h2>Deleting it</h2>
+      <ul>
+        <li><strong>Start over</strong> removes your resume and every score and check made from it.</li>
+        <li><strong>Delete my account</strong> removes your account and everything tied to it, at once and for good.</li>
+      </ul>
+      <p>Both are at the bottom of the page once you sign in. Database backups roll off within 7 days.</p>
+    </section>
+
+    <section>
+      <h2>Questions</h2>
+      <p>Use the support email shown on Google's sign-in screen, or open an issue on the <a href="https://github.com/building-with-ai-f26/jz3270-shortlist">project's GitHub page</a>.</p>
+    </section>
+  </main>
+</body>
+</html>
