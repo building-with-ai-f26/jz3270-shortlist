@@ -4,8 +4,10 @@
 
 const TRACK_RULES = [
   { track: "Pre-doc", pattern: /pre-?doc|predoctoral|pre-doctoral|research (assistant|associate|professional)/i },
-  { track: "Fellowship", pattern: /\bfellow(ship)?\b/i },
-  { track: "Internship", pattern: /\bintern(ship)?\b|summer (associate|analyst)|co-op\b/i },
+  // Plurals count ("Internships", "Fellows", "Co-ops"); words that only start the same way ("International",
+  // "Internal", "Cooperative") do not.
+  { track: "Fellowship", pattern: /\bfellow(ship)?s?\b/i },
+  { track: "Internship", pattern: /\bintern(ship)?s?\b|summer (associate|analyst)|\bco-ops?\b/i },
   { track: "Program", pattern: /rotation(al)?|leadership (development )?program|early career|new grad|\bmba\b.*program|program.*\bmba\b|associate program/i }
 ];
 
