@@ -50,15 +50,21 @@ test("signed-out visitors cannot reach any table", () => {
   for (const t of tables) for (const p of policiesOn(t)) assert.doesNotMatch(p, /to (anon|public)\b/, `${t}: no policy for anon`);
 });
 
-// Every "grant <privileges> on <tables> to <roles>" statement, as table -> role -> set of privileges.
+// The table access that results from every "grant ... to" and "revoke ... from" statement, replayed in migration
+// order, as table -> role -> set of privileges. "all" in a revoke removes everything.
 function grants() {
   const out = {};
-  for (const [, privs, on, roles] of sql.matchAll(/grant ([a-z, ]+?) on ((?:public\.\w+(?:,\s*)?)+)\s+to ([a-z_, ]+);/g)) {
+  const statement = /\b(grant|revoke) ([a-z, ]+?) on ((?:public\.\w+(?:,\s*)?)+)\s+(?:to|from) ([a-z_, ]+);/g;
+  for (const [, verb, privs, on, roles] of sql.matchAll(statement)) {
     for (const t of [...on.matchAll(/public\.(\w+)/g)].map((m) => m[1])) {
       for (const role of roles.split(",").map((r) => r.trim())) {
         out[t] ??= {};
         out[t][role] ??= new Set();
-        for (const p of privs.split(",").map((x) => x.trim())) out[t][role].add(p);
+        for (const p of privs.split(",").map((x) => x.trim())) {
+          if (verb === "grant") out[t][role].add(p);
+          else if (p === "all") out[t][role].clear();
+          else out[t][role].delete(p);
+        }
       }
     }
   }
@@ -67,14 +73,16 @@ function grants() {
 
 test("signed-in people get exactly the table access the privacy rules expect", () => {
   const g = grants();
+  // Their own four tables: read only. The server writes them after checking each write (SECURITY.md).
   for (const t of ["profiles", "preferences", "watchlist", "decisions"]) {
-    for (const p of ["select", "insert", "update", "delete"]) assert.ok(g[t]?.authenticated?.has(p), `${t}: authenticated may ${p}`);
+    assert.ok(g[t]?.authenticated?.has("select"), `${t}: authenticated may read`);
+    for (const p of ["insert", "update", "delete", "truncate", "all"]) assert.ok(!g[t]?.authenticated?.has(p), `${t}: authenticated may not ${p} directly`);
   }
   for (const t of SERVER_WRITES) {
     assert.ok(g[t]?.authenticated?.has("select"), `${t}: authenticated may read`);
     for (const p of ["insert", "update", "delete", "truncate", "all"]) assert.ok(!g[t]?.authenticated?.has(p), `${t}: authenticated may not ${p}`);
   }
-  assert.ok(!g.site_spend?.authenticated, "site_spend: no access for signed-in people");
+  assert.equal(g.site_spend?.authenticated?.size ?? 0, 0, "site_spend: no access for signed-in people");
   for (const t of tables) assert.ok(g[t]?.service_role?.has("select") && g[t]?.service_role?.has("insert"), `${t}: the server may read and write`);
 });
 

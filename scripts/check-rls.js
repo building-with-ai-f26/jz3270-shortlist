@@ -63,16 +63,28 @@ try {
   const asA = { token: A.token, prefer: "return=representation" };
   const asB = { token: B.token, prefer: "return=representation" };
 
-  // A saves rows of their own.
-  const ownWrites = [
+  // The server writes A's own rows (the site's functions do this after checking each write).
+  const ownRows = [
     ["profiles", { user_id: A.id, looking_for: "Test only" }],
     ["preferences", { user_id: A.id, prefs: { test: true } }],
     ["watchlist", { user_id: A.id, company: "Test Co", ats: "greenhouse", board: `test${run}` }],
     ["decisions", { user_id: A.id, posting_id: POSTING, decision: "saved" }]
   ];
-  for (const [table, row] of ownWrites) {
-    const r = await call("POST", `/rest/v1/${table}`, { ...asA, body: row });
-    check(`A can save their own ${table}`, r.status === 201, `HTTP ${r.status}`);
+  for (const [table, row] of ownRows) {
+    const r = await call("POST", `/rest/v1/${table}`, { key: SECRET, body: row, prefer: "return=minimal" });
+    check(`the server can save A's ${table}`, r.status === 201, `HTTP ${r.status}`);
+  }
+  // A cannot write, change or delete even their own rows directly, which would skip the site's checks.
+  const direct = [
+    ["POST", "/rest/v1/watchlist", { user_id: A.id, company: "Direct", ats: "lever", board: `direct${run}` }],
+    ["PATCH", `/rest/v1/preferences?user_id=eq.${A.id}`, { prefs: { titleExclude: ["x"] } }],
+    ["PATCH", `/rest/v1/profiles?user_id=eq.${A.id}`, { resume_uploaded_at: null }],
+    ["DELETE", `/rest/v1/profiles?user_id=eq.${A.id}`, undefined],
+    ["DELETE", `/rest/v1/decisions?user_id=eq.${A.id}`, undefined]
+  ];
+  for (const [method, path, body] of direct) {
+    const r = await call(method, path, { ...asA, body });
+    check(`A cannot ${method} their own ${path.split("?")[0].split("/").pop()} directly`, r.status === 401 || r.status === 403, `HTTP ${r.status}`);
   }
   // The server (secret key) writes a posting, A's score and A's AI usage.
   const day = new Date().toISOString().slice(0, 10);
