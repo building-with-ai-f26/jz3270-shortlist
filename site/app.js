@@ -60,6 +60,8 @@
   let me = null;
   let setup = null;
   let board = null;
+  // How much AI scoring this person has left today: { on, limit, perCheck, left, paused }, or null.
+  let ai = null;
   let editing = false;
   let picks = { roles: new Set(), cities: new Set(), sectors: new Set(), age: 14 };
 
@@ -94,6 +96,7 @@
       me = m;
       setup = st;
       board = last.latest;
+      ai = last.ai || null;
       $("who").textContent = me.email || "your account";
       $("landing").hidden = true;
       $("account").hidden = false;
@@ -231,20 +234,52 @@
       ? "Upload your resume first."
       : !setup?.picked
         ? "Pick what you want, then save."
-        : `Covers ${companiesPicked()} companies on Greenhouse, Lever and Ashby. Free, and takes a few seconds.`;
+        : `Covers ${companiesPicked()} companies on Greenhouse, Lever and Ashby. ${aiReady() ? "Takes up to half a minute." : "Free, and takes a few seconds."}`;
+    renderAiLeft();
+  }
+
+  // ---------- The AI allowance ----------
+
+  // AI scoring will run on the next check: the site has it on, and neither this person nor the site is out.
+  const aiReady = () => Boolean(ai?.on && ai.left > 0 && !ai.paused);
+
+  // The counter under Check my list. The site's own spending is never sent to the page, only whether it is paused.
+  function renderAiLeft() {
+    const box = $("aiLeft");
+    box.hidden = !ai?.on;
+    if (!ai?.on) return;
+    const share = Math.max(0, Math.min(1, ai.left / ai.limit));
+    const meter = el("span", { className: "meter", "aria-hidden": "true" }, el("i", { style: `width: ${Math.round(share * 100)}%` }));
+    let words;
+    if (ai.paused === "site") {
+      words = ["AI scoring is paused for everyone until midnight New York time, because the site's daily budget is used up. New roles are ranked by shared words."];
+    } else if (ai.left <= 0) {
+      words = [`You have used today's ${ai.limit} AI scores. New roles are ranked by shared words until midnight New York time.`];
+    } else {
+      words = ["AI scoring: ", el("b", { text: `${ai.left} of ${ai.limit}` }),
+        ` roles left today. Each check AI-scores up to ${ai.perCheck} new roles. Resets at midnight New York time.`];
+    }
+    box.classList.toggle("out", !aiReady());
+    box.replaceChildren(meter, el("span", {}, ...words));
   }
 
   async function runCheck() {
     $("checkBtn").disabled = true;
     // A quick check never flashes the cover; a slower one gets it after a quarter second.
     const cover = setTimeout(() => {
-      $("checkingText").textContent = `Ranking roles from ${companiesPicked()} companies against your resume`;
+      $("checkingText").textContent = aiReady()
+        ? `Ranking roles from ${companiesPicked()} companies, and AI-scoring up to ${Math.min(ai.perCheck, ai.left)} new ones against your resume`
+        : `Ranking roles from ${companiesPicked()} companies against your resume`;
       $("checking").hidden = false;
       $("app").inert = true;
     }, 250);
     try {
       board = await api("/api/check", { method: "POST" });
-      track("check_run", { ranked: board.summary.scored, new_count: board.summary.newCount, scoring: board.summary.method });
+      if (board.ai) ai = board.ai;
+      track("check_run", {
+        ranked: board.summary.scored, new_count: board.summary.newCount, scoring: board.summary.method,
+        ai_scored: board.summary.aiScoredThisRun || 0, ai_paused: board.summary.aiPaused || "none"
+      });
       renderBoard();
       $("board").scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
     } catch (err) {
@@ -266,13 +301,28 @@
     { key: "possible", name: "Some overlap", range: "the next third" },
     { key: "long", name: "Little overlap", range: "the rest, and dealbreakers" }
   ];
+  // An AI fit is a judgment of the role against the resume, so once a board has any, roles are tiered by fit, as
+  // on the laptop app. Roles without one yet keep their keyword rank in a group of their own.
+  const AI_TIERS = [
+    { key: "strong", name: "Strong fit", range: "AI fit 75 and up" },
+    { key: "possible", name: "Possible", range: "AI fit 50 to 74" },
+    { key: "long", name: "Long shot", range: "under 50, and dealbreakers" },
+    { key: "waiting", name: "Not AI-scored yet", range: "ranked by shared words for now" }
+  ];
+  let aiBoard = false;
   let cuts = { strong: Infinity, possible: Infinity };
   function setCuts(results) {
-    const fits = results.filter((r) => !r.dealbreaker && r.fit > 0).map((r) => r.fit).sort((a, b) => b - a);
+    aiBoard = results.some((r) => r.method === "ai");
+    const fits = results.filter((r) => r.method !== "ai" && !r.dealbreaker && r.fit > 0).map((r) => r.fit).sort((a, b) => b - a);
     const at = (share) => (fits.length ? fits[Math.max(0, Math.ceil(fits.length * share) - 1)] : Infinity);
     cuts = { strong: at(0.25), possible: at(0.6) };
   }
   function tier(r) {
+    if (aiBoard) {
+      if (r.method !== "ai") return "waiting";
+      if (r.dealbreaker) return "long";
+      return r.fit >= 75 ? "strong" : r.fit >= 50 ? "possible" : "long";
+    }
     if (r.dealbreaker || !(r.fit > 0)) return "long";
     if (r.fit >= cuts.strong) return "strong";
     if (r.fit >= cuts.possible) return "possible";
@@ -292,20 +342,23 @@
       r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener noreferrer", text: "Open posting ↗", onclick: () => track("posting_opened", { column }) }) : null,
       people.length ? el("span", { text: "Reach out:" }) : null,
       people.map((p) => el("a", { href: p.url, target: "_blank", rel: "noopener noreferrer", text: p.label, onclick: () => track("people_link_opened", { link_type: linkType(p.label) }) })));
+    const byAI = r.method === "ai";
     return el("article", { className: "role" },
-      el("div", { className: `fit ${t}`, "aria-label": `Keyword score ${r.fit}` }, el("b", { text: String(r.fit ?? 0) }), el("small", { text: "match" })),
+      el("div", { className: `fit ${t}`, "aria-label": `${byAI ? "AI fit" : "Keyword score"} ${r.fit ?? 0}` },
+        el("b", { text: String(r.fit ?? 0) }), el("small", { text: byAI ? "fit" : "match" })),
       el("div", {},
         el("h3", { text: r.title }),
         meta,
         r.dealbreaker ? el("p", { className: "bar", text: r.dealbreaker }) : null,
         r.why ? el("p", { className: "why", text: r.why }) : null,
+        byAI && r.gap ? el("p", { className: "gap", text: `Gap: ${r.gap}` }) : null,
         links));
   }
 
   function fillColumn(listId, roles, showAll = false) {
     const shown = showAll ? roles : roles.slice(0, SHOW_FIRST);
     const nodes = [];
-    for (const t of TIERS) {
+    for (const t of aiBoard ? AI_TIERS : TIERS) {
       const inTier = shown.filter((r) => tier(r) === t.key);
       if (!inTier.length) continue;
       nodes.push(el("p", { className: `tier ${t.key}` }, el("i", { "aria-hidden": "true" }), el("b", { text: t.name }), el("span", { text: t.range })));
@@ -332,9 +385,7 @@
       count(s.passedFilter, "Passed your filters"),
       count(s.scored, "Ranked so far"),
       count(s.newCount, "New since last check", "new"));
-    $("methodNote").textContent = `Checked ${ago(s.runAt)}. Ranked by how many words each role shares with your resume, which is free; ` +
-      `scores compare roles with each other and are not a verdict on fit. ${s.waiting ? `${s.waiting} more roles get ranked on your next checks. ` : ""}` +
-      "AI scoring with a daily allowance comes next.";
+    $("methodNote").textContent = methodNote(s);
     const grad = results.filter((r) => r.cohort === GRAD);
     const open = results.filter((r) => r.cohort !== GRAD);
     $("gradCount").textContent = String(grad.length);
@@ -345,6 +396,25 @@
     const total = dropped.reduce((n, d) => n + d.count, 0);
     $("filteredTitle").textContent = `Filtered out (${total.toLocaleString("en-US")}), and why`;
     $("filteredList").replaceChildren(...dropped.map((d) => el("li", { text: `${d.count.toLocaleString("en-US")}: ${d.reason}` })));
+  }
+
+  // What made this board's scores, what this check cost, and what is still waiting.
+  function methodNote(s) {
+    const parts = [`Checked ${ago(s.runAt)}.`];
+    if (s.aiScoredThisRun) {
+      parts.push(`This check AI-scored ${s.aiScoredThisRun} role${s.aiScoredThisRun === 1 ? "" : "s"} for $${Number(s.costUsd || 0).toFixed(3)}.` +
+        (ai?.on ? ` ${ai.left} of ${ai.limit} left today.` : ""));
+    }
+    if (aiBoard) {
+      parts.push("AI fits come from Claude Haiku 5.5 reading each posting against your resume and what you are looking for. Roles without one yet are ranked by the words they share with your resume.");
+      if (s.aiWaiting) parts.push(`${s.aiWaiting} ranked role${s.aiWaiting === 1 ? "" : "s"} wait for AI scoring on your next checks.`);
+    } else {
+      parts.push("Ranked by how many words each role shares with your resume, which is free; scores compare roles with each other and are not a verdict on fit.");
+    }
+    if (s.aiPaused === "busy") parts.push("AI scoring was busy, so this check ranked new roles by shared words. Try again in a minute.");
+    if (s.aiFailed) parts.push(`${s.aiFailed} AI answer${s.aiFailed === 1 ? "" : "s"} could not be read; those roles are tried again next time.`);
+    if (s.waiting) parts.push(`${s.waiting} more roles get ranked on your next checks.`);
+    return parts.join(" ");
   }
 
   // ---------- Your data ----------

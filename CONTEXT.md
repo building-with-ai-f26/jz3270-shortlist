@@ -43,6 +43,7 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Personal data stays in `data/`**, which is gitignored. Uploaded resumes are read in memory; only cleaned text is saved, with email, phone and links removed.
 - **PostHog sends named events only.** Click capture and session replay are off in the local app because it shows the resume and scores; the public Product Page uses the standard snippet with replay on. `before_send` drops anything not on the list.
 - **Pay for each role once.** Scores are cached by posting ID; keyword and explore scores have their own files so switching modes never discards paid scores.
+- **The hosted site's AI allowance** (Nov 22): 60 AI-scored roles per person per day, at most 20 per check, and $1 a day across the site, days in New York time. Counted in roles, not checks, because roles are what cost money. Free keyword ranking picks which roles the AI reads first and carries the board when a limit is reached.
 - **Product Page screenshots never show the real resume.** The Build 2 screenshot was made from a live check against the fictional sample resume in a throwaway folder.
 
 **Process**
@@ -134,9 +135,20 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **Mistake made:** the agent created two branches from `origin/main`, so Git set them to follow `main`. GitHub Desktop then called them "already published", and its push sent the docs and the migration straight to `main`, applying the migration to production with no pull request or dev run. It was safe (Actions passed; the site already wrote through the server), and dev was caught up by running the migrations Action by hand. New AGENTS.md rule 13: always `--no-track`. A branch rule on `main` requiring pull requests would stop a repeat.
 - **Mistake caught:** `.gitignore` blocks any file named `secrets.*`, which silently kept the new secret search out of Git until `git status` showed it missing; it is now `secret-scan.js`.
 
+### Nov 22: AI scoring on the hosted site
+- **Asked (from the Build 3 session):** add AI scoring to the hosted site with a per-person daily allowance, a site-wide spending cap and an "AI checks left today" counter (CLOUD-PLAN.md, step 5). Planned first; Jordan approved the plan as written.
+- **The numbers:** 60 AI-scored roles per person per day, at most 20 per check, and $1 a day across the site, resetting at midnight New York time. The Nov 19 model test measured $0.0007 a role with Claude Haiku 5.5, thinking tokens included, so a full check is about $0.014 and a person's whole day about $0.043; $1 covers about 1,400 roles. The OpenRouter key's own credit limit stays the last line.
+- **The counter reads in roles** ("AI scoring: 40 of 60 roles left today"), the recommended option over "3 AI checks left today", since a check with 3 new roles should not use a whole check.
+- **Which roles the AI reads:** the ones the free keyword ranking puts highest, freshest first among equals, as explore does. AI fits are saved per resume and model and never paid for twice; the board shows AI fits by tier (75 and up, 50 to 74, under 50) and the rest under "Not AI-scored yet".
+- **No migration:** the counts live in the existing `ai_usage` and `site_spend` tables. A check holds its roles before any call and settles the real cost after, and every change is a conditional write (it lands only if the row still holds what was read, else it is read again). A Postgres function would also work but needs a migration on production, and keeping the logic in JavaScript let the offline tests cover holds made at the same moment. Breaking the conditional write on purpose let 80 roles through a 60-role day in that test.
+- **One check at a time per person** (409), so a double click never pays twice for the same roles. A check still marked running after 150 seconds no longer blocks; `api/check.js` now has 120 seconds.
+- **No spending while building:** the tests use a fake OpenRouter, and `npm run check-hosted` and `npm run dev-site` now swap in a fake one too (`scripts/fake-openrouter.js`), so the allowance was tested on the real dev database for $0. `check-hosted` passed 39 of 39 on dev (42 AI calls, all fake), `check-rls` 39 of 39, 184 tests. The OpenRouter spend in this session was $0.
+- **Privacy page:** now says the resume text (no contact details) and "What I'm looking for" go to Claude Haiku 5.5 through OpenRouter, only to hosts that keep nothing, up to 20 roles a check and 60 a day, and that Start over keeps the day's count.
+- **Not done yet:** a real AI check (Jordan's preview walk, about $0.015 for 20 roles). Merging turns AI on in production at once, since `OPENROUTER_API_KEY` is already set there.
+
 ## Open questions
 
-- **Vercel and Supabase design:** how users sign in, how each user's resume and decisions are kept private (row level security), whether resume text needs extra encryption, the numbers for the per-user and site-wide AI caps (the key itself is decided: Jordan's, server-side only), and how checks that take minutes run in the cloud (background jobs rather than a single web request). New packages (such as the Supabase client and command line) need approval first.
+- **Vercel and Supabase design:** how checks that take minutes run in the cloud (background jobs rather than a single web request). Sign-in, row level security, resume encryption and the AI caps are decided.
 - **Apply assist:** add it to the roadmap next to the season tracker? Drafted answers would touch the "no cover letters" non-goal.
 - **Workday from the cloud:** Workday limits requests per visitor, and cloud servers share addresses, so cloud checks may be throttled more than a laptop.
 - **Learning model:** needs about 50 decisions with some long shots before it can be judged.

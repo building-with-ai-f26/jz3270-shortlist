@@ -1,12 +1,16 @@
-// One person's check on the hosted site (CLOUD-PLAN.md, step 5, first version). It never fetches a whole job
-// board: it reads today's shared postings for the person's sectors, runs the same free filter as the laptop app
-// (src/filter.js), ranks what passes against their resume, and saves the scores and the run. Each posting is
-// scored once per resume (rule 8), the freshest first, up to KEYWORD_CAP a check.
+// One person's check on the hosted site (CLOUD-PLAN.md, step 5). It never fetches a whole job board: it reads
+// today's shared postings for the person's sectors, runs the same free filter as the laptop app (src/filter.js),
+// ranks what passes against their resume, and saves the scores and the run. Each posting is scored once per resume
+// (rule 8).
 //
-// This first version ranks with the free keyword scoring. AI scoring, with a daily allowance per person and a
-// site-wide spending cap, comes next (CLOUD-PLAN.md, step 5).
+// Two kinds of score, kept apart as in the laptop app:
+//   1. Keyword ranking, free: the freshest unranked roles, up to KEYWORD_CAP a check.
+//   2. AI fit, paid from Jordan's OpenRouter key: the roles the keywords rank highest that have no AI fit yet,
+//      within the person's daily allowance and the site's daily budget (src/cloud/allowance.js). When either is
+//      used up, or the server has no key, the check carries on with keyword ranking alone.
+// The board shows a role's AI fit when it has one, and its keyword rank otherwise.
 import { runFilter, prefilter, classifyCohort, COHORTS } from "../filter.js";
-import { scoreAll } from "../score.js";
+import { scoreAll, DEFAULT_MODEL } from "../score.js";
 import { fillDetails } from "../sources.js";
 import { peopleLinks } from "../people.js";
 import { scoreCacheKey, reasonType } from "../pipeline.js";
@@ -14,11 +18,16 @@ import { asUser, asServer, readAll, ok } from "./supabase.js";
 import { decryptResume, encryptionKey } from "./crypto.js";
 import { hostedStarter, HOSTED_ATS, inList, upsertPostings } from "./postings.js";
 import { HttpError } from "./http.js";
+import { aiOn, aiStatus, reserveAI, settleAI } from "./allowance.js";
 
 export const KEYWORD_CAP = 60;
 // A per-person rate limit: at most CHECKS_PER_WINDOW checks in WINDOW_MINUTES, counted from the runs table.
 export const CHECKS_PER_WINDOW = 5;
 export const WINDOW_MINUTES = 10;
+// One check at a time per person, so a double click never pays twice for the same roles. A check still marked
+// running after RUNNING_SECONDS has died (Vercel stops api/check.js after 120 seconds, vercel.json), so it no
+// longer blocks the next one.
+export const RUNNING_SECONDS = 150;
 const RESULTS_KEPT = 150;
 const q = encodeURIComponent;
 const chunks = (list, size) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, (i + 1) * size));
@@ -48,6 +57,15 @@ async function reserveRun(user, runAt, { env, fetchImpl }) {
     method: "POST", body: { user_id: user.id, run_at: runAt, summary: { status: "running" } }, prefer: "return=representation", env, fetchImpl
   }), "Starting the check");
   return (await res.json())[0]?.id;
+}
+
+// True when an earlier check of this person is still running. Of two checks sent at once, the first one written
+// runs and the other is refused.
+async function earlierRunning(user, runId, { env, fetchImpl, now }) {
+  const since = new Date(now - RUNNING_SECONDS * 1000).toISOString();
+  const res = await ok(await asUser(user, `/rest/v1/runs?select=id&user_id=eq.${q(user.id)}&id=lt.${q(runId)}` +
+    `&run_at=gte.${q(since)}&summary->>status=eq.running`, { env, fetchImpl }), "Reading recent checks");
+  return (await res.json()).length > 0;
 }
 
 function finishRun(id, summary, { env, fetchImpl }) {
@@ -110,6 +128,26 @@ async function readDescriptions(user, ids, { env, fetchImpl }) {
   return text;
 }
 
+// Descriptions for roles about to be scored: from the database when an earlier check or the daily fetch saved one,
+// else from Greenhouse, and then saved for the next person.
+async function withDescriptions(user, roles, { env, fetchImpl }) {
+  const known = await readDescriptions(user, roles.map((x) => x.id), { env, fetchImpl });
+  const filled = await fillDetails(roles.map((x) => ({ ...x, text: known.get(x.id) || "" })), fetchImpl, 8);
+  const newlyFilled = filled.filter((x) => x.text && !known.has(x.id));
+  if (newlyFilled.length) {
+    await upsertPostings(newlyFilled.map((x) => ({ id: x.id, ats: x.source, board: x.board, company: x.company, title: x.title, description: x.text.slice(0, 8000) })), { env, fetchImpl });
+  }
+  return filled;
+}
+
+const saveScores = async (rows, { env, fetchImpl }) => {
+  for (const batch of chunks(rows, 500)) {
+    await ok(await asServer("/rest/v1/scores?on_conflict=user_id,posting_id,method", {
+      method: "POST", body: batch, prefer: "resolution=merge-duplicates,return=minimal", env, fetchImpl
+    }), "Saving scores");
+  }
+};
+
 // The link on a card must be a real web address, never javascript: or data:, whatever a job board sent.
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : "");
 
@@ -119,10 +157,16 @@ export async function runCloudCheck(user, { env = process.env, fetchImpl = fetch
     await finishRun(runId, { status: "refused" }, { env, fetchImpl });
     throw new HttpError(`That is ${CHECKS_PER_WINDOW} checks in ${WINDOW_MINUTES} minutes. Job boards update about once a day, so try again later.`, 429);
   }
+  if (!runId || await earlierRunning(user, runId, { env, fetchImpl, now })) {
+    await finishRun(runId, { status: "refused" }, { env, fetchImpl });
+    throw new HttpError("Your last check is still running. Give it a few seconds.", 409);
+  }
   try {
     const latest = await check(user, { env, fetchImpl, now });
     await ok(await finishRun(runId, { ...latest, status: "done" }, { env, fetchImpl }), "Saving the check");
-    return latest;
+    // The counter is read fresh for the page and not saved with the board.
+    const ai = await aiStatus(user, { env, fetchImpl, now }).catch(() => null);
+    return { ...latest, ai };
   } catch (err) {
     await finishRun(runId, { status: "failed" }, { env, fetchImpl }).catch(() => {});
     throw err;
@@ -139,23 +183,19 @@ async function check(user, { env, fetchImpl, now }) {
   const all = await readPostings(user, boards, { env, fetchImpl, since });
   const { kept, dropped } = runFilter(all, prefs, now);
 
-  // 3. Scores saved for this resume are reused; the freshest unscored roles are scored now.
-  const cacheKey = scoreCacheKey(profile, false, null);
-  const savedRows = await readAll((path, opts) => asUser(user, path, { ...opts, env, fetchImpl }),
-    `/rest/v1/scores?select=posting_id,fit,track,why,gap,dealbreaker,cohort&user_id=eq.${q(user.id)}&method=eq.keywords&cache_key=eq.${q(cacheKey)}&order=posting_id`);
-  const saved = new Map(savedRows.map((s) => [s.posting_id, s]));
+  // 3. Scores saved for this resume are reused: keyword ranks, and AI fits (paid for once).
+  const keywordKey = scoreCacheKey(profile, false, null);
+  const aiKey = scoreCacheKey(profile, true, DEFAULT_MODEL);
+  const readScores = async (method, key) => new Map((await readAll((path, opts) => asUser(user, path, { ...opts, env, fetchImpl }),
+    `/rest/v1/scores?select=posting_id,fit,track,why,gap,dealbreaker,cohort&user_id=eq.${q(user.id)}&method=eq.${method}&cache_key=eq.${q(key)}&order=posting_id`))
+    .map((s) => [s.posting_id, s]));
+  const [saved, savedAI] = await Promise.all([readScores("keywords", keywordKey), readScores("ai", aiKey)]);
+  const scoredAt = new Date(now).toISOString();
+
+  // 4. Keyword ranking, free: the freshest unranked roles.
   const unscored = kept.filter((k) => !saved.has(k.id)).sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
   const queue = unscored.slice(0, KEYWORD_CAP);
-
-  // Descriptions: from the database when an earlier check or the daily fetch saved one, else from Greenhouse,
-  // and then saved for the next person.
-  const known = await readDescriptions(user, queue.map((x) => x.id), { env, fetchImpl });
-  const withKnown = queue.map((x) => ({ ...x, text: known.get(x.id) || "" }));
-  const filled = await fillDetails(withKnown, fetchImpl, 8);
-  const newlyFilled = filled.filter((x) => x.text && !known.has(x.id));
-  if (newlyFilled.length) {
-    await upsertPostings(newlyFilled.map((x) => ({ id: x.id, ats: x.source, board: x.board, company: x.company, title: x.title, description: x.text.slice(0, 8000) })), { env, fetchImpl });
-  }
+  const filled = await withDescriptions(user, queue, { env, fetchImpl });
   // Some roles only show their real location or seniority in the description, so the filter runs again.
   const toScore = [];
   const lateDropped = new Set();
@@ -168,33 +208,63 @@ async function check(user, { env, fetchImpl, now }) {
     }
   }
   const { scored: fresh } = await scoreAll(profile, toScore, { useAI: false, maxToScore: KEYWORD_CAP });
-  const scoredAt = new Date(now).toISOString();
   const rows = fresh.filter((f) => !f.error).map((f) => ({
-    user_id: user.id, posting_id: f.id, method: "keywords", cache_key: cacheKey, fit: f.fit, track: f.track || null,
+    user_id: user.id, posting_id: f.id, method: "keywords", cache_key: keywordKey, fit: f.fit, track: f.track || null,
     why: f.why, gap: f.gap, dealbreaker: f.dealbreaker, cohort: f.cohort, model: null,
     tokens_in: 0, tokens_out: 0, cost_usd: 0, scored_at: scoredAt
   }));
-  for (const batch of chunks(rows, 500)) {
-    await ok(await asServer("/rest/v1/scores?on_conflict=user_id,posting_id,method", {
-      method: "POST", body: batch, prefer: "resolution=merge-duplicates,return=minimal", env, fetchImpl
-    }), "Saving scores");
-  }
+  await saveScores(rows, { env, fetchImpl });
   for (const r of rows) saved.set(r.posting_id, r);
 
-  // 4. The board: every role that passed and has a score, best first, marked new if it reached the shared
-  // postings after this person's last check.
+  // 5. AI fit, within the allowance: the roles the keywords rank highest that have no AI fit yet, freshest first
+  // among equals. The allowance is held before any call and settled with the real cost after.
+  const candidates = kept
+    .filter((k) => saved.has(k.id) && !savedAI.has(k.id) && !lateDropped.has(k.id))
+    .sort((a, b) => (saved.get(b.id).fit ?? -1) - (saved.get(a.id).fit ?? -1) || (a.ageDays ?? 999) - (b.ageDays ?? 999));
+  const ai = { scored: 0, failed: 0, paused: null, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+  if (aiOn(env) && candidates.length) {
+    let hold = null;
+    try {
+      hold = await reserveAI(user, candidates.length, { env, fetchImpl, now });
+      ai.paused = hold.paused;
+    } catch {
+      ai.paused = "busy";
+    }
+    if (hold?.granted) {
+      const picked = (await withDescriptions(user, candidates.slice(0, hold.granted), { env, fetchImpl }))
+        .map((x) => ({ ...x, cohort: classifyCohort(x.title, x.text) }));
+      // If this throws, the hold stays in place, which errs toward spending less.
+      const { scored, totals } = await scoreAll(profile, picked, {
+        useAI: true, maxToScore: hold.granted, fetchImpl, apiKey: env.OPENROUTER_API_KEY, model: DEFAULT_MODEL
+      });
+      const good = scored.filter((f) => !f.error);
+      Object.assign(ai, { scored: good.length, failed: scored.length - good.length, ...totals });
+      await settleAI(user, hold, { used: good.length, costUsd: totals.costUsd }, { env, fetchImpl });
+      const aiRows = good.map((f) => ({
+        user_id: user.id, posting_id: f.id, method: "ai", cache_key: aiKey, fit: f.fit, track: f.track || null,
+        why: f.why, gap: f.gap, dealbreaker: f.dealbreaker, cohort: f.newGrad ? COHORTS.grad : f.cohort, model: DEFAULT_MODEL,
+        tokens_in: f.usage.tokensIn, tokens_out: f.usage.tokensOut, cost_usd: Number(f.usage.costUsd.toFixed(6)), scored_at: scoredAt
+      }));
+      await saveScores(aiRows, { env, fetchImpl });
+      for (const r of aiRows) savedAI.set(r.posting_id, r);
+    }
+  }
+
+  // 6. The board: every role that passed and has a score, AI fits first, best first, marked new if it reached the
+  // shared postings after this person's last check.
   const results = kept
-    .filter((k) => saved.has(k.id) && !lateDropped.has(k.id))
+    .filter((k) => (savedAI.has(k.id) || saved.has(k.id)) && !lateDropped.has(k.id))
     .map((k) => {
-      const s = saved.get(k.id);
+      const method = savedAI.has(k.id) ? "ai" : "keywords";
+      const s = method === "ai" ? savedAI.get(k.id) : saved.get(k.id);
       const role = {
         id: k.id, title: k.title, company: k.company, location: k.location, url: safeUrl(k.url), postedAt: k.postedAt,
         ageDays: k.ageDays, track: s.track || k.track, cohort: s.cohort || k.cohort, fit: s.fit, why: s.why, gap: s.gap,
-        dealbreaker: s.dealbreaker, method: "keywords", isNew: !lastRunAt || Date.parse(k.firstSeen) > Date.parse(lastRunAt)
+        dealbreaker: s.dealbreaker, method, isNew: !lastRunAt || Date.parse(k.firstSeen) > Date.parse(lastRunAt)
       };
       return { ...role, people: peopleLinks(role, prefs) };
     })
-    .sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1));
+    .sort((a, b) => (a.method === b.method ? 0 : a.method === "ai" ? -1 : 1) || (b.fit ?? -1) - (a.fit ?? -1));
 
   const droppedByReason = Object.entries(dropped.reduce((acc, d) => {
     const t = reasonType(d.reason);
@@ -202,22 +272,28 @@ async function check(user, { env, fetchImpl, now }) {
     return acc;
   }, {})).sort((a, b) => b[1] - a[1]).map(([reason, count]) => ({ reason, count }));
 
+  const aiOnBoard = results.filter((r) => r.method === "ai").length;
   const summary = {
     runAt: scoredAt,
-    method: "keywords",
-    model: null,
+    method: aiOnBoard ? "ai" : "keywords",
+    model: aiOnBoard ? DEFAULT_MODEL : null,
     companies: boards.length,
     found: all.length,
     passedFilter: kept.length - lateDropped.size,
     scored: results.length,
     scoredThisRun: rows.length,
     waiting: Math.max(0, unscored.length - queue.length),
+    aiScored: aiOnBoard,
+    aiScoredThisRun: ai.scored,
+    aiFailed: ai.failed,
+    aiWaiting: Math.max(0, candidates.length - ai.scored),
+    aiPaused: ai.paused,
     newCount: results.filter((r) => r.isNew).length,
     gradCount: results.filter((r) => r.cohort === COHORTS.grad).length,
     maxAgeDays: maxAge,
-    tokensIn: 0,
-    tokensOut: 0,
-    costUsd: 0
+    tokensIn: ai.tokensIn,
+    tokensOut: ai.tokensOut,
+    costUsd: Number(ai.costUsd.toFixed(6))
   };
   return { summary, results: results.slice(0, RESULTS_KEPT), droppedByReason };
 }

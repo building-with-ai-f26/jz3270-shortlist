@@ -58,6 +58,8 @@ function fakeSupabase(state) {
     if (u.pathname === "/auth/v1/user") return asUserToken === "Bearer good-token" ? reply(USER) : reply({}, 401);
     if (u.hostname === "boards-api.greenhouse.io") return reply({ content: "&lt;p&gt;Strategy and operations role building supplier scorecards and site selection models.&lt;/p&gt;" });
     const table = u.pathname.replace("/rest/v1/", "");
+    // Checks still running answer the one-at-a-time rule; other id reads are the rate limit's recent checks.
+    if (method === "GET" && table === "runs" && decodeURIComponent(u.search).includes("status=eq.running")) return reply(state.running || []);
     if (method === "GET" && table === "runs") return reply(u.search.includes("select=id") ? state.recentRuns : state.lastRun);
     if (method === "GET" && table === "profiles") return reply(state.profile ? [state.profile] : []);
     if (method === "GET" && table === "preferences") return reply(state.prefs ? [{ prefs: state.prefs, updated_at: state.prefsAt || null }] : []);
