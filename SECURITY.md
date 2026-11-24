@@ -8,7 +8,7 @@ Build 3 security audit for the hosted Shortlist at https://jz3270-shortlist.verc
 
 The resume is the sensitive part, so it gets the most protection: the file is read in memory and never kept, contact details are removed, and the text is stored encrypted (AES-256-GCM, bound to the account, with a key the database does not hold).
 
-AI scoring (added after the audit, Nov 22) is the one paid call: a check sends the resume text and one posting at a time to Claude Haiku 5.5 through OpenRouter, with Jordan's key, which lives only in Vercel's environment. It has three limits: 60 roles per person per day (at most 20 per check), $1 a day across the site, and each key's OpenRouter credit limit. When a limit is reached, the check ranks with free keyword matching instead.
+AI scoring (added after the audit, Nov 22) is the one paid call: a check sends the resume text and one posting at a time to Claude Haiku 5.5 through OpenRouter, with Jordan's key, which lives only in Vercel's environment. It has three limits: 300 roles per person per day (at most 150 per check), $5 a day across the site, and each key's OpenRouter credit limit. These were 60, 20 and $1 until Nov 24, when Jordan raised them so every role that passes the filters gets an AI fit. When a limit is reached, the roles not yet AI-scored wait on the board, with no number, until the allowance resets.
 
 ## The audit, step by step
 
@@ -26,10 +26,11 @@ AI scoring (added after the audit, Nov 22) is the one paid call: a check sends t
 
 | Route | Limit |
 | --- | --- |
-| `POST /api/check` | 5 checks per person in 10 minutes (429 after). Each check's row is written before any work and counted after, so checks sent at once, failed checks and refused checks all count, and people cannot delete their own checks. One check at a time: while an earlier check is still running (up to 150 seconds), the next gets 409, so a double click never pays twice |
-| AI scoring, inside `POST /api/check` | 60 roles per person per day and at most 20 per check; $1 a day across the site; days in New York time. A check holds its roles in `ai_usage` and `site_spend` before calling OpenRouter (each role held at $0.002, about 3 times its measured cost) and settles the real cost after. Every change is a conditional write, so checks at the same moment cannot pass a limit. Only the server writes these tables; people read only their own usage, and nobody but the server reads the site's spending. Start over keeps the count. The model is fixed in code, and every request asks OpenRouter for hosts that keep no prompts |
+| `POST /api/check` | 5 checks per person in 10 minutes (429 after). Each check's row is written before any work and counted after, so checks sent at once, failed checks and refused checks all count, and people cannot delete their own checks. One check at a time: while an earlier check is still running (up to 330 seconds; Vercel stops a check at 300), the next gets 409, so a double click never pays twice |
+| AI scoring, inside `POST /api/check` | 300 roles per person per day and at most 150 per check; $5 a day across the site; days in New York time. Calls run 8 at a time, in batches of 40 whose scores are saved as each ends, and no batch starts after 3 minutes, so a check Vercel stops keeps what it paid for. A check holds its roles in `ai_usage` and `site_spend` before calling OpenRouter (each role held at $0.002, about 3 times its measured cost) and settles the real cost after. Every change is a conditional write, so checks at the same moment cannot pass a limit. Only the server writes these tables; people read only their own usage, and nobody but the server reads the site's spending. Start over keeps the count. The model is fixed in code, and every request asks OpenRouter for hosts that keep no prompts |
 | `POST /api/resume` | One upload per person every 10 seconds (Start over keeps the time of the last upload); 4 MB at most, text files 200 KB, PDFs 20 pages, Word files refused if they expand past 40 MB |
-| `POST /api/setup` | One save per person every 2 seconds; 20 KB at most. Find roles for me (`{ auto: true }`) asks the AI one question, held and settled like a check's: 1 of the person's 60 a day, its real cost on the site's budget, free word matching when either is used up. Only known kinds of role and cities are kept, and the reason it gives is shown but not saved |
+| `POST /api/setup` | One save per person every 2 seconds; 20 KB at most. Find roles for me (`{ auto: true }`) asks the AI one question, held and settled like a check's: 1 of the person's 300 a day, its real cost on the site's budget, free word matching when either is used up. Only known kinds of role and cities are kept, and the reason it gives is shown but not saved |
+| `GET /api/check?progress=1` | Reads only the signed-in person's running check, under row level security, and answers with three numbers (stage, done, total); nothing about roles |
 | `DELETE /api/resume`, `DELETE /api/account` | Act once on the signed-in person's own data; account deletion needs the exact words "delete my account" |
 | `GET /api/refresh-postings` | Only Vercel's cron, with `CRON_SECRET` (compared in constant time; under 16 characters counts as no secret) |
 
@@ -80,11 +81,13 @@ Attacks 1, 2, 3, 6, 9, 10 and 11 ran against the real dev database through the s
 | 14 | Ran Start over to reset the AI allowance, then checked the count | Unchanged: Start over deletes scores and boards, never `ai_usage` |
 | 15 | Four AI holds at the same moment, with 50 roles left in the day (offline, with a fake database that interleaves every request) | 50 or fewer granted and every one counted. With the conditional write switched off on purpose, 80 got through |
 | 16 | A second check while the first is still running | 409, before anything is read or spent |
-| 17 | Set the site's spending to $1 for the day, then checked | No AI call; the person's hold was given back; the board was ranked by keywords; the page learned only that AI is paused |
+| 17 | Set the site's spending to the day's budget, then checked | No AI call; the person's hold was given back; every role stayed on the board, waiting with no number; the page learned only that AI is paused |
 | 18 | A resume written to steer Find roles for me: the answer names unknown kinds of role, "toString", more than 3 kinds, a made-up city, a 400-character reason, and tries to set excluded title words and sectors | Only known keys kept, at most 3 kinds of role; excluded words and sectors untouched (every sector, as designed); the reason cut to one line, shown as text, not saved |
 | 19 | Find roles for me with no resume, and twice within 2 seconds | 400 and 429, before any AI question |
+| 20 | As B, read A's progress while A's first check ran | Nothing (B's own runs only) |
+| 21 | A failed save in the middle of AI scoring (offline) | Earlier batches kept their scores; the allowance was settled with what was really paid; the rest of the hold went back |
 
-Attacks 13, 14, 16 and 17 ran on the dev database through `npm run check-hosted` with a fake OpenRouter (no spending); 15 runs in the offline tests. 18 and 19 run in the offline tests, and on dev an unknown key from the fake model was dropped and Find roles for me without a resume got 400.
+Attacks 13, 14, 16 and 17 ran on the dev database through `npm run check-hosted` with a fake OpenRouter (no spending); 15 runs in the offline tests. 18 and 19 run in the offline tests, and on dev an unknown key from the fake model was dropped and Find roles for me without a resume got 400. 20 ran on dev through `check-hosted`; 21 runs in the offline tests.
 
 ## Privacy in analytics
 

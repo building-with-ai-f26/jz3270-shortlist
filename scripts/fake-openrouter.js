@@ -4,6 +4,9 @@
 // The prompt carries a resume, so nothing here prints it.
 export const FAKE_KEY = "fake-openrouter-key";
 export const FAKE_COST = 0.0007;
+// Each answer waits a moment, as a real one would (a real one takes about 4 seconds), so the progress on the cover
+// screen has something to show.
+const FAKE_WAIT_MS = 100;
 
 // The same title always gets the same made-up fit, from 30 to 90.
 function fitFor(title) {
@@ -30,6 +33,7 @@ export function useFakeOpenRouter() {
       const content = JSON.stringify({ roles: ["product", "strategy", "notAKind"], cities: ["newYork"], why: "A made-up pick from the fake OpenRouter, for testing." });
       return Response.json({ choices: [{ message: { content }, finish_reason: "stop" }], usage: { prompt_tokens: 1600, completion_tokens: 60, cost: FAKE_COST } });
     }
+    await new Promise((r) => setTimeout(r, FAKE_WAIT_MS));
     const title = (prompt.match(/^Title: (.*)$/m) || [])[1] || "";
     const content = JSON.stringify({ fit: fitFor(title), track: "Full-time", why: "A made-up fit from the fake OpenRouter, for testing.", gap: "None", dealbreaker: null, new_grad: false });
     return Response.json({ choices: [{ message: { content }, finish_reason: "stop" }], usage: { prompt_tokens: 900, completion_tokens: 120, cost: FAKE_COST } });

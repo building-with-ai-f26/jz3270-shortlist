@@ -211,7 +211,8 @@ function buildIdf(postings) {
 // ---------- Orchestration ----------
 
 export async function scoreAll(profile, postings, opts = {}) {
-  const { useAI, maxToScore = 40, fetchImpl = fetch } = opts;
+  // opts.concurrency: how many postings are scored at once (4 on the laptop; the hosted check asks for more).
+  const { useAI, maxToScore = 40, fetchImpl = fetch, concurrency = 4 } = opts;
   const model = opts.model || process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
   const apiKey = opts.apiKey || process.env.OPENROUTER_API_KEY;
 
@@ -222,7 +223,7 @@ export async function scoreAll(profile, postings, opts = {}) {
 
   // opts.onEach(done, total) after each posting, for the progress graphic.
   let done = 0;
-  const scored = await pool(queue, 4, async (p) => {
+  const scored = await pool(queue, concurrency, async (p) => {
     let result;
     try {
       const s = useAI
