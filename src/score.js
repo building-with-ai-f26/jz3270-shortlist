@@ -149,6 +149,17 @@ const HARD_BARS = [
   { pattern: /\b([5-9]|1\d)\+? years\b/i, label: "Asks for 5+ years" }
 ];
 
+const KEYWORD_TERMS = 40;
+// The average weight of a word across this batch of postings (computed once per batch).
+const typicalWeights = new WeakMap();
+function typicalWeight(idf) {
+  if (!typicalWeights.has(idf)) {
+    const values = [...idf.values()];
+    typicalWeights.set(idf, values.length ? values.reduce((s, v) => s + v, 0) / values.length : 1);
+  }
+  return typicalWeights.get(idf);
+}
+
 export function scoreWithKeywords(profile, posting, idf) {
   const profileTerms = new Set(terms(profile));
   const postingTerms = [...new Set(terms(`${posting.title} ${posting.title} ${posting.text}`))];
@@ -156,7 +167,12 @@ export function scoreWithKeywords(profile, posting, idf) {
   // I weight rare words (high idf) more, so "underwriting" counts for more than "operations".
   const overlap = postingTerms.filter((t) => profileTerms.has(t));
   const gained = overlap.reduce((s, t) => s + (idf.get(t) || 1), 0);
-  const possible = postingTerms.map((t) => idf.get(t) || 1).sort((a, b) => b - a).slice(0, 40).reduce((s, v) => s + v, 0) || 1;
+  // Every posting is measured as if it had at least KEYWORD_TERMS words: a short posting (or one whose description
+  // did not load) is padded with words of typical weight, so a few matches cannot fill it and score 100.
+  const weights = postingTerms.map((t) => idf.get(t) || 1).sort((a, b) => b - a).slice(0, KEYWORD_TERMS);
+  const typical = typicalWeight(idf);
+  while (weights.length < KEYWORD_TERMS) weights.push(typical);
+  const possible = weights.reduce((s, v) => s + v, 0) || 1;
   let fit = Math.round(Math.min(1, (gained / possible) * 2.2) * 100);
 
   const bar = HARD_BARS.find((b) => b.pattern.test(posting.text || ""));
