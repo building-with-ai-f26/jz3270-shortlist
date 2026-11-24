@@ -116,3 +116,36 @@ test("reads the model's new_grad flag, treating anything but true as false", () 
   assert.equal(parseScore("{\"fit\": 70, \"why\": \"x\", \"new_grad\": \"yes\"}").newGrad, false);
   assert.equal(parseScore("{\"fit\": 70, \"why\": \"x\"}").newGrad, false);
 });
+
+// Found on Jordan's live board (Nov 22): short postings scored 100 on keywords. The keyword score is the share of
+// a posting's own words found in the resume, so a posting with a dozen words saturated after a few matches.
+test("a short posting cannot reach 100 on keywords just by being short", async () => {
+  const profile = "Strategy and operations analyst. Supplier scorecard across 40 vendors, distribution center site selection, real estate underwriting, translating bottlenecks into dashboards, preparing quarterly reviews.";
+  const filler = "We are hiring to support legal and business teams. You will coordinate contract workflows, manage vendor relationships, track deadlines, build reporting in spreadsheets, partner with finance, improve intake processes, and document policies across a growing organization with many stakeholders. ".repeat(3);
+  const shared = "Translating bottlenecks and preparing real estate filings on short timelines.";
+  const postings = [
+    { id: "short", title: "Legal Operations Associate", text: shared, ageDays: 1 },
+    { id: "long", title: "Legal Operations Associate", text: `${filler} ${shared}`, ageDays: 1 },
+    { id: "title-only", title: "Real Estate Operations Analyst", text: "", ageDays: 1 }
+  ];
+  const { scored, totals } = await scoreAll(profile, postings, { useAI: false, maxToScore: 10 });
+  const fit = Object.fromEntries(scored.map((s) => [s.id, s.fit]));
+  assert.ok(fit.short < 60, `short posting scored ${fit.short}`);
+  assert.ok(fit["title-only"] < 60, `title-only posting scored ${fit["title-only"]}`);
+  assert.ok(fit.long > 0, "a long posting with the same matches still scores");
+  assert.equal(totals.costUsd, 0, "keyword scoring is free");
+});
+
+test("a posting that matches the resume throughout still scores high", async () => {
+  const words = "supplier scorecard vendors distribution site selection underwriting multifamily dashboards bottlenecks sourcing logistics procurement forecasting inventory warehouse transportation analytics excel sql tableau pricing contracts negotiation operations strategy finance modeling budgeting planning reporting stakeholders quarterly reviews leadership manufacturing quality lean sixsigma kaizen capacity network carriers freight";
+  const profile = `Analyst resume: ${words}.`;
+  const { scored } = await scoreAll(profile, [{ id: "match", title: "Supply Chain Strategy Analyst", text: words, ageDays: 1 }], { useAI: false, maxToScore: 1 });
+  assert.ok(scored[0].fit >= 90, `a near-total match scored ${scored[0].fit}`);
+});
+
+test("changing keyword scoring redoes only the free keyword scores, never the paid AI ones", async () => {
+  const { scoreCacheKey } = await import("../src/pipeline.js");
+  const ai = scoreCacheKey("same resume", true, "anthropic/claude-haiku-5.5");
+  assert.match(ai, /^v2:ai:anthropic\/claude-haiku-5\.5:/, "AI score keys are unchanged, so saved AI scores are reused");
+  assert.match(scoreCacheKey("same resume", false, null), /^v2:keywords2:/, "keyword scores saved before Nov 23 are redone, for free");
+});

@@ -66,8 +66,11 @@ export function ensurePersonalFiles() {
 // SCORE_VERSION goes up whenever the scoring prompt changes what it returns, so old scores are redone once.
 // Saved scores only apply to the same profile, scoring method and model.
 const SCORE_VERSION = 2;
+// Keyword scoring has its own version, so a change to it redoes only the free keyword scores, never paid AI ones.
+// keywords2 (Nov 23): short postings are measured as if they had at least 40 words, so they cannot score 100.
+const KEYWORD_VERSION = "keywords2";
 export function scoreCacheKey(profile, useAI, model) {
-  return `v${SCORE_VERSION}:${useAI ? `ai:${model}` : "keywords"}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
+  return `v${SCORE_VERSION}:${useAI ? `ai:${model}` : KEYWORD_VERSION}:${crypto.createHash("sha256").update(profile).digest("hex").slice(0, 16)}`;
 }
 
 // Groups each filter drop under a short reason, for the "Filtered out" counts.
