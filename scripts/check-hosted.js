@@ -43,8 +43,8 @@ const api = {
   account: await import("../api/account.js"),
   me: await import("../api/me.js")
 };
-const site = (token, method, route, { body, headers = {} } = {}) =>
-  api[route][method](new Request(`https://hosted-check.test/api/${route}`, {
+const site = (token, method, route, { body, headers = {}, query = "" } = {}) =>
+  api[route][method](new Request(`https://hosted-check.test/api/${route}${query}`, {
     method, body, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers }
   }));
 async function rest(method, p, { key = PUB, token, body, prefer } = {}) {
@@ -96,8 +96,21 @@ try {
   const setup = await res.json();
   check("A saves choices", res.status === 200, `${setup.companies} companies`);
 
+  // While the first check runs, the page asks how far it has got; B asks too, and should see nothing of A's.
   let started = Date.now();
-  res = await site(a.token, "POST", "check");
+  const running = site(a.token, "POST", "check");
+  const seen = [];
+  let bSaw = null;
+  let asked = 0;
+  const finished = running.then(() => true);
+  while (!(await Promise.race([finished, new Promise((r) => setTimeout(() => r(false), 400))]))) {
+    const p = await (await site(a.token, "GET", "check", { query: "?progress=1" })).json();
+    asked++;
+    if (p.progress) seen.push(p.progress);
+    const fromB = await (await site(b.token, "GET", "check", { query: "?progress=1" })).json();
+    if (fromB.progress) bSaw = fromB.progress;
+  }
+  res = await running;
   const first = await res.json();
   const s = first.summary || {};
   check("A's first check ranks roles", res.status === 200 && first.results?.length > 0,
@@ -107,30 +120,38 @@ try {
     console.log(`      top 3: ${top}`);
   }
   check("every role links to a web page or nothing", (first.results || []).every((r) => r.url === "" || /^https:\/\//.test(r.url)));
+  const stages = [...new Set(seen.map((p) => p.stage))];
+  const lastAI = seen.filter((p) => p.stage === "ai").at(-1);
+  check("while it ran, A could read how far it had got", seen.length > 0 && seen.every((p) => ["details", "ai"].includes(p.stage) && p.total > 0 && p.done <= p.total),
+    `${asked} asks; stages ${stages.join(", ") || "none"}${lastAI ? `; last "AI-scoring ${lastAI.done} of ${lastAI.total}"` : ""}`);
+  check("B could not read A's progress", bSaw === null);
+  check("once it finished there is no progress to read", (await (await site(a.token, "GET", "check", { query: "?progress=1" })).json()).progress === null);
   check("every drop keeps its reason", (first.droppedByReason || []).every((d) => d.reason && d.count > 0));
 
   // AI scoring, against the fake OpenRouter.
   const firstAI = s.aiScoredThisRun || 0;
   let usage = await usageOf(a.id);
-  check("A's first check AI-scores up to 20 roles, and only what the keywords rank", firstAI > 0 && firstAI <= AI_ROLES_PER_CHECK && fakeAI.calls === firstAI,
-    `${firstAI} AI-scored, ${s.aiWaiting} waiting, $${s.costUsd}`);
+  check(`A's first check AI-scores every role that passed, up to ${AI_ROLES_PER_CHECK}`, firstAI > 0 && fakeAI.calls === firstAI &&
+    (s.aiWaiting === 0 || firstAI === AI_ROLES_PER_CHECK), `${firstAI} AI-scored, ${s.aiWaiting} waiting, ${s.passedFilter} passed, $${s.costUsd}`);
+  check("no keyword number reaches the page", first.results.every((r) => r.method === "ai" || (r.fit === null && r.why === null)));
   check("the counter goes down by what was scored", first.ai?.left === AI_ROLES_PER_DAY - firstAI && usage.roles_scored === firstAI,
     `${first.ai?.left} of ${first.ai?.limit} left; ai_usage ${usage.roles_scored} roles, $${usage.cost_usd}`);
   check("the check's cost is what OpenRouter reported", Math.abs(s.costUsd - firstAI * FAKE_COST) < 1e-6 && Math.abs(Number(usage.cost_usd) - firstAI * FAKE_COST) < 1e-6);
   check("AI fits come first on the board", first.results.findIndex((r) => r.method !== "ai") === -1 ||
     first.results.slice(first.results.findIndex((r) => r.method !== "ai")).every((r) => r.method !== "ai"));
 
-  // The site's daily budget: with today's row at the cap, AI pauses for everyone and keyword ranking carries on.
+  // The site's daily budget: with today's row at the cap, AI pauses for everyone and the board still lists every role.
   await rest("POST", "/rest/v1/site_spend?on_conflict=day", { key: SECRET, body: { day: today, cost_usd: SITE_DAILY_USD }, prefer: "resolution=merge-duplicates" });
   const callsBefore = fakeAI.calls;
   res = await site(a.token, "POST", "check");
   const paused = await res.json();
-  check("at the site's daily budget, AI pauses and keyword ranking still works", res.status === 200 && fakeAI.calls === callsBefore &&
+  check("at the site's daily budget, AI pauses and the board still lists every role", res.status === 200 && fakeAI.calls === callsBefore &&
     paused.results?.length >= first.results.length && (s.aiWaiting === 0 || paused.summary?.aiPaused === "site"),
     `${paused.summary?.aiPaused}, ${paused.results?.length} on the board`);
   res = await site(a.token, "GET", "check");
   const read = await res.json();
-  check("the page learns only that AI is paused, never the site's spending", read.ai?.paused === "site" && !/cost_usd|"1(\.0+)?"/.test(JSON.stringify(read.ai)));
+  check("the page learns only that AI is paused, never the site's spending", read.ai?.paused === "site" &&
+    Object.keys(read.ai).sort().join(",") === "left,limit,on,paused,perCheck" && !/cost|spend/i.test(JSON.stringify(read.ai)));
   check("A's usage was given back when the site could not cover it", (await usageOf(a.id)).roles_scored === firstAI);
   await rest("PATCH", `/rest/v1/site_spend?day=eq.${today}`, { key: SECRET, body: { cost_usd: siteBefore ? siteBefore.cost_usd : 0, roles_scored: siteBefore ? siteBefore.roles_scored : 0 } });
 
@@ -145,7 +166,7 @@ try {
   res = await site(a.token, "GET", "check");
   check("A's last board comes back", res.status === 200 && (await res.json()).latest?.summary?.scored > 0);
 
-  // The end of the allowance: with 58 used, a check can AI-score at most 2.
+  // The end of the allowance: with 2 left, a check can AI-score at most 2.
   await rest("PATCH", `/rest/v1/ai_usage?user_id=eq.${a.id}&day=eq.${today}`, { key: SECRET, body: { roles_scored: AI_ROLES_PER_DAY - 2 } });
   res = await site(a.token, "POST", "check");
   const nearEnd = await res.json();

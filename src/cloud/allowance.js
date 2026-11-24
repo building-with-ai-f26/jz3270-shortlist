@@ -1,9 +1,11 @@
 // The AI allowance on the hosted site (CLOUD-PLAN.md, step 5). AI scoring spends Jordan's OpenRouter key, so it
-// has three limits, and keyword ranking carries on whenever one of them is reached:
+// has three limits; when one is reached, the roles not yet AI-scored wait for the next day's allowance:
 //   1. each person: AI_ROLES_PER_DAY roles a day, at most AI_ROLES_PER_CHECK in one check;
 //   2. the whole site: SITE_DAILY_USD dollars a day;
 //   3. the key itself: its credit limit on OpenRouter (set there, not here).
 // Days run from midnight to midnight New York time.
+// Raised on Nov 24 (Jordan approved these numbers) so a first board of about 120 roles is AI-scored in one check:
+// about $0.0007 a role, so about $0.08 for a first board and about $1.70 for 20 classmates' first boards.
 //
 // The counts live in ai_usage (one row per person per day) and site_spend (one row per day), which only the server
 // writes. A check asks for roles before it calls OpenRouter (reserveAI) and reports what it really used afterwards
@@ -16,9 +18,9 @@
 // counts exact with plain database requests, without a database function.
 import { asServer, ok } from "./supabase.js";
 
-export const AI_ROLES_PER_DAY = 60;
-export const AI_ROLES_PER_CHECK = 20;
-export const SITE_DAILY_USD = 1;
+export const AI_ROLES_PER_DAY = 300;
+export const AI_ROLES_PER_CHECK = 150;
+export const SITE_DAILY_USD = 5;
 export const RESERVE_USD_PER_ROLE = 0.002;
 export const TIME_ZONE = "America/New_York";
 const TRIES = 5;

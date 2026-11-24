@@ -3,12 +3,13 @@
 // ranks what passes against their resume, and saves the scores and the run. Each posting is scored once per resume
 // (rule 8).
 //
-// Two kinds of score, kept apart as in the laptop app:
-//   1. Keyword ranking, free: the freshest unranked roles, up to KEYWORD_CAP a check.
+// Every role that passes the filter gets an AI fit (Jordan, Nov 24: keyword scores were not good enough to show):
+//   1. Keyword ranking, free and never shown: it only sets the order in which roles get AI-scored.
 //   2. AI fit, paid from Jordan's OpenRouter key: the roles the keywords rank highest that have no AI fit yet,
-//      within the person's daily allowance and the site's daily budget (src/cloud/allowance.js). When either is
-//      used up, or the server has no key, the check carries on with keyword ranking alone.
-// The board shows a role's AI fit when it has one, and its keyword rank otherwise.
+//      within the person's daily allowance and the site's daily budget (src/cloud/allowance.js), AI_AT_ONCE at a
+//      time. When either is used up, or the server has no key, the rest wait for a later check.
+// The board shows AI fits; a role without one yet is listed after them, in keyword order, with no number.
+// While a check runs, its row in runs says how far it has got, for the page's cover screen (checkProgress).
 import { runFilter, prefilter, classifyCohort, COHORTS } from "../filter.js";
 import { scoreAll, DEFAULT_MODEL } from "../score.js";
 import { fillDetails } from "../sources.js";
@@ -20,15 +21,24 @@ import { hostedStarter, HOSTED_ATS, inList, upsertPostings } from "./postings.js
 import { HttpError } from "./http.js";
 import { aiOn, aiStatus, reserveAI, settleAI } from "./allowance.js";
 
-export const KEYWORD_CAP = 60;
+// Keyword ranking covers every role a person could AI-score in a day, so the AI order is chosen from all of them.
+export const KEYWORD_CAP = 300;
+// AI calls run AI_AT_ONCE at a time, in batches of AI_BATCH whose scores are saved as each batch ends, so a check
+// that Vercel stops still keeps what it paid for. No batch starts after AI_SECONDS, which leaves room within the
+// 300 seconds api/check.js may run (vercel.json); the rest wait for the next check.
+export const AI_AT_ONCE = 8;
+export const AI_BATCH = 40;
+export const AI_SECONDS = 180;
+const PROGRESS_MS = 1500;
 // A per-person rate limit: at most CHECKS_PER_WINDOW checks in WINDOW_MINUTES, counted from the runs table.
 export const CHECKS_PER_WINDOW = 5;
 export const WINDOW_MINUTES = 10;
 // One check at a time per person, so a double click never pays twice for the same roles. A check still marked
-// running after RUNNING_SECONDS has died (Vercel stops api/check.js after 120 seconds, vercel.json), so it no
+// running after RUNNING_SECONDS has died (Vercel stops api/check.js after 300 seconds, vercel.json), so it no
 // longer blocks the next one.
-export const RUNNING_SECONDS = 150;
-const RESULTS_KEPT = 150;
+export const RUNNING_SECONDS = 330;
+// The board keeps the best RESULTS_KEPT roles (AI fits first), so a saved check stays a few hundred kilobytes.
+export const RESULTS_KEPT = 150;
 const q = encodeURIComponent;
 const chunks = (list, size) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, (i + 1) * size));
 
@@ -70,6 +80,36 @@ async function earlierRunning(user, runId, { env, fetchImpl, now }) {
 
 function finishRun(id, summary, { env, fetchImpl }) {
   return asServer(`/rest/v1/runs?id=eq.${q(id)}`, { method: "PATCH", body: { summary }, prefer: "return=minimal", env, fetchImpl });
+}
+
+// Writes { stage, done, total } into the running check's row: at each new stage, at the end of a stage, and at most
+// every PROGRESS_MS in between. Writes go one after another and only touch a row still marked running, so a late one
+// can never overwrite the finished board. `.settled()` waits for the last one.
+function progressWriter(runId, { env, fetchImpl, clock }) {
+  let stage = null;
+  let last = 0;
+  let writing = Promise.resolve();
+  const report = (progress) => {
+    const t = clock();
+    if (!progress.total) return;
+    if (progress.stage === stage && progress.done < progress.total && t - last < PROGRESS_MS) return;
+    stage = progress.stage;
+    last = t;
+    writing = writing.then(() => asServer(`/rest/v1/runs?id=eq.${q(runId)}&summary->>status=eq.running`, {
+      method: "PATCH", body: { summary: { status: "running", progress } }, prefer: "return=minimal", env, fetchImpl
+    })).catch(() => {});
+  };
+  report.settled = () => writing;
+  return report;
+}
+
+// How far this person's running check has got, for the cover screen: { stage, done, total }, or null.
+export async function checkProgress(user, { env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
+  const since = new Date(now - RUNNING_SECONDS * 1000).toISOString();
+  const res = await ok(await asUser(user, `/rest/v1/runs?select=summary&user_id=eq.${q(user.id)}&run_at=gte.${q(since)}` +
+    `&summary->>status=eq.running&order=run_at.desc&limit=1`, { env, fetchImpl }), "Reading your check");
+  const p = (await res.json())[0]?.summary?.progress;
+  return p && typeof p === "object" ? { stage: String(p.stage), done: Number(p.done) || 0, total: Number(p.total) || 0 } : null;
 }
 
 // Saved choices are written by /api/setup after validation, but they are checked again here, so damaged or
@@ -130,9 +170,9 @@ async function readDescriptions(user, ids, { env, fetchImpl }) {
 
 // Descriptions for roles about to be scored: from the database when an earlier check or the daily fetch saved one,
 // else from Greenhouse, and then saved for the next person.
-async function withDescriptions(user, roles, { env, fetchImpl }) {
+async function withDescriptions(user, roles, { env, fetchImpl, onEach }) {
   const known = await readDescriptions(user, roles.map((x) => x.id), { env, fetchImpl });
-  const filled = await fillDetails(roles.map((x) => ({ ...x, text: known.get(x.id) || "" })), fetchImpl, 8);
+  const filled = await fillDetails(roles.map((x) => ({ ...x, text: known.get(x.id) || "" })), fetchImpl, 8, onEach);
   const newlyFilled = filled.filter((x) => x.text && !known.has(x.id));
   if (newlyFilled.length) {
     await upsertPostings(newlyFilled.map((x) => ({ id: x.id, ats: x.source, board: x.board, company: x.company, title: x.title, description: x.text.slice(0, 8000) })), { env, fetchImpl });
@@ -151,7 +191,8 @@ const saveScores = async (rows, { env, fetchImpl }) => {
 // The link on a card must be a real web address, never javascript: or data:, whatever a job board sent.
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : "");
 
-export async function runCloudCheck(user, { env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
+// `clock` measures how long the check has run (tests pass their own).
+export async function runCloudCheck(user, { env = process.env, fetchImpl = fetch, now = Date.now(), clock = Date.now } = {}) {
   const runId = await reserveRun(user, new Date(now).toISOString(), { env, fetchImpl });
   if (await recentChecks(user, { env, fetchImpl, now }) > CHECKS_PER_WINDOW) {
     await finishRun(runId, { status: "refused" }, { env, fetchImpl });
@@ -161,19 +202,23 @@ export async function runCloudCheck(user, { env = process.env, fetchImpl = fetch
     await finishRun(runId, { status: "refused" }, { env, fetchImpl });
     throw new HttpError("Your last check is still running. Give it a few seconds.", 409);
   }
+  const progress = progressWriter(runId, { env, fetchImpl, clock });
   try {
-    const latest = await check(user, { env, fetchImpl, now });
+    const latest = await check(user, { env, fetchImpl, now, clock, progress });
+    await progress.settled();
     await ok(await finishRun(runId, { ...latest, status: "done" }, { env, fetchImpl }), "Saving the check");
     // The counter is read fresh for the page and not saved with the board.
     const ai = await aiStatus(user, { env, fetchImpl, now }).catch(() => null);
     return { ...latest, ai };
   } catch (err) {
+    await progress.settled();
     await finishRun(runId, { status: "failed" }, { env, fetchImpl }).catch(() => {});
     throw err;
   }
 }
 
-async function check(user, { env, fetchImpl, now }) {
+async function check(user, { env, fetchImpl, now, clock, progress }) {
+  const started = clock();
   const { profile, prefs, lastRunAt } = await readInputs(user, { env, fetchImpl });
   const boards = boardsFor(prefs);
   const maxAge = prefs.maxAgeDays || 14;
@@ -192,10 +237,11 @@ async function check(user, { env, fetchImpl, now }) {
   const [saved, savedAI] = await Promise.all([readScores("keywords", keywordKey), readScores("ai", aiKey)]);
   const scoredAt = new Date(now).toISOString();
 
-  // 4. Keyword ranking, free: the freshest unranked roles.
+  // 4. Keyword ranking, free: the freshest unranked roles. It is never shown; it sets the AI order.
   const unscored = kept.filter((k) => !saved.has(k.id)).sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
   const queue = unscored.slice(0, KEYWORD_CAP);
-  const filled = await withDescriptions(user, queue, { env, fetchImpl });
+  progress({ stage: "details", done: 0, total: queue.length });
+  const filled = await withDescriptions(user, queue, { env, fetchImpl, onEach: (done, total) => progress({ stage: "details", done, total }) });
   // Some roles only show their real location or seniority in the description, so the filter runs again.
   const toScore = [];
   const lateDropped = new Set();
@@ -217,11 +263,11 @@ async function check(user, { env, fetchImpl, now }) {
   for (const r of rows) saved.set(r.posting_id, r);
 
   // 5. AI fit, within the allowance: the roles the keywords rank highest that have no AI fit yet, freshest first
-  // among equals. The allowance is held before any call and settled with the real cost after.
+  // among equals. The allowance is held before any call and settled with the real cost after, even if a batch fails.
   const candidates = kept
     .filter((k) => saved.has(k.id) && !savedAI.has(k.id) && !lateDropped.has(k.id))
     .sort((a, b) => (saved.get(b.id).fit ?? -1) - (saved.get(a.id).fit ?? -1) || (a.ageDays ?? 999) - (b.ageDays ?? 999));
-  const ai = { scored: 0, failed: 0, paused: null, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+  const ai = { scored: 0, failed: 0, paused: null, stopped: false, tokensIn: 0, tokensOut: 0, costUsd: 0 };
   if (aiOn(env) && candidates.length) {
     let hold = null;
     try {
@@ -231,27 +277,43 @@ async function check(user, { env, fetchImpl, now }) {
       ai.paused = "busy";
     }
     if (hold?.granted) {
-      const picked = (await withDescriptions(user, candidates.slice(0, hold.granted), { env, fetchImpl }))
-        .map((x) => ({ ...x, cohort: classifyCohort(x.title, x.text) }));
-      // If this throws, the hold stays in place, which errs toward spending less.
-      const { scored, totals } = await scoreAll(profile, picked, {
-        useAI: true, maxToScore: hold.granted, fetchImpl, apiKey: env.OPENROUTER_API_KEY, model: DEFAULT_MODEL
-      });
-      const good = scored.filter((f) => !f.error);
-      Object.assign(ai, { scored: good.length, failed: scored.length - good.length, ...totals });
-      await settleAI(user, hold, { used: good.length, costUsd: totals.costUsd }, { env, fetchImpl });
-      const aiRows = good.map((f) => ({
-        user_id: user.id, posting_id: f.id, method: "ai", cache_key: aiKey, fit: f.fit, track: f.track || null,
-        why: f.why, gap: f.gap, dealbreaker: f.dealbreaker, cohort: f.newGrad ? COHORTS.grad : f.cohort, model: DEFAULT_MODEL,
-        tokens_in: f.usage.tokensIn, tokens_out: f.usage.tokensOut, cost_usd: Number(f.usage.costUsd.toFixed(6)), scored_at: scoredAt
-      }));
-      await saveScores(aiRows, { env, fetchImpl });
-      for (const r of aiRows) savedAI.set(r.posting_id, r);
+      try {
+        const picked = (await withDescriptions(user, candidates.slice(0, hold.granted), { env, fetchImpl }))
+          .map((x) => ({ ...x, cohort: classifyCohort(x.title, x.text) }));
+        let done = 0;
+        progress({ stage: "ai", done, total: picked.length });
+        for (const batch of chunks(picked, AI_BATCH)) {
+          if (clock() - started > AI_SECONDS * 1000) {
+            ai.stopped = true;
+            break;
+          }
+          const { scored, totals } = await scoreAll(profile, batch, {
+            useAI: true, maxToScore: batch.length, concurrency: AI_AT_ONCE, fetchImpl, apiKey: env.OPENROUTER_API_KEY, model: DEFAULT_MODEL,
+            onEach: () => progress({ stage: "ai", done: ++done, total: picked.length })
+          });
+          const good = scored.filter((f) => !f.error);
+          ai.scored += good.length;
+          ai.failed += scored.length - good.length;
+          ai.tokensIn += totals.tokensIn;
+          ai.tokensOut += totals.tokensOut;
+          ai.costUsd += totals.costUsd;
+          const aiRows = good.map((f) => ({
+            user_id: user.id, posting_id: f.id, method: "ai", cache_key: aiKey, fit: f.fit, track: f.track || null,
+            why: f.why, gap: f.gap, dealbreaker: f.dealbreaker, cohort: f.newGrad ? COHORTS.grad : f.cohort, model: DEFAULT_MODEL,
+            tokens_in: f.usage.tokensIn, tokens_out: f.usage.tokensOut, cost_usd: Number(f.usage.costUsd.toFixed(6)), scored_at: scoredAt
+          }));
+          await saveScores(aiRows, { env, fetchImpl });
+          for (const r of aiRows) savedAI.set(r.posting_id, r);
+        }
+      } finally {
+        await settleAI(user, hold, { used: ai.scored, costUsd: ai.costUsd }, { env, fetchImpl });
+      }
     }
   }
 
-  // 6. The board: every role that passed and has a score, AI fits first, best first, marked new if it reached the
-  // shared postings after this person's last check.
+  // 6. The board: every role that passed and has a score, AI fits first, best first, then the roles still waiting
+  // for one in keyword order, marked new if it reached the shared postings after this person's last check. A keyword
+  // score never leaves the server: a waiting role has no fit and no reason.
   const results = kept
     .filter((k) => (savedAI.has(k.id) || saved.has(k.id)) && !lateDropped.has(k.id))
     .map((k) => {
@@ -264,7 +326,8 @@ async function check(user, { env, fetchImpl, now }) {
       };
       return { ...role, people: peopleLinks(role, prefs) };
     })
-    .sort((a, b) => (a.method === b.method ? 0 : a.method === "ai" ? -1 : 1) || (b.fit ?? -1) - (a.fit ?? -1));
+    .sort((a, b) => (a.method === b.method ? 0 : a.method === "ai" ? -1 : 1) || (b.fit ?? -1) - (a.fit ?? -1))
+    .map((r) => (r.method === "ai" ? r : { ...r, fit: null, why: null, gap: null }));
 
   const droppedByReason = Object.entries(dropped.reduce((acc, d) => {
     const t = reasonType(d.reason);
@@ -288,6 +351,7 @@ async function check(user, { env, fetchImpl, now }) {
     aiFailed: ai.failed,
     aiWaiting: Math.max(0, candidates.length - ai.scored),
     aiPaused: ai.paused,
+    aiStopped: ai.stopped,
     newCount: results.filter((r) => r.isNew).length,
     gradCount: results.filter((r) => r.cohort === COHORTS.grad).length,
     maxAgeDays: maxAge,

@@ -7,7 +7,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { encryptResume, encryptionKey } from "../src/cloud/crypto.js";
 import { aiDay, aiStatus, reserveAI, settleAI, AI_ROLES_PER_DAY, AI_ROLES_PER_CHECK, SITE_DAILY_USD } from "../src/cloud/allowance.js";
-import { RUNNING_SECONDS } from "../src/cloud/check.js";
+import { RUNNING_SECONDS, RESULTS_KEPT, AI_AT_ONCE, AI_BATCH, AI_SECONDS, runCloudCheck } from "../src/cloud/check.js";
 import { DEFAULT_MODEL } from "../src/score.js";
 import { POST as runCheck, GET as readCheck } from "../api/check.js";
 import { DELETE as removeResume } from "../api/resume.js";
@@ -45,12 +45,15 @@ async function withFetch(fake, fn) {
 const reply = (body, status = 200) => ({ ok: status < 400, status, headers: new Headers(), json: async () => body, text: async () => JSON.stringify(body) });
 const signedIn = (path, init = {}) => new Request(`https://site.test${path}`, { ...init, headers: { Authorization: "Bearer good-token" } });
 
-// 25 roles that pass the filter, each with a description, so no job board is ever asked. Made-up filler words
-// (rare, so they weigh a lot) spread the keyword ranks, so the order the AI scores them in can be checked.
+// 5 more roles than one check may AI-score, all passing the filter, each with a description, so no job board is ever
+// asked. Made-up filler words (rare, so they weigh a lot) spread the keyword ranks, so the AI order can be checked.
 const WORDS = ["supplier scorecard", "site selection", "distribution center", "underwriting", "SQL models", "late shipments"];
 const letter = (n) => String.fromCharCode(97 + (n % 26));
 const filler = (i) => Array.from({ length: i * 3 }, (_, j) => `qz${letter(i)}${letter(j)}${letter(j * 7 + i)}`).join(" ");
-const POSTINGS = Array.from({ length: 25 }, (_, i) => ({
+const PER_CHECK = AI_ROLES_PER_CHECK;
+const PER_DAY = AI_ROLES_PER_DAY;
+const ROLES = PER_CHECK + 5;
+const POSTINGS = Array.from({ length: ROLES }, (_, i) => ({
   id: `greenhouse:acme:${i + 1}`, ats: "greenhouse", board: "acme", company: "Acme", title: `Strategy Analyst ${i + 1}`,
   location: "New York, NY", url: `https://boards.greenhouse.io/acme/jobs/${i + 1}`, department: "",
   posted_at: new Date(NOW - (i % 5) * DAY).toISOString(), first_seen: new Date(NOW - DAY).toISOString(), closed_at: null,
@@ -160,33 +163,34 @@ const post = async () => {
 const mine = (db) => db.ai_usage.find((r) => r.user_id === USER.id && r.day === TODAY);
 const site = (db) => db.site_spend.find((r) => r.day === TODAY);
 
-test("a check AI-scores the roles the keywords rank highest, up to 20, and the counter goes down by what was scored", async () => {
+test("a check AI-scores the roles the keywords rank highest, up to 150, and the counter goes down by what was scored", async () => {
   await withEnv(ENV, async () => {
     const cloud = fakeCloud();
     await withFetch(cloud.fake, async () => {
       const { status, body } = await post();
       assert.equal(status, 200, JSON.stringify(body));
-      assert.equal(cloud.ai.length, AI_ROLES_PER_CHECK, "20 calls, not 25");
-      assert.equal(body.summary.aiScoredThisRun, 20);
+      assert.equal(cloud.ai.length, PER_CHECK, `${PER_CHECK} calls, not ${ROLES}`);
+      assert.equal(body.summary.aiScoredThisRun, PER_CHECK);
       assert.equal(body.summary.aiWaiting, 5, "the other 5 wait for the next check");
       assert.equal(body.summary.method, "ai");
-      assert.equal(body.summary.costUsd, Number((20 * COST).toFixed(6)), "the check's cost is the real cost OpenRouter reported");
-      assert.deepEqual(body.ai, { on: true, limit: 60, perCheck: 20, left: 40, paused: null });
-      assert.equal(mine(cloud.db).roles_scored, 20);
-      assert.equal(mine(cloud.db).cost_usd, Number((20 * COST).toFixed(6)));
-      assert.equal(site(cloud.db).roles_scored, 20);
-      assert.equal(site(cloud.db).cost_usd, Number((20 * COST).toFixed(6)), "the site's hold became the real cost");
+      assert.equal(body.summary.costUsd, Number((PER_CHECK * COST).toFixed(6)), "the check's cost is the real cost OpenRouter reported");
+      assert.deepEqual(body.ai, { on: true, limit: PER_DAY, perCheck: PER_CHECK, left: PER_DAY - PER_CHECK, paused: null });
+      assert.equal(mine(cloud.db).roles_scored, PER_CHECK);
+      assert.equal(mine(cloud.db).cost_usd, Number((PER_CHECK * COST).toFixed(6)));
+      assert.equal(site(cloud.db).roles_scored, PER_CHECK);
+      assert.equal(site(cloud.db).cost_usd, Number((PER_CHECK * COST).toFixed(6)), "the site's hold became the real cost");
 
-      // The 20 picked are the 20 best by keyword rank.
+      // The ones picked are the best by keyword rank.
       const kw = new Map(cloud.db.scores.filter((s) => s.method === "keywords").map((s) => [s.posting_id, s.fit]));
       const picked = new Set(cloud.db.scores.filter((s) => s.method === "ai").map((s) => s.posting_id));
       const lowestPicked = Math.min(...[...picked].map((id) => kw.get(id)));
       const highestLeft = Math.max(...[...kw.keys()].filter((id) => !picked.has(id)).map((id) => kw.get(id)));
       assert.ok(lowestPicked >= highestLeft, `picked by keyword rank (${lowestPicked} vs ${highestLeft})`);
 
-      // AI fits come first on the board, then the keyword-ranked rest.
-      assert.deepEqual([...new Set(body.results.map((r) => r.method))], ["ai", "keywords"]);
-      const aiFits = body.results.filter((r) => r.method === "ai").map((r) => r.fit);
+      // The board keeps the best RESULTS_KEPT, here all AI fits, best first.
+      assert.equal(body.results.length, RESULTS_KEPT);
+      assert.ok(body.results.every((r) => r.method === "ai"));
+      const aiFits = body.results.map((r) => r.fit);
       assert.deepEqual(aiFits, [...aiFits].sort((a, b) => b - a));
       assert.equal(body.results.find((r) => r.title === "Strategy Analyst 3")?.cohort, "2027 grad", "the model's new grad flag moves a role to that column");
 
@@ -204,37 +208,46 @@ test("each role is paid for once: later checks reuse AI fits and score only what
     await withFetch(cloud.fake, async () => {
       await post();
       const second = await post();
-      assert.equal(cloud.ai.length, 25, "the second check scored only the 5 waiting roles");
-      assert.equal(second.body.summary.aiScored, 25);
-      assert.equal(second.body.ai.left, 35);
+      assert.equal(cloud.ai.length, ROLES, "the second check scored only the 5 waiting roles");
+      assert.equal(second.body.summary.aiScored, ROLES, "every role that passed now has an AI fit");
+      assert.equal(second.body.summary.aiWaiting, 0);
+      assert.equal(second.body.ai.left, PER_DAY - ROLES);
       const third = await post();
-      assert.equal(cloud.ai.length, 25, "nothing new, nothing paid");
+      assert.equal(cloud.ai.length, ROLES, "nothing new, nothing paid");
       assert.equal(third.body.summary.aiScoredThisRun, 0);
-      assert.equal(third.body.ai.left, 35, "a check with nothing to score uses none of the allowance");
+      assert.equal(third.body.ai.left, PER_DAY - ROLES, "a check with nothing to score uses none of the allowance");
       const titles = cloud.ai.map((c) => c.body.messages[1].content.match(/^Title: (.*)$/m)[1]);
       assert.equal(new Set(titles).size, titles.length, "no role was sent twice");
     });
   });
 });
 
-test("near the end of the allowance a check gets only what is left, then ranks by keywords", async () => {
+test("near the end of the allowance a check gets only what is left, and the rest wait on the board with no number", async () => {
   await withEnv(ENV, async () => {
-    const cloud = fakeCloud({ usage: 55 });
+    const cloud = fakeCloud({ usage: PER_DAY - 5 });
     await withFetch(cloud.fake, async () => {
       const first = await post();
       assert.equal(cloud.ai.length, 5);
-      assert.deepEqual(first.body.ai, { on: true, limit: 60, perCheck: 20, left: 0, paused: "person" });
+      assert.deepEqual(first.body.ai, { on: true, limit: PER_DAY, perCheck: PER_CHECK, left: 0, paused: "person" });
       const second = await post();
       assert.equal(second.status, 200);
       assert.equal(cloud.ai.length, 5, "no more AI today");
       assert.equal(second.body.summary.aiPaused, "person");
-      assert.equal(second.body.results.length, 25, "every role is still ranked, by keywords where AI is used up");
-      assert.equal(mine(cloud.db).roles_scored, 60);
+      assert.equal(second.body.summary.aiWaiting, ROLES - 5);
+      const results = second.body.results;
+      assert.equal(results.length, RESULTS_KEPT, "the roles still waiting stay on the board");
+      assert.deepEqual([...new Set(results.map((r) => r.method))], ["ai", "keywords"], "AI fits first, then the roles waiting for one");
+      const waiting = results.filter((r) => r.method !== "ai");
+      assert.ok(waiting.every((r) => r.fit === null && r.why === null && r.gap === null), "a keyword score never reaches the page");
+      const kw = new Map(cloud.db.scores.filter((s) => s.method === "keywords").map((s) => [s.posting_id, s.fit]));
+      const order = waiting.map((r) => kw.get(r.id));
+      assert.deepEqual(order, [...order].sort((a, b) => b - a), "waiting roles are listed in keyword order");
+      assert.equal(mine(cloud.db).roles_scored, PER_DAY);
     });
   });
 });
 
-test("the site's daily budget pauses AI for everyone, keyword ranking still works, and the page never sees the site's spending", async () => {
+test("the site's daily budget pauses AI for everyone, the board still lists every role, and the page never sees the site's spending", async () => {
   await withEnv(ENV, async () => {
     const cloud = fakeCloud({ siteCost: SITE_DAILY_USD - 0.001 });
     await withFetch(cloud.fake, async () => {
@@ -243,13 +256,14 @@ test("the site's daily budget pauses AI for everyone, keyword ranking still work
       assert.equal(cloud.ai.length, 0);
       assert.equal(body.summary.aiPaused, "site");
       assert.equal(body.summary.method, "keywords");
-      assert.equal(body.results.length, 25);
+      assert.equal(body.results.length, RESULTS_KEPT);
+      assert.ok(body.results.every((r) => r.fit === null), "no keyword numbers");
       assert.equal(mine(cloud.db).roles_scored, 0, "the person's hold was given back");
-      assert.deepEqual(body.ai, { on: true, limit: 60, perCheck: 20, left: 60, paused: "site" });
+      assert.deepEqual(body.ai, { on: true, limit: PER_DAY, perCheck: PER_CHECK, left: PER_DAY, paused: "site" });
       const res = await readCheck(signedIn("/api/check"));
       const read = await res.json();
       assert.equal(read.ai.paused, "site");
-      assert.doesNotMatch(JSON.stringify(read), /0\.999|cost_usd/, "no site dollars in what the page gets");
+      assert.doesNotMatch(JSON.stringify(read), /4\.999|cost_usd/, "no site dollars in what the page gets");
     });
   });
 });
@@ -274,25 +288,28 @@ test("Start over keeps the day's AI count, so removing the resume never resets t
       const res = await removeResume(signedIn("/api/resume", { method: "DELETE" }));
       assert.equal(res.status, 200);
       assert.equal(cloud.db.scores.length, 0, "the scores are gone");
-      assert.equal(mine(cloud.db).roles_scored, 20, "the count is not");
+      assert.equal(mine(cloud.db).roles_scored, PER_CHECK, "the count is not");
       const read = await (await readCheck(signedIn("/api/check"))).json();
-      assert.equal(read.ai.left, 40);
+      assert.equal(read.ai.left, PER_DAY - PER_CHECK);
     });
   });
 });
 
 test("holds made at the same moment never pass the daily limit, and the counts stay exact", async () => {
   await withEnv(ENV, async () => {
-    const cloud = fakeCloud({ usage: 10 });
+    // 200 left today, and four checks each asking for a full check's worth at once.
+    const used = PER_DAY - 200;
+    const cloud = fakeCloud({ usage: used });
     await withFetch(cloud.fake, async () => {
-      const holds = await Promise.all(Array.from({ length: 4 }, () => reserveAI(USER, 20, { env: ENV, now: NOW }).catch(() => ({ granted: 0 }))));
+      const holds = await Promise.all(Array.from({ length: 4 }, () => reserveAI(USER, PER_CHECK, { env: ENV, now: NOW }).catch(() => ({ granted: 0 }))));
       const granted = holds.reduce((n, h) => n + h.granted, 0);
-      assert.ok(granted <= AI_ROLES_PER_DAY - 10 && granted > 0, `granted ${granted}`);
-      assert.equal(mine(cloud.db).roles_scored, 10 + granted, "every hold was counted, none lost");
+      assert.ok(granted <= 200 && granted > 0, `granted ${granted}`);
+      assert.ok(holds.every((h) => h.granted <= PER_CHECK));
+      assert.equal(mine(cloud.db).roles_scored, used + granted, "every hold was counted, none lost");
       assert.equal(site(cloud.db).roles_scored, granted);
       await Promise.all(holds.filter((h) => h.granted).map((h) => settleAI(USER, h, { used: h.granted - 1, costUsd: 0.001 }, { env: ENV })));
       const holders = holds.filter((h) => h.granted).length;
-      assert.equal(mine(cloud.db).roles_scored, 10 + granted - holders, "each settle gave back its unused role");
+      assert.equal(mine(cloud.db).roles_scored, used + granted - holders, "each settle gave back its unused role");
       assert.equal(site(cloud.db).cost_usd, Number((holders * 0.001).toFixed(6)), "the site holds only the real cost after settling");
     });
   });
@@ -312,21 +329,21 @@ test("a failed AI call adds its cost but not a role, and the role is tried again
     const cloud = fakeCloud({ openrouter: flaky });
     await withFetch(cloud.fake, async () => {
       const { body } = await post();
-      assert.equal(cloud.ai.length, 20);
-      assert.equal(body.summary.aiScoredThisRun, 19);
+      assert.equal(cloud.ai.length, PER_CHECK);
+      assert.equal(body.summary.aiScoredThisRun, PER_CHECK - 1);
       assert.equal(body.summary.aiFailed, 1);
       assert.equal(body.summary.aiWaiting, 6, "the failed role waits with the 5 not yet tried");
-      assert.equal(mine(cloud.db).roles_scored, 19, "only scored roles count");
-      assert.equal(mine(cloud.db).cost_usd, Number((19 * COST + 0.0005).toFixed(6)), "every call's cost counts");
+      assert.equal(mine(cloud.db).roles_scored, PER_CHECK - 1, "only scored roles count");
+      assert.equal(mine(cloud.db).cost_usd, Number(((PER_CHECK - 1) * COST + 0.0005).toFixed(6)), "every call's cost counts");
       const retry = failing;
       failing = "answered";
       await post();
-      assert.ok(cloud.ai.slice(20).some((c) => titleOf(c.body) === retry), "tried again on the next check");
+      assert.ok(cloud.ai.slice(PER_CHECK).some((c) => titleOf(c.body) === retry), "tried again on the next check");
     });
   });
 });
 
-test("without a key on the server there is no AI call and no usage row, and the board is keyword-ranked", async () => {
+test("without a key on the server there is no AI call and no usage row, and the board lists roles without numbers", async () => {
   await withEnv({ ...ENV, OPENROUTER_API_KEY: "" }, async () => {
     const cloud = fakeCloud();
     await withFetch(cloud.fake, async () => {
@@ -335,6 +352,7 @@ test("without a key on the server there is no AI call and no usage row, and the 
       assert.equal(cloud.ai.length, 0);
       assert.equal(cloud.calls.filter((c) => c.table === "ai_usage" || c.table === "site_spend").length, 0);
       assert.equal(body.summary.method, "keywords");
+      assert.ok(body.results.length && body.results.every((r) => r.fit === null && r.why === null), "no keyword numbers or reasons");
       assert.equal(body.ai.on, false);
     });
   });
@@ -386,14 +404,99 @@ test("days run midnight to midnight in New York, and a dead check stops blocking
   assert.equal(aiDay(Date.parse("2026-07-01T03:59:00Z")), "2026-06-30", "summer time too");
   const vercel = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
   assert.ok(vercel.functions["api/check.js"].maxDuration < RUNNING_SECONDS, "a check is stopped before it would count as still running");
+  assert.ok(AI_SECONDS + 90 <= vercel.functions["api/check.js"].maxDuration, "the last AI batch has time to finish and save");
 });
 
 test("the counter reads today's row only", async () => {
   await withEnv(ENV, async () => {
     const cloud = fakeCloud();
-    cloud.db.ai_usage.push({ user_id: USER.id, day: "2026-01-01", roles_scored: 60, cost_usd: 0.04 });
+    cloud.db.ai_usage.push({ user_id: USER.id, day: "2026-01-01", roles_scored: PER_DAY, cost_usd: 0.2 });
     await withFetch(cloud.fake, async () => {
-      assert.deepEqual(await aiStatus(USER, { env: ENV, now: NOW }), { on: true, limit: 60, perCheck: 20, left: 60, paused: null });
+      assert.deepEqual(await aiStatus(USER, { env: ENV, now: NOW }), { on: true, limit: PER_DAY, perCheck: PER_CHECK, left: PER_DAY, paused: null });
+    });
+  });
+});
+
+test("AI calls run 8 at a time, scores are saved after each batch, and no batch starts after the time limit", async () => {
+  await withEnv(ENV, async () => {
+    let open = 0;
+    let most = 0;
+    let t = 0;
+    const slow = async (body) => {
+      open++;
+      most = Math.max(most, open);
+      await new Promise((r) => setTimeout(r, 1));
+      open--;
+      // The first batch ends after the check's time for AI has passed.
+      if (cloud.ai.length === AI_BATCH) t = (AI_SECONDS + 1) * 1000;
+      return defaultModel(body);
+    };
+    const cloud = fakeCloud({ openrouter: slow });
+    await withFetch(cloud.fake, async () => {
+      const latest = await runCloudCheck(USER, { env: ENV, fetchImpl: cloud.fake, now: NOW, clock: () => t });
+      assert.equal(most, AI_AT_ONCE, `at most ${AI_AT_ONCE} calls at once`);
+      assert.equal(cloud.ai.length, AI_BATCH, "the second batch never started");
+      assert.equal(latest.summary.aiStopped, true);
+      assert.equal(latest.summary.aiScoredThisRun, AI_BATCH);
+      assert.equal(latest.summary.aiWaiting, ROLES - AI_BATCH);
+      assert.equal(mine(cloud.db).roles_scored, AI_BATCH, "the unused part of the hold went back");
+      assert.equal(cloud.db.scores.filter((s) => s.method === "ai").length, AI_BATCH);
+    });
+
+    // Without a time limit, every batch is saved as it ends.
+    const full = fakeCloud();
+    await withFetch(full.fake, async () => {
+      await post();
+      const saves = full.calls.filter((c) => c.method === "POST" && c.table === "scores" && c.body.some((s) => s.method === "ai"));
+      assert.equal(saves.length, Math.ceil(PER_CHECK / AI_BATCH));
+    });
+  });
+});
+
+test("if saving a batch fails, earlier batches keep their scores and the allowance is settled with what was paid", async () => {
+  await withEnv(ENV, async () => {
+    const cloud = fakeCloud();
+    let aiSaves = 0;
+    const failSecondSave = async (url, opts = {}) => {
+      const body = opts.body ? JSON.parse(opts.body) : null;
+      if (String(url).includes("/rest/v1/scores") && opts.method === "POST" && body?.some((s) => s.method === "ai") && ++aiSaves === 2) {
+        return reply({ message: "database is down" }, 500);
+      }
+      return cloud.fake(url, opts);
+    };
+    await withFetch(failSecondSave, async () => {
+      const { status } = await post();
+      assert.equal(status, 500);
+      assert.equal(cloud.db.scores.filter((s) => s.method === "ai").length, AI_BATCH, "the first batch was saved");
+      assert.equal(cloud.ai.length, 2 * AI_BATCH, "the third batch never started");
+      assert.equal(mine(cloud.db).roles_scored, 2 * AI_BATCH, "both batches were paid for, so both count; the rest of the hold went back");
+      assert.equal(mine(cloud.db).cost_usd, Number((2 * AI_BATCH * COST).toFixed(6)));
+      assert.equal(site(cloud.db).cost_usd, Number((2 * AI_BATCH * COST).toFixed(6)), "the site's hold became the real cost");
+      assert.equal(cloud.db.runs.at(-1).summary.status, "failed");
+    });
+  });
+});
+
+test("while a check runs, the page can read how far it has got, and only its own", async () => {
+  await withEnv(ENV, async () => {
+    let seen = null;
+    const peek = async (body) => {
+      if (cloud.ai.length === 60) seen = await (await readCheck(signedIn("/api/check?progress=1"))).json();
+      return defaultModel(body);
+    };
+    const cloud = fakeCloud({ openrouter: peek });
+    cloud.db.runs.push({ id: 5, user_id: "someone-else", run_at: new Date().toISOString(), summary: { status: "running", progress: { stage: "ai", done: 1, total: 2 } } });
+    await withFetch(cloud.fake, async () => {
+      await post();
+      assert.equal(seen.progress.stage, "ai");
+      assert.equal(seen.progress.total, PER_CHECK, "how many roles this check is AI-scoring");
+      assert.ok(seen.progress.done >= 0 && seen.progress.done <= 60);
+      assert.ok(!JSON.stringify(seen).includes("Strategy Analyst"), "no roles, only counts");
+      const reads = cloud.calls.filter((c) => c.method === "GET" && c.table === "runs");
+      assert.ok(reads.every((c) => c.query.includes(`user_id=eq.${USER.id}`)), "read for this person only");
+      assert.notDeepEqual(seen.progress, { stage: "ai", done: 1, total: 2 }, "not someone else's check");
+      const after = await (await readCheck(signedIn("/api/check?progress=1"))).json();
+      assert.equal(after.progress, null, "nothing once the check is done");
     });
   });
 });

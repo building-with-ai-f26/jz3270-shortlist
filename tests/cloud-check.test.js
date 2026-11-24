@@ -188,8 +188,12 @@ test("a check reads shared postings as the person, ranks what passes, and saves 
       const firstRead = calls.findIndex((c) => c.method === "GET" && c.path === "/rest/v1/profiles");
       assert.ok(reserved >= 0 && reserved < firstRead, "the check's row is written before any work, so it always counts");
       assert.equal(calls[reserved].body.user_id, USER.id);
-      const done = calls.find((c) => c.method === "PATCH" && c.path === "/rest/v1/runs");
+      const runWrites = calls.filter((c) => c.method === "PATCH" && c.path === "/rest/v1/runs");
+      const done = runWrites.at(-1);
       assert.equal(done.body.summary.status, "done");
+      const progress = runWrites.slice(0, -1);
+      assert.ok(progress.length && progress.every((c) => c.body.summary.status === "running" && c.query.includes("summary->>status=eq.running")),
+        "progress is written only while the check runs, and never over a finished board");
       assert.ok(!JSON.stringify(done.body).includes("Rivera"), "the saved board holds no resume text");
     });
 
@@ -209,7 +213,7 @@ test("a check reads shared postings as the person, ranks what passes, and saves 
     await withFetch(failing.fake, async () => {
       const res = await runCheck(signedIn("/api/check", { method: "POST" }));
       assert.equal(res.status, 400);
-      assert.equal(failing.calls.find((c) => c.method === "PATCH" && c.path === "/rest/v1/runs").body.summary.status, "failed");
+      assert.equal(failing.calls.findLast((c) => c.method === "PATCH" && c.path === "/rest/v1/runs").body.summary.status, "failed");
     });
   });
 });
