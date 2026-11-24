@@ -11,6 +11,10 @@ import { RUNNING_SECONDS } from "../src/cloud/check.js";
 import { DEFAULT_MODEL } from "../src/score.js";
 import { POST as runCheck, GET as readCheck } from "../api/check.js";
 import { DELETE as removeResume } from "../api/resume.js";
+import { POST as saveSetup, GET as readSetup } from "../api/setup.js";
+import { picksFromWords, parsePicks, WHY_CHARS } from "../src/cloud/picks.js";
+import { STARTER_SECTORS } from "../src/setup.js";
+import { hostedStarter } from "../src/cloud/postings.js";
 
 const ENV = {
   SUPABASE_URL: "https://dev-ref.supabase.co",
@@ -390,6 +394,151 @@ test("the counter reads today's row only", async () => {
     cloud.db.ai_usage.push({ user_id: USER.id, day: "2026-01-01", roles_scored: 60, cost_usd: 0.04 });
     await withFetch(cloud.fake, async () => {
       assert.deepEqual(await aiStatus(USER, { env: ENV, now: NOW }), { on: true, limit: 60, perCheck: 20, left: 60, paused: null });
+    });
+  });
+});
+
+// ---------- Find roles for me (src/cloud/picks.js, and POST /api/setup with { auto: true }) ----------
+
+const answer = (content, cost = COST) => reply({ choices: [{ message: { content }, finish_reason: "stop" }], usage: { prompt_tokens: 1600, completion_tokens: 60, cost } });
+const chooseForMe = async () => {
+  const res = await saveSetup(signedIn("/api/setup", { method: "POST", body: JSON.stringify({ auto: true }) }));
+  return { status: res.status, body: await res.json() };
+};
+const savedPrefs = (db) => db.preferences.find((r) => r.user_id === USER.id).prefs;
+
+test("Find roles for me asks the model once, keeps only known picks, and saves them like the form, with every sector", async () => {
+  await withEnv(ENV, async () => {
+    // An answer steered by the resume: unknown keys, too many roles, settings it has no say over, and a long reason.
+    const steered = JSON.stringify({
+      roles: ["product", "toString", "strategy", "notAKind", "finance", "marketing"], cities: ["newYork", "atlantis"],
+      why: `Four years as a product manager.\n${"x".repeat(400)}`, titleExclude: ["Product"], sectors: ["evil"]
+    });
+    const cloud = fakeCloud({ openrouter: () => answer(steered) });
+    cloud.db.preferences[0].prefs = { ...PREFS, networkSchools: ["NYU Stern"], setup: { roles: ["realEstate"], cities: ["chicago"], sectors: ["ai"] } };
+    const logged = [];
+    const saved = { log: console.log, error: console.error, warn: console.warn };
+    for (const k of Object.keys(saved)) console[k] = (...args) => logged.push(args.join(" "));
+    try {
+      await withFetch(cloud.fake, async () => {
+        const { status, body } = await chooseForMe();
+        assert.equal(status, 200, JSON.stringify(body));
+        assert.equal(cloud.ai.length, 1, "one question to the model");
+        assert.deepEqual(body.picked.roles, ["product", "strategy", "finance"], "known keys only, at most 3");
+        assert.deepEqual(body.picked.cities, ["newYork"]);
+        assert.deepEqual(body.picked.sectors, Object.keys(STARTER_SECTORS), "every sector");
+        assert.equal(body.picked.maxAgeDays, 14);
+        assert.equal(body.picked.school, "NYU Stern", "the school is kept");
+        assert.equal(body.picked.auto, "ai");
+        assert.equal(body.companies, hostedStarter().length);
+        assert.equal(body.chosen.by, "ai");
+        assert.ok(body.chosen.why.startsWith("Four years as a product manager. x") && body.chosen.why.length <= WHY_CHARS, "one short line");
+        assert.equal(body.chosen.costUsd, COST);
+        assert.equal(body.ai.left, AI_ROLES_PER_DAY - 1);
+
+        const prefs = savedPrefs(cloud.db);
+        assert.ok(prefs.titleInclude.includes("Product Manager") && prefs.locations.includes("New York"), "built by buildPreferences, like the form");
+        assert.ok(!prefs.titleExclude.includes("Product"), "the answer sets nothing but kinds of role and cities");
+        assert.deepEqual(prefs.setup, { roles: ["product", "strategy", "finance"], cities: ["newYork"], sectors: Object.keys(STARTER_SECTORS), auto: "ai" });
+        assert.ok(!JSON.stringify(prefs).includes("Four years"), "the reason is not saved");
+
+        assert.equal(mine(cloud.db).roles_scored, 1, "counts as 1 of the day's AI scores");
+        assert.equal(mine(cloud.db).cost_usd, COST);
+        assert.equal(site(cloud.db).cost_usd, COST, "the site's hold became the real cost");
+
+        const sent = cloud.ai[0];
+        assert.equal(sent.body.model, DEFAULT_MODEL);
+        assert.deepEqual(sent.body.provider, { data_collection: "deny" });
+        const prompt = sent.body.messages[1].content;
+        assert.ok(prompt.includes("supplier scorecard") && prompt.includes("Strategy roles in New York"), "the resume and what they are looking for");
+        assert.ok(!JSON.stringify(body).includes("supplier scorecard"), "the resume never reaches the page");
+      });
+    } finally {
+      Object.assign(console, saved);
+    }
+    assert.ok(logged.every((line) => !line.includes(ENV.OPENROUTER_API_KEY) && !line.includes("Rivera")), "nothing personal or secret in a log");
+  });
+});
+
+test("without AI the picks come from words in the resume: no key, today's AI used up, or the site paused", async () => {
+  const words = { roles: ["strategy", "realEstate"], cities: [] };
+  const cases = [
+    ["no key", { ...ENV, OPENROUTER_API_KEY: "" }, {}, null],
+    ["used up", ENV, { usage: AI_ROLES_PER_DAY }, "person"],
+    ["site paused", ENV, { siteCost: SITE_DAILY_USD - 0.001 }, "site"]
+  ];
+  for (const [label, env, opts, paused] of cases) {
+    await withEnv(env, async () => {
+      const cloud = fakeCloud(opts);
+      await withFetch(cloud.fake, async () => {
+        const { status, body } = await chooseForMe();
+        assert.equal(status, 200, `${label}: ${JSON.stringify(body)}`);
+        assert.equal(cloud.ai.length, 0, `${label}: no AI call`);
+        assert.deepEqual({ roles: body.picked.roles, cities: body.picked.cities }, words, label);
+        assert.equal(body.chosen.by, "words", label);
+        assert.equal(body.chosen.paused, paused, label);
+        assert.equal(body.chosen.costUsd, 0, label);
+        assert.equal(savedPrefs(cloud.db).setup.auto, "words", label);
+        assert.equal(mine(cloud.db)?.roles_scored || 0, opts.usage || 0, `${label}: nothing counted`);
+      });
+    });
+  }
+});
+
+test("an unreadable answer falls back to words, still counts its cost, and gives the AI score back", async () => {
+  await withEnv(ENV, async () => {
+    const cloud = fakeCloud({ openrouter: () => answer('{"roles": ["notAKind"], "cities": ["newYork"]}') });
+    await withFetch(cloud.fake, async () => {
+      const { status, body } = await chooseForMe();
+      assert.equal(status, 200, JSON.stringify(body));
+      assert.equal(body.chosen.by, "words");
+      assert.deepEqual(body.picked.roles, ["strategy", "realEstate"]);
+      assert.equal(body.chosen.costUsd, COST, "the call still cost something");
+      assert.equal(mine(cloud.db).roles_scored, 0, "the score is given back");
+      assert.equal(mine(cloud.db).cost_usd, COST);
+      assert.equal(site(cloud.db).roles_scored, 0);
+      assert.equal(site(cloud.db).cost_usd, COST);
+    });
+  });
+});
+
+test("word picks: kinds of role by their title phrases, cities as resumes write them, never Remote", () => {
+  const resume = "Product Manager at Contoso, Seattle (2021 to 2025). Led product management for payments (Remote). " +
+    "Before that, an analyst in New York, NY. MBA candidate at NYU, class of 2027.";
+  assert.deepEqual(picksFromWords(resume), { roles: ["product"], cities: ["newYork", "seattle"], why: "" }, "New York twice (NYU does not count), Seattle once");
+  assert.deepEqual(picksFromWords("Taught piano for six years."), { roles: [], cities: [], why: "" }, "nothing found means MBA titles and any city");
+});
+
+test("an answer counts only when it names a known kind of role", () => {
+  assert.deepEqual(parsePicks('Sure!\n```json\n{"roles": ["product", "product", "strategy"], "cities": [], "why": "PM work."}\n```'),
+    { roles: ["product", "strategy"], cities: [], why: "PM work." });
+  assert.throws(() => parsePicks('{"roles": [], "cities": ["newYork"]}'), /No known kind of role/);
+  assert.throws(() => parsePicks("I cannot help with that."), /No JSON/);
+});
+
+test("Find roles for me needs a resume and keeps the save rate limit, and a later save by hand drops the chosen-for-you mark", async () => {
+  await withEnv(ENV, async () => {
+    const cloud = fakeCloud({ openrouter: () => answer('{"roles": ["product"], "cities": [], "why": "PM work."}') });
+    await withFetch(cloud.fake, async () => {
+      const resume = cloud.db.profiles[0].resume_ciphertext;
+      cloud.db.profiles[0].resume_ciphertext = null;
+      let r = await chooseForMe();
+      assert.equal(r.status, 400);
+      assert.match(r.body.error, /resume/i);
+      cloud.db.profiles[0].resume_ciphertext = resume;
+      cloud.db.preferences[0].updated_at = new Date().toISOString();
+      r = await chooseForMe();
+      assert.equal(r.status, 429);
+      assert.equal(cloud.ai.length, 0, "neither one asked the model");
+
+      delete cloud.db.preferences[0].updated_at;
+      r = await chooseForMe();
+      assert.equal(r.status, 200);
+      assert.equal((await (await readSetup(signedIn("/api/setup"))).json()).picked.auto, "ai");
+      const byHand = await saveSetup(signedIn("/api/setup", { method: "POST", body: JSON.stringify({ roles: ["strategy"], cities: [], sectors: ["ai"], maxAgeDays: 14 }) }));
+      assert.equal(byHand.status, 200);
+      assert.equal(savedPrefs(cloud.db).setup.auto, undefined);
+      assert.equal((await (await readSetup(signedIn("/api/setup"))).json()).picked.auto, null);
     });
   });
 });
