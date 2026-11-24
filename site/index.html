@@ -157,12 +157,15 @@
     .ring { width: 120px; height: 120px; border: 14px solid var(--rule); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.9s linear infinite; }
     .overlay b { font-family: var(--display); font-weight: 900; font-size: 34px; text-transform: uppercase; }
     .overlay span { font-size: 14px; color: var(--ink-2); }
+    .overlay .progress { display: block; width: min(320px, calc(100vw - 64px)); height: 10px; background: var(--rule); }
+    .overlay .progress i { display: block; height: 100%; width: 0; background: var(--ink); transition: width 0.6s ease; }
+    .overlay .note { max-width: min(420px, calc(100vw - 64px)); color: var(--ink-3); }
     @keyframes spin { to { transform: rotate(360deg); } }
     .toast { position: fixed; left: 50%; bottom: 20px; z-index: 11; max-width: min(560px, calc(100% - 32px)); transform: translateX(-50%); padding: 12px 16px; background: var(--ink); color: var(--strip); font-size: 14px; font-weight: 600; }
     .toast.bad { background: var(--stop); }
 
     footer { padding: 16px 0 22px; border-top: 3px solid var(--ink); font-size: 13px; color: var(--ink-3); }
-    @media (prefers-reduced-motion: reduce) { .ring { animation: none; border-top-color: var(--rule); border-color: var(--ink); } .check:hover:not([disabled]) { transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .ring { animation: none; border-top-color: var(--rule); border-color: var(--ink); } .overlay .progress i { transition: none; } .check:hover:not([disabled]) { transform: none; } }
     @media (max-width: 900px) {
       .landing, .steps, .cols { grid-template-columns: 1fr; gap: 24px; }
       .landing { align-items: start; padding-top: 8px; }
@@ -330,6 +333,8 @@
     <div class="ring" aria-hidden="true"></div>
     <b id="checkingTitle">Checking your list</b>
     <span id="checkingText"></span>
+    <span class="progress" id="checkingBar" hidden aria-hidden="true"><i></i></span>
+    <span class="note" id="checkingNote"></span>
   </div>
   <p class="toast" id="toast" hidden role="status" aria-live="polite"></p>
 
