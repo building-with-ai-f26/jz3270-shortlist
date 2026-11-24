@@ -63,6 +63,9 @@
   // How much AI scoring this person has left today: { on, limit, perCheck, left, paused }, or null.
   let ai = null;
   let editing = false;
+  // "Find roles for me": true while it runs, and the reason for the last picks, kept only on this page (never saved).
+  let choosing = false;
+  let chosen = null;
   let picks = { roles: new Set(), cities: new Set(), sectors: new Set(), age: 14 };
 
   async function api(path, { method = "GET", body, headers = {} } = {}) {
@@ -124,6 +127,12 @@
     $("resumeNone").hidden = has;
     $("resumeOnFile").hidden = !has;
     $("stepResume").classList.toggle("done", has);
+    $("chooseForMe").disabled = !has || choosing;
+    $("chooseAgain").disabled = !has || choosing;
+    $("chooseInstead").disabled = !has || choosing;
+    $("chooseHint").textContent = has
+      ? "Shortlist reads your resume, picks the kinds of role and cities that fit it, looks at every company, and runs your first check. You can change anything after."
+      : "Upload your resume first. Then Shortlist reads it, picks the kinds of role and cities that fit it, looks at every company, and runs your first check.";
     if (has) {
       $("resumeName").textContent = me.resumeFileName;
       $("resumeWhen").textContent = `Uploaded ${day(me.resumeUploadedAt)}, stored encrypted`;
@@ -137,7 +146,9 @@
     try {
       const r = await api("/api/resume", { method: "POST", body: file, headers: { "X-File-Name": encodeURIComponent(file.name) } });
       me = { ...me, hasResume: true, resumeFileName: r.resumeFileName, resumeUploadedAt: r.resumeUploadedAt };
+      chosen = null;
       renderResume();
+      renderWants();
       updateGo();
       track("resume_uploaded", { file_type: fileType(r.resumeFileName) });
       toast(`Got it: ${r.characters.toLocaleString("en-US")} characters of resume text, contact details removed, stored encrypted.`);
@@ -155,7 +166,7 @@
     picks = { roles: new Set(p?.roles || []), cities: new Set(p?.cities || []), sectors: new Set(p?.sectors || []), age: p?.maxAgeDays || 14 };
     $("school").value = p?.school || "";
     $("lookingFor").value = p?.lookingFor || "";
-    editing = !p;
+    editing = false;
   }
 
   const labelsOf = (list, keys) => list.filter((x) => keys.has(x.key)).map((x) => x.label);
@@ -182,24 +193,74 @@
     })));
   }
 
+  // Step 2 has three views: the choice (Find roles for me, or narrow it down) before anything is saved, the form,
+  // and one line of what is saved.
   function renderWants() {
     const saved = Boolean(setup.picked);
     $("stepWants").classList.toggle("done", saved);
+    $("wantsChoice").hidden = saved || editing;
     $("wantsSummary").hidden = !saved || editing;
-    $("wantsForm").hidden = saved && !editing;
+    $("wantsForm").hidden = !editing;
     if (saved && !editing) {
       const roles = labelsOf(setup.choices.roles, picks.roles);
       const cities = labelsOf(setup.choices.cities, picks.cities);
       const sectors = labelsOf(setup.choices.sectors, picks.sectors);
+      const every = sectors.length === setup.choices.sectors.length;
       $("wantsLine").textContent = [
         roles.length ? roles.join(", ") : "MBA and 2027 roles of any kind",
         cities.length ? cities.join(", ") : "any city",
         `posted in the last ${picks.age} days`,
-        `${sectors.join(", ")} (${companiesPicked()} companies)`
+        every ? `every sector (${companiesPicked()} companies)` : `${sectors.join(", ")} (${companiesPicked()} companies)`
       ].join(" · ");
-    } else {
+      const by = setup.picked.auto;
+      $("wantsBy").hidden = !by;
+      $("wantsBy").textContent = by === "ai" ? "Chosen for you by AI" : "Chosen for you from your resume";
+      const why = chosenWhy();
+      $("wantsWhy").hidden = !why;
+      $("wantsWhy").textContent = why;
+    } else if (editing) {
       renderChips();
     }
+  }
+
+  // Why the last picks were made, for this visit only. The model's sentence goes in as text, never as HTML.
+  function chosenWhy() {
+    if (!chosen || !setup.picked?.auto) return "";
+    if (chosen.by === "ai") return chosen.why ? `Why: ${chosen.why}` : "";
+    if (chosen.paused === "person") return "Today's AI scores are used up, so these come from matching words in your resume.";
+    if (chosen.paused === "site") return "AI is paused for everyone until midnight New York time, so these come from matching words in your resume.";
+    return "These come from matching words in your resume. Change anything that looks off.";
+  }
+
+  // "Find roles for me": the server picks from the resume and saves, then the first check runs.
+  async function chooseForMe() {
+    if (!me?.hasResume) return toast("Upload your resume first.", true);
+    choosing = true;
+    renderResume();
+    $("checkingTitle").textContent = "Reading your resume";
+    $("checkingText").textContent = aiReady() ? "Picking the kinds of role and cities that fit it" : "Matching it against the kinds of role and cities";
+    $("checking").hidden = false;
+    $("app").inert = true;
+    let saved = false;
+    try {
+      const r = await api("/api/setup", { method: "POST", body: { auto: true } });
+      track("setup_saved", { roles_count: r.picked.roles.length, cities_count: r.picked.cities.length, sectors_count: r.picked.sectors.length, first_time: !setup.picked, from: "auto", chosen_by: r.chosen.by });
+      setup.picked = r.picked;
+      chosen = r.chosen;
+      if (r.ai) ai = r.ai;
+      loadPicks();
+      saved = true;
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      choosing = false;
+      $("checking").hidden = true;
+      $("app").inert = false;
+      renderResume();
+      renderWants();
+      updateGo();
+    }
+    if (saved) await runCheck();
   }
 
   async function saveWants(e) {
@@ -212,8 +273,8 @@
         school: $("school").value.trim(), lookingFor: $("lookingFor").value.trim()
       };
       const r = await api("/api/setup", { method: "POST", body });
-      track("setup_saved", { roles_count: body.roles.length, cities_count: body.cities.length, sectors_count: body.sectors.length, first_time: !setup.picked });
-      setup.picked = { ...body };
+      track("setup_saved", { roles_count: body.roles.length, cities_count: body.cities.length, sectors_count: body.sectors.length, first_time: !setup.picked, from: "advanced" });
+      setup.picked = { ...body, auto: null };
       editing = false;
       renderWants();
       updateGo();
@@ -233,7 +294,7 @@
     $("checkHint").textContent = !me?.hasResume
       ? "Upload your resume first."
       : !setup?.picked
-        ? "Pick what you want, then save."
+        ? "Find roles for me, or narrow it down yourself."
         : `Covers ${companiesPicked()} companies on Greenhouse, Lever and Ashby. ${aiReady() ? "Takes up to half a minute." : "Free, and takes a few seconds."}`;
     renderAiLeft();
   }
@@ -267,6 +328,7 @@
     $("checkBtn").disabled = true;
     // A quick check never flashes the cover; a slower one gets it after a quarter second.
     const cover = setTimeout(() => {
+      $("checkingTitle").textContent = "Checking your list";
       $("checkingText").textContent = aiReady()
         ? `Ranking roles from ${companiesPicked()} companies, and AI-scoring up to ${Math.min(ai.perCheck, ai.left)} new ones against your resume`
         : `Ranking roles from ${companiesPicked()} companies against your resume`;
@@ -512,6 +574,11 @@
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); upload(e.dataTransfer.files[0]); });
     $("wantsForm").addEventListener("submit", saveWants);
     $("wantsEdit").addEventListener("click", () => { editing = true; renderWants(); });
+    $("chooseMyself").addEventListener("click", () => { editing = true; renderWants(); });
+    $("chooseForMe").addEventListener("click", chooseForMe);
+    $("chooseAgain").addEventListener("click", chooseForMe);
+    $("chooseInstead").addEventListener("click", chooseForMe);
+    $("removeResume").addEventListener("click", startOver);
     $("checkBtn").addEventListener("click", runCheck);
     $("startOver").addEventListener("click", startOver);
     $("deleteAccount").addEventListener("click", deleteAccount);

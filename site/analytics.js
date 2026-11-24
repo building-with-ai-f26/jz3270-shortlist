@@ -10,7 +10,7 @@ window.shortlistAnalytics = (() => {
   const EVENTS = {
     sign_in_started: ["method"],
     resume_uploaded: ["file_type"],
-    setup_saved: ["roles_count", "cities_count", "sectors_count", "first_time"],
+    setup_saved: ["roles_count", "cities_count", "sectors_count", "first_time", "from", "chosen_by"],
     check_run: ["ranked", "new_count", "scoring", "ai_scored", "ai_paused"],
     posting_opened: ["column"],
     people_link_opened: ["link_type"],

@@ -145,6 +145,19 @@ This repository is public. Never put resume content, keys, emails or anything fr
 - **No spending while building:** the tests use a fake OpenRouter, and `npm run check-hosted` and `npm run dev-site` now swap in a fake one too (`scripts/fake-openrouter.js`), so the allowance was tested on the real dev database for $0. `check-hosted` passed 39 of 39 on dev (42 AI calls, all fake), `check-rls` 39 of 39, 184 tests. The OpenRouter spend in this session was $0.
 - **Privacy page:** now says the resume text (no contact details) and "What I'm looking for" go to Claude Haiku 5.5 through OpenRouter, only to hosts that keep nothing, up to 20 roles a check and 60 a day, and that Start over keeps the day's count.
 - **Not done yet:** a real AI check (Jordan's preview walk, about $0.015 for 20 roles). Merging turns AI on in production at once, since `OPENROUTER_API_KEY` is already set there.
+- **Merged Nov 23** (pull request #5, merge `2e69dba`). Production's `/api/health` showed the merge commit and `check-secrets` was clean.
+
+### Nov 23: Find roles for me
+- **Asked (Jordan):** the companies and filters are built around him, which is fine, but classmates should not have to choose: let the AI find things, with advanced settings only for those who want to narrow it down. Planned first; Jordan approved the plan as written.
+- **What changed:** step 2 on the hosted site starts with one button, Find roles for me. The server reads the resume, picks 1 to 3 kinds of role and 0 to 3 cities, saves them with every sector (195 companies) and 14 days, and the page runs the first check. One line shows the picks and why, with Change and "Find roles for me again". The old form is "Narrow it down myself".
+- **Why every sector:** the kind of role and city rules do the narrowing, and a check over more companies costs nothing more, since AI scoring stays at 20 roles a check. This replaces the Nov 19 default (the AI picks sectors).
+- **What the AI may set:** only kinds of role and cities from the existing lists. Its answer goes through the same `buildPreferences` as the form, so a resume written to steer it cannot set anything else. Unknown keys are dropped; an answer with no known kind of role counts as unreadable.
+- **Cost:** one Claude Haiku 5.5 question per click, about $0.001 (1,600 tokens in, a short answer), counted as 1 of the person's 60 AI scores a day and paid from the $1 site budget with the same hold and settle as a check. Only on click, never on upload.
+- **Without AI** (no key, today's 60 used, or the site's budget used), the picks come from words in the resume: the kinds of role whose title phrases it uses most (up to 2) and the cities it names (up to 3, never Remote), and the line says so.
+- **The reason is not saved,** since it is drawn from the resume, which is stored only encrypted. It shows on the page until the next visit.
+- **Also fixed:** the Remove resume button did nothing (it now does what Start over does).
+- **Checked:** 190 tests (6 new, and breaking the key check, the Remove filter, the counting or the hold on purpose each failed a test); `check-hosted` 45 of 45 on dev with a fake OpenRouter ($0); the page in a browser with sample data in each state and at phone width. Not yet: a real pick on the preview.
+- **Still open:** the 7 kinds of role (real estate and supply chain among them) and the 195 companies, mostly tech, are Jordan's. Consulting, banking and VC classmates will find little whatever is picked, since those firms mostly use Workday, which the daily fetch does not cover yet.
 
 ## Open questions
 

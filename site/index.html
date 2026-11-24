@@ -94,6 +94,13 @@
     .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--strip); }
     .chip small { font-weight: 400; opacity: 0.75; }
     .summary-line { margin: 0 0 14px; font-size: 15px; color: var(--ink-2); }
+    /* Step 2 before anything is saved: one big button, and the form for those who want to narrow it down. */
+    .choose { display: grid; gap: 12px; justify-items: start; }
+    .choose .btn.big { min-height: 58px; padding: 0 26px; font-family: var(--display); font-weight: 900; font-size: 28px; text-transform: uppercase; }
+    .choose p { margin: 0; max-width: 56ch; font-size: 14px; color: var(--ink-2); }
+    .by { display: inline-block; margin: 0 0 8px; padding: 2px 8px; background: var(--ink); color: var(--strip); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .chose-why { margin: -6px 0 14px; font-size: 14px; color: var(--ink-2); }
+    .form-end { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
     .go { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 22px 0 10px; }
     .check { display: inline-flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 28px; border: 0; background: var(--ink); color: var(--strip); font-family: var(--display); font-weight: 900; font-size: 30px; text-transform: uppercase; }
     .check:hover:not([disabled]) { transform: translateY(-1px); }
@@ -170,6 +177,7 @@
       .account b { max-width: 16ch; }
       .lede { font-size: 16px; }
       .check { width: 100%; justify-content: center; }
+      .choose .btn.big { width: 100%; font-size: 24px; }
       .count { flex-direction: column; gap: 2px; padding: 10px 14px; }
       .count b { font-size: 32px; }
       .role { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 12px; }
@@ -248,9 +256,19 @@
 
       <section class="step" id="stepWants" aria-labelledby="wantsTitle">
         <h2 id="wantsTitle"><span class="num">2</span> What you want</h2>
+        <div class="choose" id="wantsChoice" hidden>
+          <button class="btn solid big" id="chooseForMe" type="button">Find roles for me</button>
+          <p id="chooseHint">Shortlist reads your resume, picks the kinds of role and cities that fit it, looks at every company, and runs your first check. You can change anything after.</p>
+          <button class="linkish" id="chooseMyself" type="button">Narrow it down myself</button>
+        </div>
         <div id="wantsSummary" hidden>
+          <p class="by" id="wantsBy" hidden></p>
           <p class="summary-line" id="wantsLine"></p>
-          <button class="btn" id="wantsEdit" type="button">Change</button>
+          <p class="chose-why" id="wantsWhy" hidden></p>
+          <div class="row">
+            <button class="btn" id="wantsEdit" type="button">Change</button>
+            <button class="btn" id="chooseAgain" type="button">Find roles for me again</button>
+          </div>
         </div>
         <form id="wantsForm" novalidate>
           <fieldset><legend>Kinds of role</legend><div class="chips" id="roles"></div></fieldset>
@@ -261,7 +279,10 @@
           <input id="school" type="text" maxlength="80" placeholder="NYU Stern" autocomplete="organization" />
           <label class="field" for="lookingFor">What I'm looking for (optional)</label>
           <textarea id="lookingFor" maxlength="2000" placeholder="Strategy or operations at a growing company in New York; no sales roles."></textarea>
-          <button class="btn solid" id="saveWants" type="submit">Save</button>
+          <div class="form-end">
+            <button class="btn solid" id="saveWants" type="submit">Save</button>
+            <button class="linkish" id="chooseInstead" type="button">Let Shortlist choose for me instead</button>
+          </div>
         </form>
       </section>
     </div>
@@ -307,7 +328,7 @@
 
   <div class="overlay" id="checking" hidden role="status" aria-live="polite">
     <div class="ring" aria-hidden="true"></div>
-    <b>Checking your list</b>
+    <b id="checkingTitle">Checking your list</b>
     <span id="checkingText"></span>
   </div>
   <p class="toast" id="toast" hidden role="status" aria-live="polite"></p>

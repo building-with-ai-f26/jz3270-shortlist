@@ -102,14 +102,11 @@ async function callOpenRouter(messages, maxTokens, { fetchImpl, model, apiKey })
 // Output tokens cost very little, so the larger budget only matters on the rare retry.
 export const TOKEN_BUDGETS = [1200, 3000];
 
-export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, apiKey } = {}) {
-  const messages = [
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: buildPrompt(profile, posting) }
-  ];
+// One question to the model, with the retry above. Returns its answer and the usage of every call it took.
+// The hosted "Find roles for me" (src/cloud/picks.js) asks through this too.
+export async function askModel(messages, { fetchImpl = fetch, model, apiKey } = {}) {
   const usage = { tokensIn: 0, tokensOut: 0, costUsd: 0 };
   let last = null;
-
   for (const budget of TOKEN_BUDGETS) {
     last = await callOpenRouter(messages, budget, { fetchImpl, model, apiKey });
     usage.tokensIn += last.usage.tokensIn;
@@ -117,6 +114,16 @@ export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, 
     usage.costUsd += last.usage.costUsd;
     if (last.content.trim() && last.finishReason !== "length") break;
   }
+  return { content: last.content, finishReason: last.finishReason, usage };
+}
+
+export async function scoreWithAI(profile, posting, { fetchImpl = fetch, model, apiKey } = {}) {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: buildPrompt(profile, posting) }
+  ];
+  const last = await askModel(messages, { fetchImpl, model, apiKey });
+  const usage = last.usage;
 
   try {
     if (!last.content.trim()) throw new Error(`Empty model response (stopped: ${last.finishReason || "unknown"})`);

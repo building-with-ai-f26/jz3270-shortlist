@@ -1,7 +1,8 @@
 // `npm run check-hosted` runs the hosted app's whole workflow, and tries to break it, against the real development
 // database: it creates two throwaway accounts (A and B), has A upload the fictional Sam Rivera resume, pick
 // choices and run checks, then has B try to reach A's resume, scores and checks, and has A hit the check limit,
-// remove the resume and delete the account. It calls the same functions Vercel runs (api/*.js) with real fetch.
+// remove the resume and delete the account. B also tries "Find roles for me". It calls the same functions Vercel
+// runs (api/*.js) with real fetch.
 // It deletes everything it created at the end, even when a check fails.
 //
 // Free: AI scoring runs against a fake OpenRouter (scripts/fake-openrouter.js), with made-up fits and costs, so the
@@ -16,6 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadEnv } from "../src/env.js";
 import { ROOT } from "../src/pipeline.js";
+import { STARTER_SECTORS } from "../src/setup.js";
 import { aiDay, AI_ROLES_PER_DAY, AI_ROLES_PER_CHECK, SITE_DAILY_USD } from "../src/cloud/allowance.js";
 import { useFakeOpenRouter, FAKE_COST } from "./fake-openrouter.js";
 
@@ -179,6 +181,27 @@ try {
   check("signed-out visitors cannot read postings", rows(anonPostings).length === 0, `HTTP ${anonPostings.status}`);
   res = await site(a.token, "DELETE", "account", { body: JSON.stringify({ confirm: "yes" }) });
   check("deleting an account needs the exact confirmation", res.status === 400);
+
+  // Find roles for me, as B: refused without a resume, then one AI call (the fake answers with one unknown key).
+  res = await site(b.token, "POST", "setup", { body: JSON.stringify({ auto: true }) });
+  check("Find roles for me needs a resume first", res.status === 400 && /resume/i.test((await res.json()).error));
+  await site(b.token, "POST", "resume", { body: pdf, headers: { "X-File-Name": "resume-sample.pdf" } });
+  const picksBefore = fakeAI.picks;
+  const bUsedBefore = (await usageOf(b.id)).roles_scored;
+  res = await site(b.token, "POST", "setup", { body: JSON.stringify({ auto: true }) });
+  const auto = await res.json();
+  check("Find roles for me picks from the resume with one AI call", res.status === 200 && auto.chosen?.by === "ai" && fakeAI.picks === picksBefore + 1,
+    `${auto.picked?.roles?.join(", ")} · ${auto.picked?.cities?.join(", ")} · ${auto.companies} companies · $${auto.chosen?.costUsd}`);
+  check("only known kinds of role and cities are kept, with every sector", JSON.stringify(auto.picked?.roles) === '["product","strategy"]' &&
+    JSON.stringify(auto.picked?.cities) === '["newYork"]' && auto.picked?.sectors?.length === Object.keys(STARTER_SECTORS).length);
+  const bPrefs = rows(await rest("GET", `/rest/v1/preferences?select=prefs&user_id=eq.${b.id}`, { key: SECRET }))[0]?.prefs;
+  check("the picks are saved like the form's, and the reason is not saved", bPrefs?.setup?.auto === "ai" && bPrefs.titleInclude?.includes("Product Manager") &&
+    bPrefs.locations?.includes("New York") && !JSON.stringify(bPrefs).includes("made-up pick"));
+  const bUsage = await usageOf(b.id);
+  check("it counts as 1 of B's AI scores today, at its real cost", bUsage.roles_scored === bUsedBefore + 1 && auto.ai?.left === AI_ROLES_PER_DAY - bUsedBefore - 1 &&
+    Math.abs(Number(bUsage.cost_usd) - FAKE_COST) < 1e-6, `${auto.ai?.left} of ${auto.ai?.limit} left`);
+  res = await site(b.token, "GET", "setup");
+  check("the page reads the picks back, marked as chosen by AI", res.status === 200 && (await res.json()).picked?.auto === "ai");
 
   // The per-person rate limit (five checks in ten minutes, counted from rows written before any work) and one
   // check at a time.
