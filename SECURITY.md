@@ -18,7 +18,7 @@ AI scoring (added after the audit, Nov 22) is the one paid call: a check sends t
 | 2. Secret keys | `npm run check-secrets`: every tracked file, every line ever added in Git history on every branch, and the live sites (hosted site, Product Page, demo) with every script they load, for `sb_secret_`, `sk-or-`, `sk-ant-`, `sk-proj-`, `sk_live_`, service_role keys and the real values in `.env` | Clean: 102 files, 29,468 added lines, 4 pages. The only matches were the made-up `sk-or-v1-replace...` placeholders and `service_role` as a role name in code | Added the script, so the search is one command. A planted fake key was caught, then removed |
 | 3. File storage | Storage buckets on the dev database | None. Resumes are encrypted text in a table, not files | Nothing to fix |
 | 4. Production vs the agent | Who can touch production | The agent's tools (`check-rls`, `check-hosted`, `dev-site`, `refresh-postings`) refuse the production database; migrations reach production only through the GitHub Action on merge | Added the "Ask me first" list (AGENTS.md, section 7). Production backup: see below |
-| 5. Spending caps and rate limits | Every route that writes to the database or could cost money | `POST /api/check` is the only paid route (AI scoring, added Nov 22) | Per-person limits on every write route, and the AI allowance and site budget (below). OpenRouter credit limits: see below |
+| 5. Spending caps and rate limits | Every route that writes to the database or could cost money | `POST /api/check` (AI scoring, added Nov 22) and Find roles for me in `POST /api/setup` (one AI question, added Nov 23) are the only paid routes | Per-person limits on every write route, and the AI allowance and site budget (below). OpenRouter credit limits: see below |
 | 6. Dependencies | `npm audit` | 0 vulnerabilities | The tests Action now fails any pull request with a high or critical advisory |
 | 7. Agent security review | A separate agent, given only the code, read every hosted file and tried to break it | No way for one account to reach another's data. Two medium issues (the rate limits could be bypassed; one upload could stall a server), and several low ones | Fixed all but one, which needs a database change (see "Agent review" below) |
 
@@ -29,7 +29,7 @@ AI scoring (added after the audit, Nov 22) is the one paid call: a check sends t
 | `POST /api/check` | 5 checks per person in 10 minutes (429 after). Each check's row is written before any work and counted after, so checks sent at once, failed checks and refused checks all count, and people cannot delete their own checks. One check at a time: while an earlier check is still running (up to 150 seconds), the next gets 409, so a double click never pays twice |
 | AI scoring, inside `POST /api/check` | 60 roles per person per day and at most 20 per check; $1 a day across the site; days in New York time. A check holds its roles in `ai_usage` and `site_spend` before calling OpenRouter (each role held at $0.002, about 3 times its measured cost) and settles the real cost after. Every change is a conditional write, so checks at the same moment cannot pass a limit. Only the server writes these tables; people read only their own usage, and nobody but the server reads the site's spending. Start over keeps the count. The model is fixed in code, and every request asks OpenRouter for hosts that keep no prompts |
 | `POST /api/resume` | One upload per person every 10 seconds (Start over keeps the time of the last upload); 4 MB at most, text files 200 KB, PDFs 20 pages, Word files refused if they expand past 40 MB |
-| `POST /api/setup` | One save per person every 2 seconds; 20 KB at most |
+| `POST /api/setup` | One save per person every 2 seconds; 20 KB at most. Find roles for me (`{ auto: true }`) asks the AI one question, held and settled like a check's: 1 of the person's 60 a day, its real cost on the site's budget, free word matching when either is used up. Only known kinds of role and cities are kept, and the reason it gives is shown but not saved |
 | `DELETE /api/resume`, `DELETE /api/account` | Act once on the signed-in person's own data; account deletion needs the exact words "delete my account" |
 | `GET /api/refresh-postings` | Only Vercel's cron, with `CRON_SECRET` (compared in constant time; under 16 characters counts as no secret) |
 
@@ -54,7 +54,7 @@ A separate agent read the hosted code with no hints about what I thought was saf
 
 ## Checks on every pull request
 
-- **Tests** (`.github/workflows/tests.yml`): `npm ci`, `npm test` (184 tests: row level security rules read from the migrations, each route's access rules with a fake Supabase, upload checks, encryption, the AI allowance with a fake OpenRouter, the secret search, analytics limits) and `npm audit --audit-level=high`.
+- **Tests** (`.github/workflows/tests.yml`): `npm ci`, `npm test` (190 tests: row level security rules read from the migrations, each route's access rules with a fake Supabase, upload checks, encryption, the AI allowance and Find roles for me with a fake OpenRouter, the secret search, analytics limits) and `npm audit --audit-level=high`.
 - **Vercel**: a preview deploy of the pull request, on the dev database.
 - **Database migrations** (`.github/workflows/supabase-migrations.yml`): when a pull request changes `supabase/migrations/`, they are applied to the dev database; production gets them only on merge.
 
@@ -81,8 +81,10 @@ Attacks 1, 2, 3, 6, 9, 10 and 11 ran against the real dev database through the s
 | 15 | Four AI holds at the same moment, with 50 roles left in the day (offline, with a fake database that interleaves every request) | 50 or fewer granted and every one counted. With the conditional write switched off on purpose, 80 got through |
 | 16 | A second check while the first is still running | 409, before anything is read or spent |
 | 17 | Set the site's spending to $1 for the day, then checked | No AI call; the person's hold was given back; the board was ranked by keywords; the page learned only that AI is paused |
+| 18 | A resume written to steer Find roles for me: the answer names unknown kinds of role, "toString", more than 3 kinds, a made-up city, a 400-character reason, and tries to set excluded title words and sectors | Only known keys kept, at most 3 kinds of role; excluded words and sectors untouched (every sector, as designed); the reason cut to one line, shown as text, not saved |
+| 19 | Find roles for me with no resume, and twice within 2 seconds | 400 and 429, before any AI question |
 
-Attacks 13, 14, 16 and 17 ran on the dev database through `npm run check-hosted` with a fake OpenRouter (no spending); 15 runs in the offline tests.
+Attacks 13, 14, 16 and 17 ran on the dev database through `npm run check-hosted` with a fake OpenRouter (no spending); 15 runs in the offline tests. 18 and 19 run in the offline tests, and on dev an unknown key from the fake model was dropped and Find roles for me without a resume got 400.
 
 ## Privacy in analytics
 
